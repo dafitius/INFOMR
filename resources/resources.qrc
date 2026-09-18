@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>shaders/preview.vert</file>
+        <file>shaders/preview.frag</file>
+        <file>qml/WorkshopView.qml</file>
+    </qresource>
+</RCC>
