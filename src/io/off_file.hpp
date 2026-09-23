@@ -23,7 +23,7 @@ public:
 		std::ifstream file(file_path);
 		if (!file.is_open())
 		{
-			std::cerr << "Unable to open file!" << std::endl;
+			std::cerr << "Unable to open file!" << file_path.string() << std::endl;
 			return std::nullopt;
 		}
 
