@@ -1,0 +1,3 @@
+[submodule "resources/ShapeDatabase_INFOMR"]
+	path = resources/ShapeDatabase_INFOMR
+	url = https://github.com/MaxRee94/ShapeDatabase_INFOMR
