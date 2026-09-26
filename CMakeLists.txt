@@ -6,7 +6,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-set(CMAKE_PREFIX_PATH "/home/dafitius/Documents/bin/qt/6.11.2/gcc_64/lib/cmake/;C:/Qt/6.11.2/mingw_64/lib/cmake/;C:/Qt/6.11.2/msvc2022_64/lib/cmake/")
+set(CMAKE_PREFIX_PATH "/home/dafitius/Documents/bin/qt/6.11.2/gcc_64/lib/cmake/;C:/Qt/6.11.2/msvc2022_64/lib/cmake/;C:/Qt/6.11.2/mingw_64/lib/cmake/")
 
 
 find_package(Qt6 REQUIRED COMPONENTS
