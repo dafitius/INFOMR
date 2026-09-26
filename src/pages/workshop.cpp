@@ -4,7 +4,7 @@
 
 #include "workshop.h"
 
-#include "../io/off_file.hpp"
+#include "../io/mesh.hpp"
 #include <QCheckBox>
 #include <QFile>
 #include <QHBoxLayout>
@@ -23,7 +23,7 @@ Workshop::Workshop(QWidget* parent)
 	setupUI();
 }
 
-void Workshop::loadMesh(const OffFile& mesh)
+void Workshop::loadMesh(const Mesh& mesh)
 {
 	// Convert positions to QVector<float>
 	const auto posSpan = mesh.positions();

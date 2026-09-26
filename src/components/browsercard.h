@@ -4,7 +4,7 @@
 #include <QFrame>
 #include <QString>
 
-#include "../io/off_file.hpp"
+#include "../io/mesh.hpp"
 
 class BrowserCard : public QFrame
 {
@@ -21,7 +21,7 @@ private:
 	void setupUI();
 
 	QString meshName;
-	std::optional<OffFile> object;
+	std::optional<Mesh> object;
 };
 
 #endif // MESHCARD_H

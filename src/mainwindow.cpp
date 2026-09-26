@@ -1,4 +1,6 @@
 #include "mainwindow.h"
+#include "io/mesh.hpp"
+#include "io/obj_file.hpp"
 #include "io/off_file.hpp"
 #include "pages/browsepage.h"
 #include "pages/workshop.h"
@@ -33,11 +35,31 @@ void MainWindow::setupUI()
 		browsePage, &BrowsePage::meshSelected, this,
 		[this, workshop](const QString& source)
 		{
-			if (auto obj = OffFile::read(source.toStdString()))
+			const std::filesystem::path path = source.toStdString();
+			std::optional<Mesh> mesh;
+
+			if (path.extension() == ".obj")
 			{
-				workshop->loadMesh(obj.value());
-				tabWidget->setCurrentWidget(workshop);
+				mesh = ObjFile::read(path);
 			}
+			else if (path.extension() == ".off")
+			{
+				mesh = OffFile::read(path);
+			}
+			else
+			{
+				std::cerr << "Unsupported mesh format: " << path.extension() << '\n';
+				return;
+			}
+
+			if (!mesh)
+			{
+				std::cerr << "Failed to load mesh: " << path << '\n';
+				return;
+			}
+
+			workshop->loadMesh(*mesh);
+			tabWidget->setCurrentWidget(workshop);
 		});
 
 	layout->addWidget(tabWidget);

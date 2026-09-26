@@ -2,11 +2,14 @@
 #include "mainwindow.h"
 #include "theme.h"
 #include <QSurfaceFormat>
+#include <qquickwindow.h>
 
 #include "quick/workshopmodel.h"
 
 int main(int argc, char* argv[])
 {
+	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+	
 	QSurfaceFormat format;
 	format.setDepthBufferSize(24);
 	format.setStencilBufferSize(8);

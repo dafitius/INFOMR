@@ -4,6 +4,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
+#include "../io/obj_file.hpp"
 #include "../io/off_file.hpp"
 #include "meshpreview.h"
 
@@ -11,7 +12,29 @@ BrowserCard::BrowserCard(const QString& name, const QString mesh_source, QWidget
 	: QFrame(parent)
 	, meshName(name)
 {
-	object = OffFile::read(mesh_source.toStdString());
+	// TODO: This is somewhat duplicate code with mainwindow
+	const std::filesystem::path path = mesh_source.toStdString();
+
+	if (path.extension() == ".obj")
+	{
+		object = ObjFile::read(path);
+	}
+	else if (path.extension() == ".off")
+	{
+		object = OffFile::read(path);
+	}
+	else
+	{
+		std::cerr << "Unsupported mesh format: " << path.extension() << '\n';
+		return;
+	}
+
+	if (!object)
+	{
+		std::cerr << "Failed to load mesh: " << path << '\n';
+		return;
+	}
+
 	setupUI();
 }
 
