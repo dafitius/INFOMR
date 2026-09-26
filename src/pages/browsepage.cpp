@@ -6,6 +6,7 @@
 #include <QScrollArea>
 #include <QSplitter>
 #include <QVBoxLayout>
+#include <qquickwindow.h>
 
 BrowsePage::BrowsePage(QWidget* parent)
 	: QWidget(parent)
@@ -18,6 +19,8 @@ BrowsePage::~BrowsePage() {}
 
 void BrowsePage::setupUI()
 {
+	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+
 	auto* mainLayout = new QVBoxLayout(this);
 	mainLayout->setContentsMargins(16, 16, 16, 16);
 
