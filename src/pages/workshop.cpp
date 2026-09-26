@@ -4,17 +4,13 @@
 
 #include "workshop.h"
 
+#include "../components/meshviewport.h"
 #include "../io/off_file.hpp"
+#include "../render/rendermesh.h"
 #include <QCheckBox>
-#include <QFile>
-#include <QHBoxLayout>
 #include <QLabel>
-#include <QMetaObject>
-#include <QQmlContext>
-#include <QQuickItem>
-#include <QQuickWidget>
+#include <QPushButton>
 #include <QSplitter>
-#include <QUrl>
 #include <QVBoxLayout>
 
 Workshop::Workshop(QWidget* parent)
@@ -25,39 +21,16 @@ Workshop::Workshop(QWidget* parent)
 
 void Workshop::loadMesh(const OffFile& mesh)
 {
-	// Convert positions to QVector<float>
-	const auto posSpan = mesh.positions();
-	QVector<float> verts;
-	verts.reserve(posSpan.size() * 3);
-	for (const auto& p : posSpan)
-	{
-		verts.push_back(std::get<0>(p));
-		verts.push_back(std::get<1>(p));
-		verts.push_back(std::get<2>(p));
-	}
+	auto renderMesh = RenderMesh::fromPolygons(mesh.positions(), mesh.faces());
 
-	QVector<size_t> indices;
-	indices.reserve(mesh.num_faces() * 3);
-	for (const auto& face : mesh.faces())
+	auto stats = QString("Vertices: %1 | Faces: %2").arg(mesh.num_vertices()).arg(mesh.num_faces());
+	if (renderMesh.skippedFaces > 0)
 	{
-		for (auto idx : face)
-			indices.push_back(static_cast<uint32_t>(idx));
+		stats += QString("\nSkipped invalid faces: %1").arg(renderMesh.skippedFaces);
 	}
+	statsLabel->setText(stats);
 
-	if (viewWidget && viewWidget->status() == QQuickWidget::Ready)
-	{
-		if (QQuickItem* root = viewWidget->rootObject())
-		{
-			if (QObject* modelObj = root->findChild<QObject*>("workshopModel"))
-			{
-				QMetaObject::invokeMethod(modelObj, "updateFromArrays", Q_ARG(QVector<float>, verts), Q_ARG(QVector<size_t>, indices));
-			}
-			else
-			{
-				qDebug() << "Workshop: workshopModel not in root";
-			}
-		}
-	}
+	viewport->setMesh(std::move(renderMesh));
 }
 
 Workshop::~Workshop() = default;
@@ -71,16 +44,8 @@ void Workshop::setupUI()
 	splitter->setChildrenCollapsible(false);
 	mainLayout->addWidget(splitter);
 
-	auto* viewContainer = new QWidget(splitter);
-	viewContainer->setObjectName("workshopViewport");
-
-	viewWidget = std::make_unique<QQuickWidget>(viewContainer);
-	viewWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
-	viewWidget->setSource(QUrl("qrc:/qml/WorkshopView.qml"));
-
-	auto* vcLayout = new QVBoxLayout(viewContainer);
-	vcLayout->setContentsMargins(0, 0, 0, 0);
-	vcLayout->addWidget(viewWidget.get());
+	viewport = new MeshViewport(splitter);
+	viewport->setObjectName("workshopViewport");
 
 	auto* sidebar = new QWidget(splitter);
 	sidebar->setObjectName("workshopSidebar");
@@ -94,11 +59,50 @@ void Workshop::setupUI()
 	title->setObjectName("pageTitle");
 	sidebarLayout->addWidget(title);
 
-	auto* wireframeBox = new QCheckBox("Wireframe", sidebar);
-	wireframeBox->setToolTip("Render model as wireframe");
-	sidebarLayout->addWidget(wireframeBox);
+	statsLabel = new QLabel("No mesh loaded", sidebar);
+	statsLabel->setObjectName("meshStats");
+	sidebarLayout->addWidget(statsLabel);
+
+	auto* shadedBox = new QCheckBox("Shaded", sidebar);
+	shadedBox->setToolTip("Render the mesh surface");
+	shadedBox->setChecked(viewport->renderSettings().showSurface);
+	sidebarLayout->addWidget(shadedBox);
+
+	auto* edgesBox = new QCheckBox("Edges", sidebar);
+	edgesBox->setToolTip("Render the edges of the mesh faces");
+	edgesBox->setChecked(viewport->renderSettings().showEdges);
+	sidebarLayout->addWidget(edgesBox);
+
+	auto* resetViewBtn = new QPushButton("Reset view", sidebar);
+	sidebarLayout->addWidget(resetViewBtn);
+
+	auto* controlsLabel =
+		new QLabel("Left drag: rotate\nRight/middle drag or Shift + left drag: pan\nScroll: zoom\nDouble click: reset view", sidebar);
+	controlsLabel->setObjectName("pageSubtitle");
+	controlsLabel->setWordWrap(true);
+	sidebarLayout->addWidget(controlsLabel);
 
 	sidebarLayout->addStretch();
+
+	connect(
+		shadedBox, &QCheckBox::toggled, this,
+		[this](const bool checked)
+		{
+			auto settings = viewport->renderSettings();
+			settings.showSurface = checked;
+			viewport->setRenderSettings(settings);
+		});
+
+	connect(
+		edgesBox, &QCheckBox::toggled, this,
+		[this](const bool checked)
+		{
+			auto settings = viewport->renderSettings();
+			settings.showEdges = checked;
+			viewport->setRenderSettings(settings);
+		});
+
+	connect(resetViewBtn, &QPushButton::clicked, viewport, &MeshViewport::resetView);
 
 	splitter->setStretchFactor(0, 2);
 	splitter->setStretchFactor(1, 1);

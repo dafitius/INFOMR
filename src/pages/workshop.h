@@ -6,9 +6,9 @@
 #define QTTEST_WORKSHOP_H
 
 #include <QWidget>
-#include <memory>
 
-class QQuickWidget;
+class MeshViewport;
+class QLabel;
 
 class Workshop : public QWidget
 {
@@ -21,7 +21,9 @@ public:
 
 private:
 	void setupUI();
-	std::unique_ptr<QQuickWidget> viewWidget;
+
+	MeshViewport* viewport;
+	QLabel* statsLabel;
 };
 
 #endif // QTTEST_WORKSHOP_H
