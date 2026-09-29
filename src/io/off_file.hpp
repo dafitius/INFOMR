@@ -4,9 +4,18 @@
 
 #ifndef QTTEST_OFF_READER_H
 #define QTTEST_OFF_READER_H
+#include <algorithm>
+#include <array>
+#include <cassert>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
+#include <ranges>
+#include <set>
+#include <span>
+#include <tuple>
+#include <vector>
 
 #include "util.hpp"
 

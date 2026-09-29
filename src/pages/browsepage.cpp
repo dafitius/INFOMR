@@ -6,6 +6,7 @@
 #include <QScrollArea>
 #include <QSplitter>
 #include <QVBoxLayout>
+#include <qquickwindow.h>
 
 BrowsePage::BrowsePage(QWidget* parent)
 	: QWidget(parent)
@@ -18,6 +19,8 @@ BrowsePage::~BrowsePage() {}
 
 void BrowsePage::setupUI()
 {
+	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+
 	auto* mainLayout = new QVBoxLayout(this);
 	mainLayout->setContentsMargins(16, 16, 16, 16);
 
@@ -76,10 +79,10 @@ void BrowsePage::setupUI()
 void BrowsePage::loadSampleMeshes()
 {
 	const std::vector<MeshData> sampleMeshes = {
-		{"Armadillo", "/home/dafitius/Downloads/282.off"},
-		{"Plane", "/home/dafitius/Downloads/61.off"},
-		{"Octopus", "/home/dafitius/Downloads/121.off"},
-		{"Human", "/home/dafitius/Downloads/20.off"},
+		{"Armadillo", "C:/Users/daink/Downloads/282.off"},
+		{"Plane", "C:/Users/daink/Downloads/61.off"},
+		{"Octopus", "C:/Users/daink/Downloads/121.off"},
+		{"Human", "C:/Users/daink/Downloads/20.off"},
 	};
 
 	for (const auto& mesh : sampleMeshes)

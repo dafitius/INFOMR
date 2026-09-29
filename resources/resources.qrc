@@ -2,6 +2,10 @@
     <qresource prefix="/">
         <file>shaders/preview.vert</file>
         <file>shaders/preview.frag</file>
+        <file>shaders/mesh.vert</file>
+        <file>shaders/mesh.frag</file>
+        <file>shaders/edge.vert</file>
+        <file>shaders/edge.frag</file>
         <file>qml/WorkshopView.qml</file>
     </qresource>
 </RCC>
