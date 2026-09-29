@@ -1,12 +1,27 @@
 
+#include "io/shape_db.hpp"
 #include "mainwindow.h"
 #include "theme.h"
-#include <QSurfaceFormat>
 
 #include "quick/workshopmodel.h"
 
+#include <QFile>
+#include <QSurfaceFormat>
+#include <qquickwindow.h>
+
 int main(int argc, char* argv[])
 {
+	auto shape_db = ShapeDb::open(SHAPE_DB_ROOT);
+
+	if (!shape_db)
+	{
+		std::cerr << "Failed to create ShapeDB\n";
+		return 1;
+	}
+
+	auto& db = *shape_db;
+
+	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 	QSurfaceFormat format;
 	format.setDepthBufferSize(24);
 	format.setStencilBufferSize(8);
@@ -24,5 +39,5 @@ int main(int argc, char* argv[])
 	window.resize(1000, 700);
 	window.show();
 
-	return app.exec();
+	return QApplication::exec();
 }

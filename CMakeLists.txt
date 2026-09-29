@@ -39,7 +39,6 @@ file(GLOB_RECURSE main_src
 
 source_group(${PROJECT_NAME} ${main_src})
 
-# Remove workshop sources if Quick3D unavailable (so target doesn't reference missing implementations)
 qt_add_executable(${PROJECT_NAME} ${main_src} resources/resources.qrc)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -49,6 +48,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::OpenGL
         Qt6::OpenGLWidgets
         Qt6::Quick
-                Qt6::QuickWidgets
+        Qt6::QuickWidgets
         Qt6::Quick3D
+)
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+        SHAPE_DB_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/ShapeDatabase_INFOMR"
 )
