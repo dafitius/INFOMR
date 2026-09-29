@@ -1,5 +1,7 @@
 #include "browsepage.h"
 
+#include "../io/shape_db.hpp"
+
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -8,8 +10,8 @@
 #include <QVBoxLayout>
 #include <qquickwindow.h>
 
-BrowsePage::BrowsePage(QWidget* parent)
-	: QWidget(parent)
+BrowsePage::BrowsePage(std::unique_ptr<ShapeDb> database, QWidget* parent)
+	: QWidget(parent), database(std::move(database))
 {
 	setupUI();
 	loadSampleMeshes();
@@ -78,16 +80,12 @@ void BrowsePage::setupUI()
 
 void BrowsePage::loadSampleMeshes()
 {
-	const std::vector<MeshData> sampleMeshes = {
-		{"Armadillo", "/home/dafitius/Downloads/282.off"},
-		{"Plane", "/home/dafitius/Downloads/61.off"},
-		{"Octopus", "/home/dafitius/Downloads/121.off"},
-		{"Human", "/home/dafitius/Downloads/20.off"},
-	};
-
-	for (const auto& mesh : sampleMeshes)
+	auto first_class = database->iter_class_names().front();
+	;
+	for (const auto& mesh : database->iter_class_shape_paths(first_class))
 	{
-		addMeshCard(mesh);
+		addMeshCard({
+		QString{first_class.data()},mesh.c_str()});
 	}
 }
 

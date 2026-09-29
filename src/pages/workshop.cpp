@@ -19,7 +19,7 @@ Workshop::Workshop(QWidget* parent)
 	setupUI();
 }
 
-void Workshop::loadMesh(const OffFile& mesh)
+void Workshop::loadMesh(const Mesh& mesh)
 {
 	auto renderMesh = RenderMesh::fromPolygons(mesh.positions(), mesh.faces());
 

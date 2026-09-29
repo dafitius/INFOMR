@@ -7,15 +7,15 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
-MainWindow::MainWindow(QWidget* parent)
+MainWindow::MainWindow(std::unique_ptr<ShapeDb> database, QWidget* parent)
 	: QMainWindow(parent)
 {
-	setupUI();
+	setupUI(std::move(database));
 }
 
 MainWindow::~MainWindow() {}
 
-void MainWindow::setupUI()
+void MainWindow::setupUI(std::unique_ptr<ShapeDb> database)
 {
 	auto* centralWidget = new QWidget(this);
 	auto* layout = new QVBoxLayout(centralWidget);
@@ -24,7 +24,7 @@ void MainWindow::setupUI()
 	tabWidget = new QTabWidget(this);
 
 	// Browse tab
-	auto* browsePage = new BrowsePage(this);
+	auto* browsePage = new BrowsePage(std::move(database), this);
 	tabWidget->addTab(browsePage, "Browse");
 
 	// Workshop tab

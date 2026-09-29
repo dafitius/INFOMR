@@ -4,8 +4,6 @@
 #include "theme.h"
 #include <qquickwindow.h>
 
-#include "quick/workshopmodel.h"
-
 #include <QFile>
 #include <QSurfaceFormat>
 
@@ -19,8 +17,6 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	auto& db = *shape_db;
-
 	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
 	QSurfaceFormat format;
@@ -33,9 +29,7 @@ int main(int argc, char* argv[])
 	QApplication app(argc, argv);
 	Theme::apply(app);
 
-	qmlRegisterType<WorkshopModel>("MultimediaRetrieval.Types", 1, 0, "WorkshopModel");
-
-	MainWindow window;
+	MainWindow window(std::make_unique<ShapeDb>(*shape_db));
 	window.setWindowTitle("Geometry Retrieval");
 	window.resize(1000, 700);
 	window.show();
