@@ -2,12 +2,12 @@
 #include "io/shape_db.hpp"
 #include "mainwindow.h"
 #include "theme.h"
+#include <qquickwindow.h>
 
 #include "quick/workshopmodel.h"
 
 #include <QFile>
 #include <QSurfaceFormat>
-#include <qquickwindow.h>
 
 int main(int argc, char* argv[])
 {
@@ -22,6 +22,7 @@ int main(int argc, char* argv[])
 	auto& db = *shape_db;
 
 	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+
 	QSurfaceFormat format;
 	format.setDepthBufferSize(24);
 	format.setStencilBufferSize(8);
@@ -39,5 +40,5 @@ int main(int argc, char* argv[])
 	window.resize(1000, 700);
 	window.show();
 
-	return QApplication::exec();
+	return app.exec();
 }

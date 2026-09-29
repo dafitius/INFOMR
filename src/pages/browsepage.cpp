@@ -79,10 +79,10 @@ void BrowsePage::setupUI()
 void BrowsePage::loadSampleMeshes()
 {
 	const std::vector<MeshData> sampleMeshes = {
-		{"Armadillo", "C:/Users/daink/Downloads/282.off"},
-		{"Plane", "C:/Users/daink/Downloads/61.off"},
-		{"Octopus", "C:/Users/daink/Downloads/121.off"},
-		{"Human", "C:/Users/daink/Downloads/20.off"},
+		{"Armadillo", "/home/dafitius/Downloads/282.off"},
+		{"Plane", "/home/dafitius/Downloads/61.off"},
+		{"Octopus", "/home/dafitius/Downloads/121.off"},
+		{"Human", "/home/dafitius/Downloads/20.off"},
 	};
 
 	for (const auto& mesh : sampleMeshes)

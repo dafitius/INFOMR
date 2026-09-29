@@ -17,18 +17,14 @@
 #include <tuple>
 #include <vector>
 
+#include "mesh.hpp"
 #include "util.hpp"
 
 class OffFile
 {
-	std::vector<std::array<float, 3>> positions_;
-	std::vector<std::vector<size_t>> faces_;
-
 public:
-	static std::optional<OffFile> read(const std::filesystem::path& file_path)
+	static std::optional<Mesh> read(const std::filesystem::path& file_path)
 	{
-		auto self = OffFile();
-
 		std::ifstream file(file_path);
 		if (!file.is_open())
 		{
@@ -43,6 +39,9 @@ public:
 			return std::nullopt;
 		}
 
+		std::vector<Mesh::Position> positions;
+		std::vector<Mesh::Face> faces;
+
 		// Read the header variables
 		auto [num_vertices, num_faces, num_edges] = [&file]
 		{
@@ -52,9 +51,9 @@ public:
 			return std::make_tuple(std::stoi(words[0]), std::stoi(words[1]), std::stoi(words[2]));
 		}();
 
-		self.positions_ = std::vector<std::array<float, 3>>(num_vertices);
+		positions = std::vector<std::array<float, 3>>(num_vertices);
 		std::ranges::generate(
-			self.positions_,
+			positions,
 			[&file]
 			{
 				std::string line;
@@ -66,9 +65,9 @@ public:
 			});
 
 		// read the index groups
-		self.faces_ = std::vector<std::vector<size_t>>(num_faces);
+		faces = std::vector<std::vector<size_t>>(num_faces);
 		std::ranges::generate(
-			self.faces_,
+			faces,
 			[&file]
 			{
 				std::string line;
@@ -80,71 +79,7 @@ public:
 			});
 
 		file.close();
-		return self;
-	}
-
-	[[nodiscard]] size_t num_vertices() const
-	{
-		return positions_.size();
-	}
-
-	[[nodiscard]] size_t num_faces() const
-	{
-		return faces_.size();
-	}
-
-	[[nodiscard]] size_t num_edges() const
-	{
-		auto edges = std::set<std::tuple<size_t, size_t>>(); // list of all edges in the mesh
-		std::ranges::for_each(
-			faces_,
-			[&edges](auto face)
-			{
-				face.push_back(face[0]); // Copy last idx to the end to close the loop
-				std::ranges::for_each(
-					std::views::slide(face, 2),
-					[&edges](auto v)
-					{
-						auto [hi, lo] = std::ranges::minmax(v[0], v[1]);
-						if (lo != hi)
-						{
-							edges.insert({lo, hi});
-						}
-					});
-			});
-		return edges.size();
-	}
-
-	[[nodiscard]] std::span<const std::array<float, 3>> positions() const
-	{
-		return positions_;
-	}
-
-	[[nodiscard]] std::span<const std::vector<size_t>> faces() const
-	{
-		return faces_;
-	}
-
-	[[nodiscard]] std::vector<float> vertex_buffer() const
-	{
-		auto buffer = std::vector<float>(positions_.size() * 3);
-
-		auto flattened = positions_ | std::views::join;
-		std::ranges::copy(flattened, buffer.begin());
-
-		return buffer;
-	};
-
-	[[nodiscard]] std::vector<size_t> index_buffer() const
-	{
-		assert(std::ranges::all_of(faces_, [](const auto& face) { return face.size() == 3; }) && "index_buffer() assumes all faces are triangles!!");
-
-		auto buffer = std::vector<size_t>(faces_.size() * 3);
-
-		auto flattened = faces_ | std::views::join;
-		std::ranges::copy(flattened, buffer.begin());
-
-		return buffer;
+		return Mesh(std::move(positions), {}, std::move(faces));
 	}
 };
 
