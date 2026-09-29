@@ -1,14 +1,15 @@
 #ifndef BROWSEPAGE_H
 #define BROWSEPAGE_H
 
+#include <QComboBox>
 #include <QGridLayout>
 #include <QScrollArea>
 #include <QVBoxLayout>
 #include <QWidget>
 #include <vector>
-#include "../io/shape_db.hpp"
 
 #include "../components/browsercard.h"
+#include "../io/shape_db.hpp"
 
 struct MeshData
 {
@@ -29,14 +30,19 @@ signals:
 
 private:
 	void setupUI();
+	void setupClassList();
 	void addMeshCard(const MeshData& mesh);
-	void loadSampleMeshes(); // TODO: Create a proper structure to load the model db
+	void loadSelectedClass();
+	void clearMeshCards();
 
 	std::unique_ptr<ShapeDb> database;
 
 	QScrollArea* scrollArea;
 	QWidget* containerWidget;
 	QGridLayout* containerLayout;
+
+	QComboBox* classComboBox;
+
 	std::vector<BrowserCard*> meshCards;
 
 private slots:

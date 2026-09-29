@@ -1,7 +1,7 @@
 #include "browsepage.h"
 
-#include "../io/shape_db.hpp"
-
+#include <QDebug>
+#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -11,10 +11,11 @@
 #include <qquickwindow.h>
 
 BrowsePage::BrowsePage(std::unique_ptr<ShapeDb> database, QWidget* parent)
-	: QWidget(parent), database(std::move(database))
+	: QWidget(parent)
+	, database(std::move(database))
 {
 	setupUI();
-	loadSampleMeshes();
+	setupClassList();
 }
 
 BrowsePage::~BrowsePage() {}
@@ -30,6 +31,7 @@ void BrowsePage::setupUI()
 	splitter->setChildrenCollapsible(false);
 	mainLayout->addWidget(splitter);
 
+	// Sidebar
 	auto* sidebar = new QWidget(splitter);
 	sidebar->setObjectName("browseSidebar");
 	sidebar->setMinimumWidth(220);
@@ -42,12 +44,17 @@ void BrowsePage::setupUI()
 	sidebarTitle->setObjectName("pageTitle");
 	sidebarLayout->addWidget(sidebarTitle);
 
-	auto* searchInput = new QLineEdit(sidebar);
-	searchInput->setPlaceholderText("Search meshes...");
-	sidebarLayout->addWidget(searchInput);
+	// auto* searchInput = new QLineEdit(sidebar);
+	// searchInput->setPlaceholderText("Search meshes...");
+	// sidebarLayout->addWidget(searchInput);
+
+	classComboBox = new QComboBox(sidebar);
+	classComboBox->setPlaceholderText("Select class...");
+	sidebarLayout->addWidget(classComboBox);
 
 	sidebarLayout->addStretch();
 
+	// Content
 	auto* contentWidget = new QWidget(splitter);
 	auto* contentLayout = new QVBoxLayout(contentWidget);
 	contentLayout->setContentsMargins(0, 0, 0, 0);
@@ -78,15 +85,59 @@ void BrowsePage::setupUI()
 	splitter->setSizes({300, 700});
 }
 
-void BrowsePage::loadSampleMeshes()
+void BrowsePage::setupClassList()
 {
-	auto first_class = database->iter_class_names().front();
-	;
-	for (const auto& mesh : database->iter_class_shape_paths(first_class))
+	// Empty item means that no class is selected initially.
+	// classComboBox->addItem("Select class...", QVariant());
+
+	for (const auto& className : database->iter_class_names())
 	{
-		addMeshCard({
-		QString{first_class.data()},mesh.c_str()});
+		const QString name = QString::fromStdString(className);
+
+		classComboBox->addItem(name, name);
 	}
+
+	connect(
+		classComboBox, &QComboBox::currentIndexChanged, this,
+		[this](int index)
+		{
+			if (index <= 0)
+			{
+				clearMeshCards();
+				return;
+			}
+
+			loadSelectedClass();
+		});
+}
+
+void BrowsePage::loadSelectedClass()
+{
+	clearMeshCards();
+
+	const QString className = classComboBox->currentData().toString();
+
+	if (className.isEmpty())
+		return;
+
+	for (const auto& meshPath : database->iter_class_shape_paths(className.toStdString()))
+	{
+		const QString source = QString::fromStdString(meshPath);
+		const QFileInfo fileInfo(source);
+
+		addMeshCard({className + "/" + fileInfo.fileName(), source});
+	}
+}
+
+void BrowsePage::clearMeshCards()
+{
+	for (auto* card : meshCards)
+	{
+		containerLayout->removeWidget(card);
+		delete card;
+	}
+
+	meshCards.clear();
 }
 
 void BrowsePage::addMeshCard(const MeshData& mesh)
@@ -101,6 +152,7 @@ void BrowsePage::addMeshCard(const MeshData& mesh)
 	meshCards.push_back(card);
 
 	connect(card, &BrowserCard::meshClicked, this, &BrowsePage::onMeshCardClicked);
+
 	connect(card, &BrowserCard::meshClicked, this, [this, mesh](const QString&) { emit meshSelected(mesh.source); });
 }
 
