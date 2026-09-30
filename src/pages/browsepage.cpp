@@ -5,6 +5,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPushButton>
 #include <QScrollArea>
 #include <QSplitter>
 #include <QVBoxLayout>
@@ -52,6 +53,9 @@ void BrowsePage::setupUI()
 	classComboBox->setPlaceholderText("Select class...");
 	sidebarLayout->addWidget(classComboBox);
 
+	auto* exportStatsBtn = new QPushButton("Export stats", sidebar);
+	sidebarLayout->addWidget(exportStatsBtn);
+
 	sidebarLayout->addStretch();
 
 	// Content
@@ -83,6 +87,10 @@ void BrowsePage::setupUI()
 	splitter->setStretchFactor(0, 1);
 	splitter->setStretchFactor(1, 2);
 	splitter->setSizes({300, 700});
+
+	// TODO: Hardcoded amount of items per class
+	// Magic number 10 in line below should be changed to something dynamic
+	connect(exportStatsBtn, &QPushButton::clicked, this, [this]() { database->export_stats(10); });
 }
 
 void BrowsePage::setupClassList()

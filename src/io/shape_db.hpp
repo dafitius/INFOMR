@@ -4,19 +4,25 @@
 
 #ifndef MR_SHAPE_DATA_ACCESS_H
 #define MR_SHAPE_DATA_ACCESS_H
+#include "mesh.hpp"
+#include "obj_file.hpp"
+#include "off_file.hpp"
+#include <QString>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <ranges>
+#include <sstream>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 class ShapeDb
 {
 	std::filesystem::path shape_database_path;
-	std::unordered_map<std::string, std::vector<std::string>> entries_; //map of shape class as key and shape names as value
+	std::unordered_map<std::string, std::vector<std::string>> entries_; // map of shape class as key and shape names as value
 
 public:
 	static std::optional<ShapeDb> open(const std::filesystem::path& shape_database_path)
@@ -88,6 +94,60 @@ public:
 	size_t num_classes() const
 	{
 		return this->entries_.size();
+	}
+
+	bool export_stats(size_t max_per_class)
+	{
+		std::ofstream outputFile;
+		outputFile.open("shape_db_statistics.csv");
+		outputFile << "file, class, vertices, faces, facetype, bounding_box" << std::endl;
+		for (const auto& className : iter_class_names())
+		{
+			size_t count = 0;
+			for (const auto& meshPath : iter_class_shape_paths(className))
+			{
+				if (count >= max_per_class && max_per_class > 0)
+				{
+					break;
+				}
+				count++;
+
+				const std::filesystem::path path = meshPath;
+				std::optional<Mesh> mesh;
+
+				if (path.extension() == ".obj")
+				{
+					mesh = ObjFile::read(path);
+				}
+				else if (path.extension() == ".off")
+				{
+					mesh = OffFile::read(path);
+				}
+				else
+				{
+					std::cerr << "Unsupported mesh format: " << path.extension() << '\n';
+					return false;
+				}
+
+				if (!mesh)
+				{
+					std::cerr << "Failed to load mesh: " << path << '\n';
+					return false;
+				}
+				std::ostringstream os;
+				os << path << ", " << className << ", " << mesh->num_vertices() << ", " << mesh->num_faces() << ", " << mesh->face_type()
+				   << std::endl;
+				std::string s = os.str();
+				outputFile << s;
+			}
+		}
+		outputFile.close();
+		return true;
+		// TODO: Create CSV file with stats of every mesh:
+		// V the class of the shape
+		// V the number of faces and vertices of the shape
+		// V the type of faces (e.g. only triangles, only quads, mixes of triangles and quads)
+		// - the axis-aligned 3D bounding box of the shapes
 	}
 
 private:

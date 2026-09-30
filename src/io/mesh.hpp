@@ -45,6 +45,20 @@ public:
 		return faces_.size();
 	}
 
+	/// @brief Check what type the faces are
+	/// @return 0 = all faces tris, 1 = all faces quads, 2 = mixed/other
+	[[nodiscard]]
+	size_t face_type() const
+	{
+		auto tris = std::ranges::all_of(faces_, [](const auto& face) { return face.size() == 3; });
+		if (tris)
+		{
+			return 0;
+		}
+		auto quads = std::ranges::all_of(faces_, [](const auto& face) { return face.size() == 4; });
+		return quads ? 1 : 2;
+	}
+
 	[[nodiscard]]
 	size_t num_edges() const
 	{
