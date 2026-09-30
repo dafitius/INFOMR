@@ -73,6 +73,11 @@ void Workshop::setupUI()
 	edgesBox->setChecked(viewport->renderSettings().showEdges);
 	sidebarLayout->addWidget(edgesBox);
 
+	auto* boundingBox = new QCheckBox("Bounding box", sidebar);
+	boundingBox->setToolTip("Show the bounding box of the object");
+	boundingBox->setChecked(viewport->renderSettings().showBoundingBox);
+	sidebarLayout->addWidget(boundingBox);
+
 	auto* resetViewBtn = new QPushButton("Reset view", sidebar);
 	sidebarLayout->addWidget(resetViewBtn);
 
@@ -99,6 +104,15 @@ void Workshop::setupUI()
 		{
 			auto settings = viewport->renderSettings();
 			settings.showEdges = checked;
+			viewport->setRenderSettings(settings);
+		});
+
+	connect(
+		boundingBox, &QCheckBox::toggled, this,
+		[this](const bool checked)
+		{
+			auto settings = viewport->renderSettings();
+			settings.showBoundingBox = checked;
 			viewport->setRenderSettings(settings);
 		});
 

@@ -122,7 +122,7 @@ void BrowsePage::loadSelectedClass()
 
 	for (const auto& meshPath : database->iter_class_shape_paths(className.toStdString()))
 	{
-		const QString source = QString::fromStdString(meshPath);
+		const QString source = QString::fromStdString(meshPath.string());
 		const QFileInfo fileInfo(source);
 
 		addMeshCard({className + "/" + fileInfo.fileName(), source});

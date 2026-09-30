@@ -57,4 +57,15 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 				mesh.drawEdges();
 			});
 	}
+
+	if (settings.showBoundingBox)
+	{
+		edgeProgram_.bound(
+			[&](QOpenGLShaderProgram& program)
+			{
+				program.setUniformValue("mvp", mvp);
+				program.setUniformValue("edgeColor", QVector3D(1.0F, 0.65F, 0.1F));
+				mesh.drawBoundingBox();
+			});
+	}
 }

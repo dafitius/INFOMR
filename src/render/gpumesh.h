@@ -18,17 +18,22 @@ public:
 
 	void drawTriangles();
 	void drawEdges();
+	void drawBoundingBox();
 
 private:
-	void configureVertexArray(QOpenGLVertexArrayObject& vao, QOpenGLBuffer& indexBuffer);
+	void configureVertexArray(QOpenGLVertexArrayObject& vao, QOpenGLBuffer& vertexBuffer, QOpenGLBuffer& indexBuffer);
 
 	QOpenGLBuffer vertexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
 	QOpenGLBuffer triangleIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
 	QOpenGLBuffer edgeIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
+	QOpenGLBuffer boundingBoxVertexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
+	QOpenGLBuffer boundingBoxIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
 
 	QOpenGLVertexArrayObject triangleVao_;
 	QOpenGLVertexArrayObject edgeVao_;
+	QOpenGLVertexArrayObject boundingBoxVao_;
 
 	GLsizei triangleIndexCount_ = 0;
 	GLsizei edgeIndexCount_ = 0;
+	GLsizei boundingBoxIndexCount_ = 0;
 };

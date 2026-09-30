@@ -13,6 +13,7 @@ struct RenderSettings
 {
 	bool showSurface = true;
 	bool showEdges = false;
+	bool showBoundingBox = false;
 	QVector3D surfaceColor = QVector3D(0.25F, 0.65F, 0.95F);
 	QVector3D edgeColor = QVector3D(0.05F, 0.06F, 0.08F);
 };
