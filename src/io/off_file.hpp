@@ -47,8 +47,7 @@ public:
 		{
 			std::string line;
 			std::getline(file, line);
-			const auto words = io_utils::split(line, " ");
-			return std::make_tuple(std::stoi(words[0]), std::stoi(words[1]), std::stoi(words[2]));
+			return *io_utils::parse_triplet<int>(line);
 		}();
 
 		positions = std::vector<std::array<float, 3>>(num_vertices);
@@ -58,10 +57,7 @@ public:
 			{
 				std::string line;
 				std::getline(file, line);
-				const auto coords = io_utils::split(line, " ");
-				return std::array{
-					io_utils::string_to_float<float>(coords[0]), io_utils::string_to_float<float>(coords[1]),
-					io_utils::string_to_float<float>(coords[2])};
+				return *io_utils::parse_triplet<float>(line);
 			});
 
 		// read the index groups
@@ -72,10 +68,18 @@ public:
 			{
 				std::string line;
 				std::getline(file, line);
-				const auto idx_str = io_utils::split(line, " ");
-				std::vector<size_t> idx(std::stoi(idx_str[0]));
-				std::ranges::transform(idx_str.begin() + 1, idx_str.end(), idx.begin(), [](auto& index) { return std::stoi(index); });
-				return idx;
+				Mesh::Face face;
+				face.reserve(4);
+
+				io_utils::for_each_token(
+					line.substr(1),
+					[&](const std::string_view tok)
+					{
+						const auto idx = io_utils::parse_num<int>(tok);
+						face.push_back(*idx);
+					});
+
+				return face;
 			});
 
 		file.close();

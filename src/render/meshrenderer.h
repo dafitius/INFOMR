@@ -1,8 +1,5 @@
 #pragma once
 
-#include <QOpenGLFunctions>
-#include <QVector3D>
-
 #include <optional>
 
 #include "camera.h"

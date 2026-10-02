@@ -9,9 +9,11 @@
 #include "off_file.hpp"
 #include <QString>
 #include <algorithm>
+#include <execution>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <numeric>
 #include <optional>
 #include <ranges>
 #include <sstream>
@@ -85,6 +87,11 @@ public:
 			std::move(shapes), [this, class_ = std::move(class_)](const auto& entry) { return resource_path(class_, entry); });
 	}
 
+	const std::unordered_map<std::string, std::vector<std::string>>& entries()
+	{
+		return this->entries_;
+	}
+
 	size_t num_shapes() const
 	{
 		return std::ranges::fold_left(
@@ -96,58 +103,62 @@ public:
 		return this->entries_.size();
 	}
 
-	bool export_stats(size_t max_per_class)
+	void export_stats() const
 	{
-		std::ofstream outputFile;
-		outputFile.open("shape_db_statistics.csv");
-		outputFile << "file, class, vertices, faces, facetype, bounding_box" << std::endl;
-		for (const auto& className : iter_class_names())
+		struct Row
 		{
-			size_t count = 0;
-			for (const auto& meshPath : iter_class_shape_paths(className))
-			{
-				if (count >= max_per_class && max_per_class > 0)
-				{
-					break;
-				}
-				count++;
+			std::string file, cls;
+			size_t verts, faces, facetype;
+		};
 
-				const std::filesystem::path path = meshPath;
+		std::vector<std::pair<std::filesystem::path, std::string>> work;
+		for (const auto& [className, meshNames] : entries_)
+		{
+			for (const auto& meshName : meshNames)
+			{
+				auto meshPath = resource_path(className, meshName);
+				work.emplace_back(meshPath, className);
+			}
+		}
+
+		std::vector<std::optional<Row>> results(work.size());
+		auto indices = std::views::iota(size_t{0}, work.size());
+
+		std::for_each(
+			std::execution::par, indices.begin(), indices.end(),
+			[&](const size_t i)
+			{
+				const auto& [path, className] = work[i];
 				std::optional<Mesh> mesh;
 
 				if (path.extension() == ".obj")
-				{
 					mesh = ObjFile::read(path);
-				}
 				else if (path.extension() == ".off")
-				{
 					mesh = OffFile::read(path);
-				}
 				else
 				{
 					std::cerr << "Unsupported mesh format: " << path.extension() << '\n';
-					return false;
+					return;
 				}
 
 				if (!mesh)
 				{
 					std::cerr << "Failed to load mesh: " << path << '\n';
-					return false;
+					return;
 				}
-				std::ostringstream os;
-				os << path << ", " << className << ", " << mesh->num_vertices() << ", " << mesh->num_faces() << ", " << mesh->face_type()
-				   << std::endl;
-				std::string s = os.str();
-				outputFile << s;
-			}
+
+				results[i] = Row{path.string(), className, mesh->num_vertices(), mesh->num_faces(), mesh->face_type()};
+			});
+
+		std::ofstream outputFile("shape_db_statistics.csv");
+		outputFile << "file, class, vertices, faces, facetype, bounding_box\n";
+		for (auto& row : results)
+		{
+			if (!row)
+				return;
+			outputFile << row->file << ", " << row->cls << ", " << row->verts << ", " << row->faces << ", " << row->facetype << '\n';
 		}
 		outputFile.close();
-		return true;
-		// TODO: Create CSV file with stats of every mesh:
-		// V the class of the shape
-		// V the number of faces and vertices of the shape
-		// V the type of faces (e.g. only triangles, only quads, mixes of triangles and quads)
-		// - the axis-aligned 3D bounding box of the shapes
 	}
 
 private:

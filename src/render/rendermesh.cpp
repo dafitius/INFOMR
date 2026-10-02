@@ -42,7 +42,7 @@ namespace
 
 		return {min, max};
 	}
-}
+} // namespace
 
 RenderMesh RenderMesh::fromPolygons(std::span<const std::array<float, 3>> vertices, std::span<const std::vector<size_t>> faces)
 {

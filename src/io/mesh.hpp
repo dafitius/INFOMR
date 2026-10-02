@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <cstddef>
-#include <ranges>
+#include <cmath>
+#include <format>
 #include <set>
 #include <span>
 #include <utility>
@@ -17,6 +17,31 @@ public:
 	using Position = std::array<float, 3>;
 	using Normal = std::array<float, 3>;
 	using Face = std::vector<size_t>;
+
+	struct Bounds
+	{
+		Position min;
+		Position max;
+
+		Position center() const
+		{
+			return {
+				(min[0] + max[0]) * 0.5F,
+				(min[1] + max[1]) * 0.5F,
+				(min[2] + max[2]) * 0.5F,
+			};
+		}
+
+		float radius() const
+		{
+			const auto c = Position{
+				(max[0] - min[0]),
+				(max[1] - min[1]),
+				(max[2] - min[2]),
+			};
+			return rootn((sqrt(c[0]) + sqrt(c[1]) + sqrt(c[2])), 2) * 0.5F;
+		}
+	};
 
 private:
 	std::vector<Position> positions_;
@@ -137,6 +162,35 @@ public:
 		}
 
 		return buffer;
+	}
+
+	[[nodiscard]]
+	Bounds bounds() const
+	{
+		{
+			constexpr float infinity = std::numeric_limits<float>::infinity();
+
+			auto min = Mesh::Position{infinity, infinity, infinity};
+			auto max = Mesh::Position{-infinity, -infinity, -infinity};
+
+			for (const auto& [x, y, z] : this->positions_)
+			{
+				if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
+				{
+					continue;
+				}
+
+				min = Mesh::Position{std::min(min[0], x), std::min(min[1], y), std::min(min[2], z)};
+				max = Mesh::Position{std::max(max[0], x), std::max(max[1], y), std::max(max[2], z)};
+			}
+
+			if (min[0] > max[0])
+			{
+				return {};
+			}
+
+			return {min, max};
+		}
 	}
 };
 

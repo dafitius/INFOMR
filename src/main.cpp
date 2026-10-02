@@ -4,7 +4,6 @@
 #include "theme.h"
 #include <qquickwindow.h>
 
-#include <QFile>
 #include <QSurfaceFormat>
 
 int main(int argc, char* argv[])

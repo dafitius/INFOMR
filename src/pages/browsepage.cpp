@@ -8,7 +8,6 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSplitter>
-#include <QVBoxLayout>
 #include <qquickwindow.h>
 
 BrowsePage::BrowsePage(std::unique_ptr<ShapeDb> database, QWidget* parent)
@@ -88,9 +87,7 @@ void BrowsePage::setupUI()
 	splitter->setStretchFactor(1, 2);
 	splitter->setSizes({300, 700});
 
-	// TODO: Hardcoded amount of items per class
-	// Magic number 10 in line below should be changed to something dynamic
-	connect(exportStatsBtn, &QPushButton::clicked, this, [this]() { database->export_stats(10); });
+	connect(exportStatsBtn, &QPushButton::clicked, this, [this] { database->export_stats(); });
 }
 
 void BrowsePage::setupClassList()
