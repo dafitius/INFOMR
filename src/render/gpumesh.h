@@ -4,13 +4,13 @@
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
 
-#include "rendermesh.h"
+class Mesh;
 
 // Owns the GPU buffers of a mesh. Must be created and destroyed while its OpenGL context is current.
 class GpuMesh : protected QOpenGLFunctions
 {
 public:
-	explicit GpuMesh(const RenderMesh& mesh);
+	explicit GpuMesh(const Mesh& mesh);
 	~GpuMesh();
 
 	GpuMesh(const GpuMesh&) = delete;

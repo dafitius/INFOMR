@@ -16,10 +16,10 @@ class MeshPreview
 	Q_OBJECT
 
 public:
-	explicit MeshPreview(std::vector<float> vertex_buffer, std::vector<size_t> index_buffer, QWidget* parent = nullptr);
+	explicit MeshPreview(std::span<const float> vertex_buffer, std::span<const uint32_t> index_buffer, QWidget* parent = nullptr);
 
 	void setRotationSpeed(float rotation_speed);
-	float rotationSpeed() const;
+	[[nodiscard]] float rotationSpeed() const;
 
 protected:
 	void initializeGL() override;
@@ -28,8 +28,8 @@ protected:
 
 private:
 	ShaderProgram program_;
-	std::vector<float> vertex_buffer;
-	std::vector<size_t> index_buffer;
+	std::span<const float> vertex_buffer;
+	std::span<const uint32_t> index_buffer;
 
 	QOpenGLVertexArrayObject vao_;
 

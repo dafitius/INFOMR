@@ -1,6 +1,7 @@
 #include "meshrenderer.h"
 
 #include <QMatrix4x4>
+#include <glm/gtc/type_ptr.hpp>
 
 std::optional<MeshRenderer> MeshRenderer::Init()
 {
@@ -21,8 +22,8 @@ std::optional<MeshRenderer> MeshRenderer::Init()
 
 void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectRatio, const RenderSettings& settings)
 {
-	const QMatrix4x4 view = camera.viewMatrix();
-	const QMatrix4x4 mvp = camera.projectionMatrix(aspectRatio) * view;
+	const glm::mat4 view = camera.viewMatrix();
+	const glm::mat4 mvp = camera.projectionMatrix(aspectRatio) * view;
 
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
@@ -36,8 +37,8 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 		surfaceProgram_.bound(
 			[&](QOpenGLShaderProgram& program)
 			{
-				program.setUniformValue("mvp", mvp);
-				program.setUniformValue("modelView", view);
+				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
+				glUniformMatrix4fv(program.uniformLocation("modelView"), 1, GL_FALSE, glm::value_ptr(view));
 				program.setUniformValue("fillColor", settings.surfaceColor);
 				mesh.drawTriangles();
 			});
@@ -52,7 +53,7 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 		edgeProgram_.bound(
 			[&](QOpenGLShaderProgram& program)
 			{
-				program.setUniformValue("mvp", mvp);
+				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 				program.setUniformValue("edgeColor", edgeColor);
 				mesh.drawEdges();
 			});
@@ -63,7 +64,7 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 		edgeProgram_.bound(
 			[&](QOpenGLShaderProgram& program)
 			{
-				program.setUniformValue("mvp", mvp);
+				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 				program.setUniformValue("edgeColor", QVector3D(1.0F, 0.65F, 0.1F));
 				mesh.drawBoundingBox();
 			});

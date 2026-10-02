@@ -40,12 +40,12 @@ void MainWindow::setupUI(std::unique_ptr<ShapeDb> database)
 
 			if (path.extension() == ".obj")
 			{
-				mesh = ObjFile::read(path);
+				mesh.emplace(*Mesh::from_obj(path));
 			}
-			else if (path.extension() == ".off")
-			{
-				mesh = OffFile::read(path);
-			}
+			// else if (path.extension() == ".off")
+			// {
+			// 	mesh = OffFile::read(path);
+			// }
 			else
 			{
 				std::cerr << "Unsupported mesh format: " << path.extension() << '\n';
