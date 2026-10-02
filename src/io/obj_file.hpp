@@ -2,14 +2,13 @@
 // Created by jaelk on 25-09-2026.
 //
 
-#ifndef QTTEST_OBJ_READER_H
-#define QTTEST_OBJ_READER_H
+#ifndef QTTEST_OBJ_READER2_H
+#define QTTEST_OBJ_READER2_H
 #include <array>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
-#include <sstream>
 #include <vector>
 
 #include "mesh.hpp"
@@ -17,167 +16,99 @@
 
 class ObjFile
 {
-private:
-	static std::optional<size_t> parse_index(std::string_view value, size_t element_count)
-	{
-		if (value.empty())
-			return std::nullopt;
-
-		try
-		{
-			const auto index = std::stoll(std::string(value));
-			if (index == 0)
-				return std::nullopt;
-
-			if (index > 0)
-			{
-				const auto zero_based = index - 1;
-				if (static_cast<size_t>(zero_based) >= element_count)
-					return std::nullopt;
-
-				return static_cast<size_t>(zero_based);
-			}
-
-			const auto relative = static_cast<size_t>(-index);
-			if (relative > element_count)
-				return std::nullopt;
-
-			return element_count - relative;
-		}
-		catch (...)
-		{
-			return std::nullopt;
-		}
-	}
-
-	static std::optional<size_t> parse_face_vertex(std::string_view value, size_t vertex_count)
-	{
-		const auto slash = value.find('/');
-		if (slash != std::string_view::npos)
-			value = value.substr(0, slash);
-
-		return parse_index(value, vertex_count);
-	}
-
-	static bool parse_vertex(const std::string& line, std::array<float, 3>& vertex)
-	{
-		std::istringstream stream(line);
-		char type;
-		float x, y, z;
-
-		if (!(stream >> type >> x >> y >> z))
-			return false;
-
-		if (type != 'v')
-			return false;
-
-		vertex = {x, y, z};
-		return true;
-	}
-
-	static bool parse_normal(const std::string& line, std::array<float, 3>& normal)
-	{
-		std::istringstream stream(line);
-		std::string type;
-		float x, y, z;
-
-		if (!(stream >> type >> x >> y >> z))
-			return false;
-
-		if (type != "vn")
-			return false;
-
-		normal = {x, y, z};
-		return true;
-	}
-
-	static bool parse_face(const std::string& line, std::vector<size_t>& face, size_t vertex_count)
-	{
-		std::istringstream stream(line);
-		std::string type;
-		if (!(stream >> type) || type != "f")
-			return false;
-
-		std::string vertex;
-		while (stream >> vertex)
-		{
-			const auto index = parse_face_vertex(vertex, vertex_count);
-			if (!index)
-				return false;
-			face.push_back(*index);
-		}
-		// A face must have at least 3 vertices.
-		return face.size() >= 3;
-	}
-
 public:
 	static std::optional<Mesh> read(const std::filesystem::path& file_path)
 	{
-		auto self = Mesh();
-
-		std::ifstream file(file_path);
+		// Read entire file into memory
+		std::ifstream file(file_path, std::ios::binary);
 		if (!file.is_open())
 		{
-			std::cerr << "Unable to open file!" << file_path.string() << std::endl;
+			std::cerr << "Can't open file" << file_path.string() << std::endl;
 			return std::nullopt;
 		}
 
-		std::vector<Mesh::Position> positions;
-		std::vector<Mesh::Normal> normals;
-		std::vector<Mesh::Face> faces;
+		file.seekg(0, std::ios::end);
+		const auto total_size = file.tellg();
+		file.seekg(0, std::ios::beg);
 
-		std::string line;
-		size_t line_number = 0;
-
-		while (std::getline(file, line))
+		std::string buffer(total_size, '\0');
+		if (!file.read(buffer.data(), total_size))
 		{
-			++line_number;
+			std::cerr << "Failed to read file: " << file_path.string() << std::endl;
+			return std::nullopt;
+		}
+		file.close();
 
-			const auto first = line.find_first_not_of(" \t");
-			if (first == std::string::npos || line[first] == '#')
+		std::vector<Mesh::Position> positions = {};
+		std::vector<Mesh::Normal> normals = {};
+		std::vector<Mesh::Face> faces = {};
+
+		auto lines = std::string_view(buffer) | std::views::split('\n') |
+					 std::views::transform(
+						 [](auto part)
+						 {
+							 const std::string_view sv{part.data(), static_cast<size_t>(part.size())};
+							 return io_utils::trim(sv);
+						 });
+
+		for (auto line : lines)
+		{
+			if (line.size() < 2 || line[0] == '#')
 				continue;
 
-			std::istringstream stream(line.substr(first));
-			std::string type;
+			const char tag0 = line[0];
+			const char tag1 = line[1];
 
-			if (!(stream >> type))
-				continue;
+			if (tag0 == 'v' && tag1 == ' ')
+			{
+				auto payload = io_utils::trim(line.substr(1));
+				if (auto triplet = io_utils::parse_triplet<float>(payload))
+					positions.push_back(*triplet);
+			}
+			else if (tag0 == 'v' && tag1 == 'n')
+			{
+				auto payload = io_utils::trim(line.substr(2));
+				if (auto triplet = io_utils::parse_triplet<float>(payload))
+					normals.push_back(*triplet);
+			}
+			else if (tag0 == 'f' && tag1 == ' ')
+			{
+				Mesh::Face face;
+				face.reserve(4);
 
-			if (type == "v")
-			{
-				std::array<float, 3> vertex;
-				if (!parse_vertex(line.substr(first), vertex))
-				{
-					std::cerr << "Invalid vertex at line " << line_number << ": " << line << '\n';
+				io_utils::for_each_token(
+					line.substr(1),
+					[&](const std::string_view tok)
+					{
+						const auto idx = parse_face_index(tok, positions.size());
+						face.push_back(*idx);
+					});
+
+				if (face.size() < 3)
 					return std::nullopt;
-				}
-				positions.push_back(vertex);
-			}
-			else if (type == "vn")
-			{
-				std::array<float, 3> normal;
-				if (!parse_normal(line.substr(first), normal))
-				{
-					std::cerr << "Invalid normal at line " << line_number << ": " << line << '\n';
-					return std::nullopt;
-				}
-				normals.push_back(normal);
-			}
-			else if (type == "f")
-			{
-				std::vector<size_t> face;
-				if (!parse_face(line.substr(first), face, positions.size()))
-				{
-					std::cerr << "Invalid face at line " << line_number << ": " << line << '\n';
-					return std::nullopt;
-				}
 				faces.push_back(std::move(face));
 			}
 		}
-
-		file.close();
 		return Mesh(std::move(positions), std::move(normals), std::move(faces));
+	}
+
+	static std::optional<size_t> parse_face_index(std::string_view tok, const size_t count)
+	{
+		if (const auto slash = tok.find('/'); slash != std::string_view::npos)
+			tok = tok.substr(0, slash);
+		tok = io_utils::trim(tok);
+		if (tok.empty())
+			return std::nullopt;
+
+		const auto idx = io_utils::parse_num<size_t>(tok);
+		if (!idx || *idx == 0)
+			return std::nullopt;
+
+		const auto z = idx.value() - 1;
+		if (z >= count)
+			return std::nullopt;
+		return z;
 	}
 };
 
-#endif // QTTEST_OBJ_READER_H
+#endif // QTTEST_OBJ_READER2_H

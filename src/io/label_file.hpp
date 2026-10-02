@@ -53,7 +53,7 @@ public:
 				continue;
 			}
 
-			auto indices_view = io_utils::split(line, " ") | std::views::transform([](const auto& n) -> std::string { return io_utils::trim(n); }) |
+			auto indices_view = io_utils::split(line, ' ') | std::views::transform([](const auto& n) -> std::string { return io_utils::trim(n); }) |
 								std::views::filter([](const auto& n)
 												   { return std::any_of(n.begin(), n.end(), [](unsigned char ch) { return !std::isspace(ch); }); }) |
 								std::views::transform([](const auto& n) -> size_t { return std::stoi(n); });
