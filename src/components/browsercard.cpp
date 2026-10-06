@@ -47,6 +47,9 @@ void BrowserCard::setupUI()
 	mainLayout->setContentsMargins(12, 12, 12, 12);
 	mainLayout->setSpacing(10);
 
+	const auto mesh = object->translated(-object->bary_center());
+	object.emplace(mesh);
+
 	auto* preview = new MeshPreview(object->vertex_buffer(), object->triangle_indices(), this);
 	preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	preview->setMinimumHeight(180);

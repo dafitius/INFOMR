@@ -15,6 +15,10 @@
 #include <span>
 #include <utility>
 #include <vector>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <execution>
 
 class Mesh
 {
@@ -58,6 +62,7 @@ private:
 
 	// mutable, lazily initialized
 	mutable Lazy<Bounds> bounds_;
+	mutable Lazy<Position> bary_center_;
 	mutable Lazy<std::vector<std::uint32_t>> triangle_indices_;
 	mutable Lazy<std::vector<std::uint32_t>> edge_indices_;
 	mutable Lazy<size_t> skipped_faces_;
@@ -187,9 +192,30 @@ public:
 		return buffer;
 	}
 
+	[[nodiscard]]
+	Mesh translated(const glm::vec3& translation) const
+	{
+		auto new_positions = std::vector<Position>(positions_.size());
+		std::ranges::transform(positions_, new_positions.begin(), [translation](auto& pos)
+		{
+			return pos + translation;
+		});
+
+		return Mesh{
+			new_positions,
+			normals_,
+			faces_,
+		};
+	}
+
 	[[nodiscard]] const Bounds& bounds() const
 	{
 		return bounds_.get([&] { return create_bounds(); });
+	}
+
+	[[nodiscard]] glm::vec3 bary_center() const
+	{
+		return bary_center_.get([&]{return calc_bary_center();});
 	}
 
 	[[nodiscard]] std::span<const std::uint32_t> triangle_indices() const
@@ -220,6 +246,18 @@ private:
 			b.expand(p);
 		}
 		return b.valid() ? b : Bounds{glm::vec3{0.F}, glm::vec3{0.F}};
+	}
+
+	[[nodiscard]] glm::vec3 calc_bary_center() const
+	{
+		auto x_iter = std::views::transform(positions_, [](auto& pos) { return pos.x;});
+		auto y_iter = std::views::transform(positions_, [](auto& pos) { return pos.y;});
+		auto z_iter = std::views::transform(positions_, [](auto& pos) { return pos.z;});
+
+		double x_mean = std::accumulate(x_iter.begin(), x_iter.end(), 0.0) / static_cast<double>(positions_.size());
+		double y_mean = std::accumulate(y_iter.begin(), y_iter.end(), 0.0) / static_cast<double>(positions_.size());
+		double z_mean = std::accumulate(z_iter.begin(), z_iter.end(), 0.0) / static_cast<double>(positions_.size());
+		return {x_mean, y_mean, z_mean};
 	}
 
 	[[nodiscard]] std::vector<std::uint32_t> create_triangle_indices() const
