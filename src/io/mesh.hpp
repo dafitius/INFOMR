@@ -8,17 +8,18 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <execution>
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/vec3.hpp>
 #include <set>
 #include <span>
 #include <utility>
 #include <vector>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <execution>
 
 class Mesh
 {
@@ -196,16 +197,63 @@ public:
 	Mesh translated(const glm::vec3& translation) const
 	{
 		auto new_positions = std::vector<Position>(positions_.size());
-		std::ranges::transform(positions_, new_positions.begin(), [translation](auto& pos)
-		{
-			return pos + translation;
-		});
+		std::ranges::transform(positions_, new_positions.begin(), [translation](auto& pos) { return pos + translation; });
 
 		return Mesh{
 			new_positions,
 			normals_,
 			faces_,
 		};
+	}
+
+	[[nodiscard]]
+	Mesh rotated(const glm::quat& rotation) const
+	{
+		auto new_positions = std::vector<Position>(positions_.size());
+		std::ranges::transform(positions_, new_positions.begin(), [rotation](const auto& pos) { return rotation * pos; });
+
+		auto new_normals = std::vector<Normal>(normals_.size());
+		std::ranges::transform(normals_, new_normals.begin(), [rotation](const auto& normal) { return rotation * normal; });
+
+		return Mesh{
+			new_positions,
+			new_normals,
+			faces_,
+		};
+	}
+
+	[[nodiscard]]
+	Mesh scaled(const glm::vec3& scale) const
+	{
+		auto new_positions = std::vector<Position>(positions_.size());
+		std::ranges::transform(positions_, new_positions.begin(), [scale](auto& pos) { return pos * scale; });
+
+		return Mesh{
+			new_positions,
+			normals_,
+			faces_,
+		};
+	}
+
+	[[nodiscard]]
+	Mesh remesh(const int target_vertex_count) const
+	{
+		int diff = target_vertex_count - positions_.size();
+
+		auto new_positions = std::vector<Position>(target_vertex_count);
+		std::ranges::copy(positions_, new_positions.begin());
+
+		return Mesh{
+			new_positions,
+			new_normals,
+			new_faces,
+		};
+	}
+
+	[[nodiscard]]
+	Mesh scaled(const float scale) const
+	{
+		return scaled(glm::vec3(scale, scale, scale));
 	}
 
 	[[nodiscard]] const Bounds& bounds() const
@@ -215,7 +263,7 @@ public:
 
 	[[nodiscard]] glm::vec3 bary_center() const
 	{
-		return bary_center_.get([&]{return calc_bary_center();});
+		return bary_center_.get([&] { return calc_bary_center(); });
 	}
 
 	[[nodiscard]] std::span<const std::uint32_t> triangle_indices() const
@@ -250,9 +298,9 @@ private:
 
 	[[nodiscard]] glm::vec3 calc_bary_center() const
 	{
-		auto x_iter = std::views::transform(positions_, [](auto& pos) { return pos.x;});
-		auto y_iter = std::views::transform(positions_, [](auto& pos) { return pos.y;});
-		auto z_iter = std::views::transform(positions_, [](auto& pos) { return pos.z;});
+		auto x_iter = std::views::transform(positions_, [](auto& pos) { return pos.x; });
+		auto y_iter = std::views::transform(positions_, [](auto& pos) { return pos.y; });
+		auto z_iter = std::views::transform(positions_, [](auto& pos) { return pos.z; });
 
 		double x_mean = std::accumulate(x_iter.begin(), x_iter.end(), 0.0) / static_cast<double>(positions_.size());
 		double y_mean = std::accumulate(y_iter.begin(), y_iter.end(), 0.0) / static_cast<double>(positions_.size());
