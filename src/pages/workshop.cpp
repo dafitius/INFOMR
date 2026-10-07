@@ -27,6 +27,7 @@ void Workshop::loadMesh(const Mesh& mesh) const
 
 	const auto object = mesh.translated(-mesh.baryCenter());
 	viewport->setMesh(object);
+	alignAxesButton->setEnabled(true);
 }
 
 Workshop::~Workshop() = default;
@@ -84,11 +85,20 @@ void Workshop::setupUI()
 	gridBox->setChecked(viewport->renderSettings().showGrid);
 	sidebarLayout->addWidget(gridBox);
 
-	auto* axesBox = new QCheckBox("Show axes", sidebar);
-	axesBox->setToolTip("Show the 3D axes");
+	auto* axesBox = new QCheckBox("World axes", sidebar);
+	axesBox->setToolTip("Show the world coordinate axes");
 	axesBox->setChecked(viewport->renderSettings().showAxes);
 	sidebarLayout->addWidget(axesBox);
 
+	auto* eigenvectorAxesBox = new QCheckBox("Eigenvector axes", sidebar);
+	eigenvectorAxesBox->setToolTip("Show the mesh's principal eigenvector axes");
+	eigenvectorAxesBox->setChecked(viewport->renderSettings().showEigenvectorAxes);
+	sidebarLayout->addWidget(eigenvectorAxesBox);
+
+	alignAxesButton = new QPushButton("Align eigenvectors to world axes", sidebar);
+	alignAxesButton->setToolTip("Rotate the mesh so its eigenvector axes align with the world axes");
+	alignAxesButton->setEnabled(false);
+	sidebarLayout->addWidget(alignAxesButton);
 	auto* resetViewBtn = new QPushButton("Reset view", sidebar);
 	sidebarLayout->addWidget(resetViewBtn);
 
@@ -120,6 +130,14 @@ void Workshop::setupUI()
 		viewport->setRenderSettings(&RenderSettings::showAxes, checked);
 	});
 
+	connect(
+		eigenvectorAxesBox, &QCheckBox::toggled, this,
+		[this](const bool checked)
+		{
+			viewport->setRenderSettings(&RenderSettings::showEigenvectorAxes, checked);
+		});
+
+	connect(alignAxesButton, &QPushButton::clicked, viewport, &MeshViewport::alignEigenvectorAxesToWorldAxes);
 	connect(resetViewBtn, &QPushButton::clicked, viewport, &MeshViewport::resetView);
 
 	splitter->setStretchFactor(0, 2);

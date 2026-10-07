@@ -45,6 +45,7 @@ public:
 
 public slots:
 	void resetView();
+	void alignEigenvectorAxesToWorldAxes();
 
 protected:
 	void initializeGL() override;

@@ -9,6 +9,7 @@
 
 class MeshViewport;
 class QLabel;
+class QPushButton;
 
 class Workshop : public QWidget
 {
@@ -24,6 +25,7 @@ private:
 
 	MeshViewport* viewport;
 	QLabel* statsLabel;
+	QPushButton* alignAxesButton;
 };
 
 #endif // MR_WORKSHOP_H

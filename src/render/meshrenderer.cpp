@@ -1,4 +1,10 @@
 #include "meshrenderer.h"
+
+#include <QMatrix4x4>
+#include <algorithm>
+#include <array>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 std::optional<MeshRenderer> MeshRenderer::init()
@@ -18,10 +24,11 @@ std::optional<MeshRenderer> MeshRenderer::init()
 	return self;
 }
 
-void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectRatio, const RenderSettings& settings)
+void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectRatio, const RenderSettings& settings, const glm::quat& eigenAxes)
 {
 	const glm::mat4 view = camera.viewMatrix();
-	const glm::mat4 mvp = camera.projectionMatrix(aspectRatio) * view;
+	const glm::mat4 projection = camera.projectionMatrix(aspectRatio);
+	const glm::mat4 mvp = projection * view;
 
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
@@ -100,5 +107,45 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 				program.setUniformValue("edgeColor", normalColor);
 				mesh.drawNormals();
 			});
+	}
+
+	if (settings.showAxes || settings.showEigenvectorAxes)
+	{
+		const float axisLength = std::max(mesh.axisLength(), 1e-3F);
+		const glm::mat4 axisScale = glm::scale(glm::mat4(1.0F), glm::vec3(axisLength));
+		const std::array<QVector3D, 3> worldColors = {
+			QVector3D(1.0F, 0.2F, 0.2F),
+			QVector3D(0.2F, 1.0F, 0.2F),
+			QVector3D(0.2F, 0.5F, 1.0F),
+		};
+		const std::array<QVector3D, 3> eigenColors = {
+			QVector3D(1.0F, 0.2F, 0.8F),
+			QVector3D(0.2F, 1.0F, 1.0F),
+			QVector3D(1.0F, 0.8F, 0.2F),
+		};
+
+		glDisable(GL_DEPTH_TEST);
+		edgeProgram_.bound(
+			[&](QOpenGLShaderProgram& program)
+			{
+				for (int axis = 0; axis < 3; ++axis)
+				{
+					if (settings.showAxes)
+					{
+						glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(projection * view * axisScale));
+						program.setUniformValue("edgeColor", worldColors[axis]);
+						mesh.drawAxis(axis);
+					}
+
+					if (settings.showEigenvectorAxes)
+					{
+						const glm::mat4 eigenTransform = glm::mat4_cast(eigenAxes) * axisScale;
+						glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(projection * view * eigenTransform));
+						program.setUniformValue("edgeColor", eigenColors[axis]);
+						mesh.drawAxis(axis);
+					}
+				}
+			});
+		glEnable(GL_DEPTH_TEST);
 	}
 }

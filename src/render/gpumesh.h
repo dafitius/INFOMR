@@ -19,6 +19,8 @@ public:
 	void drawTriangles();
 	void drawEdges();
 	void drawBoundingBox();
+	void drawAxis(int axis);
+	[[nodiscard]] float axisLength() const;
 	void drawGrid();
 	void drawNormals();
 	void drawBoundaryEdges();
@@ -41,6 +43,7 @@ private:
 	QOpenGLBuffer debugNormalsIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
 	QOpenGLBuffer boundaryEdgesVertexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
 	QOpenGLBuffer boundaryEdgesIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
+	QOpenGLBuffer axisVertexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
 
 	QOpenGLVertexArrayObject triangleVao_;
 	QOpenGLVertexArrayObject edgeVao_;
@@ -48,10 +51,12 @@ private:
 	QOpenGLVertexArrayObject debugGridVao_;
 	QOpenGLVertexArrayObject debugNormalsVao_;
 	QOpenGLVertexArrayObject boundaryEdgesVao_;
+	QOpenGLVertexArrayObject axisVao_;
 
 	GLsizei triangleIndexCount_ = 0;
 	GLsizei edgeIndexCount_ = 0;
 	GLsizei debugGridIndexCount_ = 0;
 	GLsizei debugNormalsIndexCount_ = 0;
 	GLsizei boundaryEdgesIndexCount_ = 0;
+	float axisLength_ = 1.0F;
 };

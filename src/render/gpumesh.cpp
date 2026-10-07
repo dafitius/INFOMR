@@ -34,12 +34,19 @@ GpuMesh::GpuMesh(const Mesh& mesh)
 	const std::vector boundingBoxVertices = {min.x, min.y, min.z, max.x, min.y, min.z, max.x, max.y, min.z, min.x, max.y, min.z,
 											 min.x, min.y, max.z, max.x, min.y, max.z, max.x, max.y, max.z, min.x, max.y, max.z};
 	const std::vector<std::uint32_t> boundingBoxIndices = {0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7};
-
+	axisLength_ = std::max(mesh.bounds().radius(), 1e-3F) * 1.25F;
+	const std::vector axisVertices = {
+		-1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F,
+		0.0F, -1.0F, 0.0F, 0.0F, 1.0F, 0.0F,
+		0.0F, 0.0F, -1.0F, 0.0F, 0.0F, 1.0F,
+	};
 	allocate(vertexBuffer_, mesh.positions());
 	allocate(triangleIndexBuffer_, mesh.triangleIndices());
 	allocate(edgeIndexBuffer_, mesh.edgeIndices());
 	allocate(boundingBoxVertexBuffer_, boundingBoxVertices);
 	allocate(boundingBoxIndexBuffer_, boundingBoxIndices);
+	allocate(axisVertexBuffer_, axisVertices);
+
 	allocateGrid();
 	allocateNormals(mesh, 0.005f);
 	allocateBoundaryEdges(mesh);
@@ -50,6 +57,13 @@ GpuMesh::GpuMesh(const Mesh& mesh)
 	configureVertexArray(debugGridVao_, debugGridVertexBuffer_, debugGridIndexBuffer_);
 	configureVertexArray(debugNormalsVao_, debugNormalsVertexBuffer_, debugNormalsIndexBuffer_);
 	configureVertexArray(boundaryEdgesVao_, boundaryEdgesVertexBuffer_, boundaryEdgesIndexBuffer_);
+	axisVao_.create();
+	axisVao_.bind();
+	axisVertexBuffer_.bind();
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+	axisVao_.release();
+	axisVertexBuffer_.release();
 }
 
 GpuMesh::~GpuMesh()
@@ -57,11 +71,13 @@ GpuMesh::~GpuMesh()
 	triangleVao_.destroy();
 	edgeVao_.destroy();
 	boundingBoxVao_.destroy();
+	axisVao_.destroy();
 	vertexBuffer_.destroy();
 	triangleIndexBuffer_.destroy();
 	edgeIndexBuffer_.destroy();
 	boundingBoxVertexBuffer_.destroy();
 	boundingBoxIndexBuffer_.destroy();
+	axisVertexBuffer_.destroy();
 }
 
 void GpuMesh::configureVertexArray(QOpenGLVertexArrayObject& vao, QOpenGLBuffer& vertexBuffer, QOpenGLBuffer& indexBuffer)
@@ -97,8 +113,20 @@ void GpuMesh::drawEdges()
 void GpuMesh::drawBoundingBox()
 {
 	boundingBoxVao_.bind();
-	glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, nullptr);
+	glDrawElements(GL_LINES, boundingBoxIndexCount_, GL_UNSIGNED_INT, nullptr);
 	boundingBoxVao_.release();
+}
+
+void GpuMesh::drawAxis(const int axis)
+{
+	axisVao_.bind();
+	glDrawArrays(GL_LINES, axis * 2, 2);
+	axisVao_.release();
+}
+
+float GpuMesh::axisLength() const
+{
+	return axisLength_;
 }
 
 void GpuMesh::drawGrid()

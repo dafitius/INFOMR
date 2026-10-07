@@ -11,6 +11,7 @@ struct RenderSettings
 	bool showSurface = true;
 	bool showEdges = false;
 	bool showAxes = false;
+	bool showEigenvectorAxes = false;
 	bool showBoundingBox = false;
 	bool showGrid = false;
 	bool showNormals = false;
@@ -23,7 +24,7 @@ class MeshRenderer : protected QOpenGLFunctions
 public:
 	static std::optional<MeshRenderer> init();
 
-	void draw(GpuMesh& mesh, const Camera& camera, float aspectRatio, const RenderSettings& settings);
+	void draw(GpuMesh& mesh, const Camera& camera, float aspectRatio, const RenderSettings& settings, const glm::quat& eigenAxes);
 
 private:
 	MeshRenderer() = default;
