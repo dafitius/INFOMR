@@ -10,6 +10,7 @@ struct RenderSettings
 {
 	bool showSurface = true;
 	bool showEdges = false;
+	bool showAxes = false;
 	bool showBoundingBox = false;
 	bool showGrid = false;
 	bool showNormals = false;

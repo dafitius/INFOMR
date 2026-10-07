@@ -26,8 +26,11 @@ MeshViewport::~MeshViewport()
 
 void MeshViewport::setMesh(const Mesh& mesh)
 {
-	camera_.frame(mesh.bounds());
-	mesh_.emplace(mesh);
+	const auto centeredMesh = mesh.translated(-mesh.bary_center());
+	auto alignedMesh = centeredMesh.rotated(centeredMesh.principle_axes());
+
+	camera_.frame(mesh_->bounds());
+
 	uploadPending_ = true;
 	update();
 }

@@ -84,6 +84,11 @@ void Workshop::setupUI()
 	gridBox->setChecked(viewport->renderSettings().showGrid);
 	sidebarLayout->addWidget(gridBox);
 
+	auto* axesBox = new QCheckBox("Show axes", sidebar);
+	axesBox->setToolTip("Show the 3D axes");
+	axesBox->setChecked(viewport->renderSettings().showAxes);
+	sidebarLayout->addWidget(axesBox);
+
 	auto* resetViewBtn = new QPushButton("Reset view", sidebar);
 	sidebarLayout->addWidget(resetViewBtn);
 
@@ -107,6 +112,13 @@ void Workshop::setupUI()
 		[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showBoundingBox, checked); });
 
 	connect(normalsBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showNormals, checked); });
+
+	connect(
+	axesBox, &QCheckBox::toggled, this,
+	[this](const bool checked)
+	{
+		viewport->setRenderSettings(&RenderSettings::showAxes, checked);
+	});
 
 	connect(resetViewBtn, &QPushButton::clicked, viewport, &MeshViewport::resetView);
 

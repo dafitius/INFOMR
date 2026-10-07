@@ -47,6 +47,9 @@ void BrowserCard::setupUI()
 	const auto mesh = object->translated(-object->baryCenter()).filledHoles();
 	object.emplace(mesh);
 
+	const auto mesh2 = object->rotated(object->principle_axes());
+	object.emplace(mesh2);
+
 	auto* preview = new MeshPreview(object->vertexPositionBuffer(), object->triangleIndices(), this);
 	preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	preview->setMinimumHeight(180);
