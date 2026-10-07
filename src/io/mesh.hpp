@@ -236,21 +236,6 @@ public:
 	}
 
 	[[nodiscard]]
-	Mesh remesh(const int target_vertex_count) const
-	{
-		int diff = target_vertex_count - positions_.size();
-
-		auto new_positions = std::vector<Position>(target_vertex_count);
-		std::ranges::copy(positions_, new_positions.begin());
-
-		return Mesh{
-			new_positions,
-			new_normals,
-			new_faces,
-		};
-	}
-
-	[[nodiscard]]
 	Mesh scaled(const float scale) const
 	{
 		return scaled(glm::vec3(scale, scale, scale));
