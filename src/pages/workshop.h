@@ -17,7 +17,7 @@ class Workshop : public QWidget
 public:
 	explicit Workshop(QWidget* parent = nullptr);
 	~Workshop() override;
-	void loadMesh(const class Mesh& mesh);
+	void loadMesh(const class Mesh& mesh) const;
 
 private:
 	void setupUI();

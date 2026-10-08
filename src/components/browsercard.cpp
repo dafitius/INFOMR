@@ -4,7 +4,6 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
-#include "../io/obj_file.hpp"
 #include "../io/off_file.hpp"
 #include "meshpreview.h"
 
@@ -47,10 +46,10 @@ void BrowserCard::setupUI()
 	mainLayout->setContentsMargins(12, 12, 12, 12);
 	mainLayout->setSpacing(10);
 
-	const auto mesh = object->translated(-object->bary_center());
+	const auto mesh = object->translated(-object->bary_center()).filled_holes();
 	object.emplace(mesh);
 
-	auto* preview = new MeshPreview(object->vertex_buffer(), object->triangle_indices(), this);
+	auto* preview = new MeshPreview(object->vertex_position_buffer(), object->triangle_indices(), this);
 	preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	preview->setMinimumHeight(180);
 	mainLayout->addWidget(preview, 1);

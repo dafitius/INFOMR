@@ -26,6 +26,25 @@ public:
 	void setRenderSettings(const RenderSettings& settings);
 	[[nodiscard]] const RenderSettings& renderSettings() const;
 
+	template <typename Func>
+		requires std::invocable<Func&, RenderSettings&> &&
+				 std::same_as<std::invoke_result_t<Func&, RenderSettings&>, void>
+	void setRenderSettings(Func&& callback)
+	{
+		RenderSettings settings = renderSettings();
+		std::invoke(callback, settings);
+		setRenderSettings(settings);
+	}
+
+	template <typename T, typename V>
+	requires std::convertible_to<V, T>
+void setRenderSetting(T RenderSettings::* option, V&& value)
+	{
+		RenderSettings settings = renderSettings();
+		settings.*option = std::forward<V>(value);
+		setRenderSettings(settings);
+	}
+
 public slots:
 	void resetView();
 

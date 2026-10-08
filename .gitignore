@@ -63,6 +63,7 @@ __pycache__/
 
 # Other
 *.export
+.cache
 
 # Keep the source tree clean
 resources/qml/QtQuick.*

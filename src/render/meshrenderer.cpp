@@ -28,6 +28,19 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 
+	if (settings.showGrid)
+	{
+		constexpr QVector3D gridColor = {1.0f, 1.0f, 1.0f};
+
+		edgeProgram_.bound(
+			[&](QOpenGLShaderProgram& program)
+			{
+				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
+				program.setUniformValue("edgeColor", gridColor);
+				mesh.drawGrid();
+			});
+	}
+
 	if (settings.showSurface)
 	{
 		// Push the surface slightly back so the edges drawn on top of it don't z-fight.
@@ -54,6 +67,14 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 			[&](QOpenGLShaderProgram& program)
 			{
 				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
+				program.setUniformValue("edgeColor", {1.0f, 0.0f, 0.0f});
+				mesh.drawBoundaryEdges();
+			});
+
+		edgeProgram_.bound(
+			[&](QOpenGLShaderProgram& program)
+			{
+				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 				program.setUniformValue("edgeColor", edgeColor);
 				mesh.drawEdges();
 			});
@@ -67,6 +88,19 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 				program.setUniformValue("edgeColor", QVector3D(1.0F, 0.65F, 0.1F));
 				mesh.drawBoundingBox();
+			});
+	}
+
+	if (settings.showNormals)
+	{
+		constexpr QVector3D normalColor = QVector3D(1.0F, 0.65F, 0.1F);
+
+		edgeProgram_.bound(
+			[&](QOpenGLShaderProgram& program)
+			{
+				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
+				program.setUniformValue("edgeColor", normalColor);
+				mesh.drawNormals();
 			});
 	}
 }
