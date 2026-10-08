@@ -134,7 +134,10 @@ public:
 				std::optional<Mesh> mesh;
 
 				if (path.extension() == ".obj")
-					mesh.emplace(*Mesh::from_obj(path));
+				{
+					if (auto loaded = Mesh::from_obj(path))
+						mesh.emplace(std::move(*loaded));
+				}
 				else
 				{
 					std::cerr << "Unsupported mesh format: " << path.extension() << '\n';
@@ -156,7 +159,7 @@ public:
 		{
 			if (!row)
 				return;
-			outputFile << std::format("{},{},{},{},{},{}", row->file, row->cls, row->verts, row->faces, row->facetype, row->bb_radius);
+			outputFile << std::format("{},{},{},{},{},{}", row->file, row->cls, row->verts, row->faces, row->facetype, row->bb_radius) << '\n';
 		}
 		outputFile.close();
 	}

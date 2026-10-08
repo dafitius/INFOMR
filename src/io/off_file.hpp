@@ -39,9 +39,6 @@ public:
 			return std::nullopt;
 		}
 
-		std::vector<std::array<float, 3>> positions;
-		std::vector<std::vector<size_t>> faces;
-
 		// Read the header variables
 		auto [num_vertices, num_faces, num_edges] = [&file]
 		{
@@ -50,40 +47,47 @@ public:
 			return *io_utils::parse_triplet<int>(line);
 		}();
 
-		positions = std::vector<std::array<float, 3>>(num_vertices);
+		std::vector<glm::vec3> positions(num_vertices);
 		std::ranges::generate(
 			positions,
 			[&file]
 			{
 				std::string line;
 				std::getline(file, line);
-				return *io_utils::parse_triplet<float>(line);
+				const auto triplet = *io_utils::parse_triplet<float>(line);
+				return glm::vec3{triplet[0], triplet[1], triplet[2]};
 			});
 
-		// read the index groups
-		faces = std::vector<std::vector<size_t>>(num_faces);
-		std::ranges::generate(
-			faces,
-			[&file]
-			{
-				std::string line;
-				std::getline(file, line);
-				Mesh::Face face;
-				face.reserve(4);
+		// read the index groups: "<count> i0 i1 ... "
+		FaceList faces;
+		faces.reserve(num_faces, static_cast<size_t>(num_faces) * 3);
+		std::vector<FaceList::Index> face;
+		for (int i = 0; i < num_faces; ++i)
+		{
+			std::string line;
+			std::getline(file, line);
 
-				io_utils::for_each_token(
-					line.substr(1),
-					[&](const std::string_view tok)
+			face.clear();
+			bool first = true;
+			io_utils::for_each_token(
+				line,
+				[&](const std::string_view tok)
+				{
+					if (first)
 					{
-						const auto idx = io_utils::parse_num<int>(tok);
+						first = false;
+						return;
+					}
+					if (const auto idx = io_utils::parse_num<FaceList::Index>(tok))
 						face.push_back(*idx);
-					});
+				});
 
-				return face;
-			});
+			if (face.size() >= 3)
+				faces.push_back(face);
+		}
 
 		file.close();
-		return Mesh(); // TODO: fix this
+		return Mesh(std::move(positions), {}, std::move(faces));
 	}
 };
 

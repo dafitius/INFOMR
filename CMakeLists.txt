@@ -63,6 +63,24 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         glm::glm
 )
 
+if(WIN32)
+    get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
+    get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_BIN_DIR}")
+
+    if(WINDEPLOYQT_EXECUTABLE)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                    $<IF:$<CONFIG:Debug>,--debug,--release>
+                    --no-compiler-runtime
+                    --no-translations
+                    "$<TARGET_FILE:${PROJECT_NAME}>"
+                COMMENT "Deploying Qt runtime with windeployqt")
+    else()
+        message(WARNING "windeployqt not found, the executable will need Qt's bin directory on PATH")
+    endif()
+endif()
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         SHAPE_DB_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/ShapeDatabase_INFOMR"
 )

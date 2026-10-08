@@ -2,11 +2,14 @@
 #define QTTEST_MESH_H
 
 #include "../lazy.hpp"
+#include "face_list.hpp"
 #include "obj_file.hpp"
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <execution>
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
@@ -15,6 +18,9 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/vec3.hpp>
+#include <numeric>
+#include <optional>
+#include <ranges>
 #include <set>
 #include <span>
 #include <utility>
@@ -25,7 +31,7 @@ class Mesh
 public:
 	using Position = glm::vec3;
 	using Normal = glm::vec3;
-	using Face = std::vector<size_t>;
+	using Face = FaceList::Face;
 
 	struct Bounds
 	{
@@ -58,7 +64,7 @@ private:
 	// non-mutable, create a new Mesh if you want to change these
 	const std::vector<Position> positions_;
 	const std::vector<Normal> normals_;
-	const std::vector<Face> faces_;
+	const FaceList faces_;
 
 	// mutable, lazily initialized
 	mutable Lazy<Bounds> bounds_;
@@ -70,7 +76,7 @@ private:
 public:
 	Mesh() = default;
 
-	Mesh(std::vector<Position> positions, std::vector<Normal> normals, std::vector<Face> faces)
+	Mesh(std::vector<Position> positions, std::vector<Normal> normals, FaceList faces)
 		: positions_(std::move(positions))
 		, normals_(std::move(normals))
 		, faces_(std::move(faces))
@@ -116,12 +122,12 @@ public:
 	[[nodiscard]]
 	size_t face_type() const
 	{
-		auto tris = std::ranges::all_of(faces_, [](const auto& face) { return face.size() == 3; });
+		auto tris = std::ranges::all_of(faces_.all(), [](const Face face) { return face.size() == 3; });
 		if (tris)
 		{
 			return 0;
 		}
-		auto quads = std::ranges::all_of(faces_, [](const auto& face) { return face.size() == 4; });
+		auto quads = std::ranges::all_of(faces_.all(), [](const Face face) { return face.size() == 4; });
 		return quads ? 1 : 2;
 	}
 
@@ -130,7 +136,7 @@ public:
 	{
 		std::set<std::pair<size_t, size_t>> edges;
 
-		for (const auto& face : faces_)
+		for (const Face face : faces_.all())
 		{
 			if (face.size() < 2)
 				continue;
@@ -164,7 +170,7 @@ public:
 	}
 
 	[[nodiscard]]
-	std::span<const Face> faces() const
+	const FaceList& faces() const
 	{
 		return faces_;
 	}
@@ -177,25 +183,9 @@ public:
 	}
 
 	[[nodiscard]]
-	std::vector<size_t> index_buffer() const
+	std::span<const std::uint32_t> index_buffer() const
 	{
-		std::vector<size_t> buffer;
-		size_t faces_size = face_type();
-		if (faces_size == 0)
-		{
-			buffer.reserve(faces_.size() * 3);
-		}
-		else
-		{
-			buffer.reserve(faces_.size() * 4);
-		}
-
-		for (const auto& face : faces_)
-		{
-			buffer.insert(buffer.end(), face.begin(), face.end());
-		}
-
-		return buffer;
+		return faces_.indices();
 	}
 
 	[[nodiscard]]
@@ -302,16 +292,16 @@ private:
 	{
 		std::vector<std::uint32_t> out;
 		out.reserve(faces_.size() * 3);
-		for (const auto& face : faces_)
+		for (const Face face : faces_.all())
 		{
 			if (!is_valid_face(face))
 				continue;
 			// Fan triangulation, only correct for convex polygons
 			for (size_t i = 1; i + 1 < face.size(); ++i)
 			{
-				out.push_back(static_cast<std::uint32_t>(face[0]));
-				out.push_back(static_cast<std::uint32_t>(face[i]));
-				out.push_back(static_cast<std::uint32_t>(face[i + 1]));
+				out.push_back(face[0]);
+				out.push_back(face[i]);
+				out.push_back(face[i + 1]);
 			}
 		}
 		return std::move(out);
@@ -321,14 +311,14 @@ private:
 	{
 		std::vector<std::pair<std::uint32_t, std::uint32_t>> edges;
 		edges.reserve(faces_.size() * 4);
-		for (const auto& face : faces_)
+		for (const Face face : faces_.all())
 		{
 			if (!is_valid_face(face))
 				continue;
 			for (size_t i = 0; i < face.size(); ++i)
 			{
-				const auto a = static_cast<std::uint32_t>(face[i]);
-				const auto b = static_cast<std::uint32_t>(face[(i + 1) % face.size()]);
+				const auto a = face[i];
+				const auto b = face[(i + 1) % face.size()];
 				if (a != b)
 					edges.emplace_back(std::min(a, b), std::max(a, b));
 			}
@@ -349,13 +339,13 @@ private:
 
 	[[nodiscard]] size_t calc_skipped_faces() const
 	{
-		return static_cast<size_t>(std::ranges::count_if(faces_, [this](const Face& f) { return !is_valid_face(f); }));
+		return static_cast<size_t>(std::ranges::count_if(faces_.all(), [this](const Face f) { return !is_valid_face(f); }));
 	}
 
-	[[nodiscard]] bool is_valid_face(const Face& face) const
+	[[nodiscard]] bool is_valid_face(const Face face) const
 	{
 		const auto n = positions_.size();
-		return face.size() >= 3 && std::ranges::all_of(face, [n](size_t i) { return i < n && i <= std::numeric_limits<std::uint32_t>::max(); });
+		return face.size() >= 3 && std::ranges::all_of(face, [n](const std::uint32_t i) { return i < n; });
 	}
 };
 

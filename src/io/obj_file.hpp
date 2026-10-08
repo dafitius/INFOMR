@@ -5,12 +5,17 @@
 #ifndef QTTEST_OBJ_READER2_H
 #define QTTEST_OBJ_READER2_H
 
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <ranges>
+#include <string>
+#include <string_view>
 #include <vector>
 
+#include "face_list.hpp"
 #include "util.hpp"
 
 class ObjFile
@@ -39,9 +44,17 @@ public:
 		}
 		file.close();
 
-		std::vector<std::array<float, 3>> positions = {};
-		std::vector<std::array<float, 3>> normals = {};
-		std::vector<std::vector<size_t>> faces = {};
+		const auto counts = count_elements(buffer);
+
+		std::vector<std::array<float, 3>> positions;
+		std::vector<std::array<float, 3>> normals;
+		FaceList faces;
+		positions.reserve(counts.positions);
+		normals.reserve(counts.normals);
+		faces.reserve(counts.faces, counts.faces * 3);
+
+		std::vector<FaceList::Index> face; // scratch, reused for every face
+		face.reserve(8);
 
 		auto lines = std::string_view(buffer) | std::views::split('\n') |
 					 std::views::transform(
@@ -73,20 +86,22 @@ public:
 			}
 			else if (tag0 == 'f' && tag1 == ' ')
 			{
-				std::vector<size_t> face;
-				face.reserve(4);
+				face.clear();
+				bool valid = true;
 
 				io_utils::for_each_token(
 					line.substr(1),
 					[&](const std::string_view tok)
 					{
 						const auto idx = parse_face_index(tok, positions.size());
-						face.push_back(*idx);
+						if (idx)
+							face.push_back(static_cast<FaceList::Index>(*idx));
+						else
+							valid = false;
 					});
 
-				if (face.size() < 3)
-					return false;
-				faces.push_back(std::move(face));
+				if (valid && face.size() >= 3)
+					faces.push_back(face);
 			}
 		}
 		init(std::move(positions), std::move(normals), std::move(faces));
@@ -94,6 +109,36 @@ public:
 	}
 
 private:
+	struct ElementCounts
+	{
+		size_t positions = 0;
+		size_t normals = 0;
+		size_t faces = 0;
+	};
+
+	static ElementCounts count_elements(const std::string_view text)
+	{
+		ElementCounts counts;
+		size_t pos = 0;
+		while (pos + 1 < text.size())
+		{
+			const char c0 = text[pos];
+			const char c1 = text[pos + 1];
+			if (c0 == 'v' && c1 == ' ')
+				++counts.positions;
+			else if (c0 == 'v' && c1 == 'n')
+				++counts.normals;
+			else if (c0 == 'f' && c1 == ' ')
+				++counts.faces;
+
+			const auto newline = text.find('\n', pos);
+			if (newline == std::string_view::npos)
+				break;
+			pos = newline + 1;
+		}
+		return counts;
+	}
+
 	static std::optional<size_t> parse_face_index(std::string_view tok, const size_t count)
 	{
 		if (const auto slash = tok.find('/'); slash != std::string_view::npos)
