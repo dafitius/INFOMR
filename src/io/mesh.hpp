@@ -4,7 +4,6 @@
 #include "../lazy.hpp"
 #include "obj_file.hpp"
 
-#include <GL/gl.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -173,7 +172,7 @@ public:
 	[[nodiscard]]
 	std::span<const float> vertex_buffer() const
 	{
-		static_assert(sizeof(glm::vec3) == sizeof(GLfloat) * 3, "Platform doesn't support this directly.");
+		static_assert(sizeof(glm::vec3) == sizeof(float) * 3, "Platform doesn't support this directly.");
 		return std::span{reinterpret_cast<const float*>(positions_.data()), positions_.size() * 3};
 	}
 
