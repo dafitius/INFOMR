@@ -183,7 +183,7 @@ public:
 	}
 
 	[[nodiscard]]
-	std::span<const std::uint32_t> index_buffer() const
+	std::span<const std::size_t> index_buffer() const
 	{
 		return faces_.indices();
 	}

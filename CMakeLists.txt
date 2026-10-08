@@ -10,6 +10,12 @@ set(CMAKE_AUTOUIC ON)
 
 set(CMAKE_PREFIX_PATH "/home/dafitius/Documents/bin/qt/6.11.2/gcc_64/lib/cmake/;C:/Qt/6.11.2/msvc2022_64/lib/cmake/;C:/Qt/6.11.2/mingw_64/lib/cmake/")
 
+set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+message("Building with profile ${CMAKE_BUILD_TYPE}")
+
 find_package(Qt6 REQUIRED COMPONENTS
         Core
         Gui

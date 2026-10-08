@@ -12,7 +12,7 @@
 class FaceList
 {
 public:
-	using Index = std::uint32_t;
+	using Index = size_t;
 	using Face = std::span<const Index>;
 
 	FaceList() = default;
@@ -28,7 +28,7 @@ public:
 	void push_back(const Face face)
 	{
 		indices_.insert(indices_.end(), face.begin(), face.end());
-		offsets_.push_back(static_cast<Index>(indices_.size()));
+		offsets_.push_back(indices_.size());
 	}
 
 	// Adds one vertex index to the face being built, call end_face() when it is complete
@@ -39,7 +39,7 @@ public:
 
 	void end_face()
 	{
-		offsets_.push_back(static_cast<Index>(indices_.size()));
+		offsets_.push_back(indices_.size());
 	}
 
 	// Number of faces in the list
