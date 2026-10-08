@@ -2,14 +2,14 @@
 #include "io/shape_db.hpp"
 #include "mainwindow.h"
 #include "theme.h"
-#include <QSurfaceFormat>
 #include <qquickwindow.h>
 
 int main(int argc, char* argv[])
 {
-	auto shape_db = ShapeDb::open(SHAPE_DB_ROOT);
+	// auto shapeDb = ShapeDb::open(TEST_SHAPE_DB_ROOT);
+	auto shapeDb = ShapeDb::open(SHAPE_DB_ROOT);
 
-	if (!shape_db)
+	if (!shapeDb)
 	{
 		std::cerr << "Failed to create ShapeDB\n";
 		return 1;
@@ -27,10 +27,10 @@ int main(int argc, char* argv[])
 	QApplication app(argc, argv);
 	Theme::apply(app);
 
-	MainWindow window(std::make_unique<ShapeDb>(*shape_db));
+	MainWindow window(std::make_unique<ShapeDb>(*shapeDb));
 	window.setWindowTitle("Geometry Retrieval");
 	window.resize(1000, 700);
 	window.show();
 
-	return app.exec();
+	return QApplication::exec();
 }

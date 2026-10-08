@@ -106,12 +106,6 @@ void BrowsePage::setupClassList()
 		classComboBox, &QComboBox::currentIndexChanged, this,
 		[this](int index)
 		{
-			if (index <= 0)
-			{
-				clearMeshCards();
-				return;
-			}
-
 			loadSelectedClass();
 		});
 }

@@ -65,4 +65,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         SHAPE_DB_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/ShapeDatabase_INFOMR"
+        TEST_SHAPE_DB_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/TestShapeDatabase"
 )

@@ -19,7 +19,7 @@ void Camera::reset()
 {
 	const float radius = std::max(framedBounds_.radius(), 1e-6F);
 
-	target_ = framedBounds_.center();
+	target_ = {0,0,0};//framedBounds_.center();
 	distance_ = radius / std::sin(glm::radians(fieldOfView_ * 0.5F)) * 1.1F;
 	yaw_ = defaultYaw_;
 	pitch_ = defaultPitch_;
@@ -56,7 +56,7 @@ glm::mat4 Camera::viewMatrix() const
 glm::mat4 Camera::projectionMatrix(const float aspectRatio) const
 {
 	const float nearPlane = distance_ * 0.01F;
-	const float farPlane = distance_ + framedBounds_.radius() * 2.0F;
+	const float farPlane = distance_ + framedBounds_.radius() * 20.0F;
 	return glm::perspective(glm::radians(fieldOfView_), aspectRatio, nearPlane, farPlane);
 }
 

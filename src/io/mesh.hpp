@@ -2,8 +2,10 @@
 #define QTTEST_MESH_H
 
 #include "../lazy.hpp"
+#include "halfedge.hpp"
 #include "obj_file.hpp"
 
+#include <GL/gl.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -11,11 +13,7 @@
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/vec3.hpp>
-#include <set>
 #include <span>
 #include <utility>
 #include <vector>
@@ -54,6 +52,17 @@ public:
 		}
 	};
 
+	struct Edge
+	{
+		std::uint32_t a;
+		std::uint32_t b;
+
+		bool operator==(const Edge&) const = default;
+		auto operator<=>(const Edge&) const = default;
+	};
+
+	static_assert(sizeof(Edge) == sizeof(std::uint32_t) * 2, "Edge has to be two u32!!");
+
 private:
 	// non-mutable, create a new Mesh if you want to change these
 	const std::vector<Position> positions_;
@@ -64,8 +73,9 @@ private:
 	mutable Lazy<Bounds> bounds_;
 	mutable Lazy<Position> bary_center_;
 	mutable Lazy<std::vector<std::uint32_t>> triangle_indices_;
-	mutable Lazy<std::vector<std::uint32_t>> edge_indices_;
+	mutable Lazy<std::vector<Edge>> edges_;
 	mutable Lazy<size_t> skipped_faces_;
+	mutable Lazy<HalfEdge::Topology> topology_;
 
 public:
 	Mesh() = default;
@@ -128,27 +138,8 @@ public:
 	[[nodiscard]]
 	size_t num_edges() const
 	{
-		std::set<std::pair<size_t, size_t>> edges;
-
-		for (const auto& face : faces_)
-		{
-			if (face.size() < 2)
-				continue;
-
-			for (size_t i = 0; i < face.size(); ++i)
-			{
-				const auto a = face[i];
-				const auto b = face[(i + 1) % face.size()];
-
-				if (a == b)
-					continue;
-
-				const auto [lo, hi] = std::minmax(a, b);
-				edges.emplace(lo, hi);
-			}
-		}
-
-		return edges.size();
+		auto& data = edges_.get_or_create([&] { return create_edges(); });
+		return data.size();
 	}
 
 	[[nodiscard]]
@@ -170,25 +161,51 @@ public:
 	}
 
 	[[nodiscard]]
-	std::span<const float> vertex_buffer() const
+	std::span<const Edge> edges() const
 	{
-		static_assert(sizeof(glm::vec3) == sizeof(float) * 3, "Platform doesn't support this directly.");
+		auto& edges = edges_.get_or_create([&] { return create_edges(); });
+		return edges;
+	}
+
+	[[nodiscard]]
+	std::vector<Edge> boundary_edges() const
+	{
+		const auto hes = topology().halfedges();
+
+		std::vector<Edge> out;
+		for (const auto& he : hes)
+		{
+			if (he.opposite.has_value())
+				continue;
+
+			const auto a = static_cast<std::uint32_t>(he.vertex);
+			const auto b = static_cast<std::uint32_t>(hes[he.next].vertex);
+			out.push_back(Edge{a, b});
+		}
+		return out;
+	}
+
+	[[nodiscard]]
+	std::span<const float> vertex_position_buffer() const
+	{
+		static_assert(sizeof(glm::vec3) == sizeof(GLfloat) * 3, "Platform doesn't support this directly.");
 		return std::span{reinterpret_cast<const float*>(positions_.data()), positions_.size() * 3};
+	}
+
+	[[nodiscard]]
+	std::span<const float> vertex_normal_buffer() const
+	{
+		static_assert(sizeof(glm::vec3) == sizeof(GLfloat) * 3, "Platform doesn't support this directly.");
+		return std::span{reinterpret_cast<const float*>(normals_.data()), normals_.size() * 3};
 	}
 
 	[[nodiscard]]
 	std::vector<size_t> index_buffer() const
 	{
+		assert(std::ranges::all_of(faces_, [](const auto& face) { return face.size() == 3; }) && "index_buffer() assumes all faces are triangles!");
+
 		std::vector<size_t> buffer;
-		size_t faces_size = face_type();
-		if (faces_size == 0)
-		{
-			buffer.reserve(faces_.size() * 3);
-		}
-		else
-		{
-			buffer.reserve(faces_.size() * 4);
-		}
+		buffer.reserve(faces_.size() * 3);
 
 		for (const auto& face : faces_)
 		{
@@ -212,68 +229,148 @@ public:
 	}
 
 	[[nodiscard]]
-	Mesh rotated(const glm::quat& rotation) const
+	Mesh filled_holes() const
 	{
-		auto new_positions = std::vector<Position>(positions_.size());
-		std::ranges::transform(positions_, new_positions.begin(), [rotation](const auto& pos) { return rotation * pos; });
+		auto positions = positions_;
+		auto faces = faces_;
 
-		auto new_normals = std::vector<Normal>(normals_.size());
-		std::ranges::transform(normals_, new_normals.begin(), [rotation](const auto& normal) { return rotation * normal; });
+		for (const auto& loop : boundary_loops())
+		{
+			std::vector<Position> boundary_positions;
+			boundary_positions.reserve(loop.size());
 
-		return Mesh{
-			new_positions,
-			new_normals,
-			faces_,
-		};
+			for (const auto vertex : loop)
+				boundary_positions.push_back(positions_[vertex]);
+
+			const auto center = calc_bary_center(boundary_positions);
+
+			const auto center_index = positions.size();
+			positions.push_back(center);
+
+			auto closed_loop = loop;
+			closed_loop.push_back(loop.front());
+			for (const auto window : closed_loop | std::views::slide(2))
+			{
+				faces.push_back({window[0], window[1], center_index});
+			}
+		}
+
+		return Mesh{std::move(positions), normals_, std::move(faces)};
 	}
 
 	[[nodiscard]]
-	Mesh scaled(const glm::vec3& scale) const
+	Mesh with_consistent_orientations() const
 	{
-		auto new_positions = std::vector<Position>(positions_.size());
-		std::ranges::transform(positions_, new_positions.begin(), [scale](auto& pos) { return pos * scale; });
+		auto new_faces = faces_;
+
+		const auto& topo = topology();
+		const auto hes = topo.halfedges();
+
+		std::vector visited_faces(new_faces.size(), false);
+		std::vector<HalfEdge::FaceRef> stack;
+		stack.reserve(new_faces.size());
+
+		auto same_direction_in_face = [&](const HalfEdge::FaceRef f, const HalfEdge::VertexRef a, const HalfEdge::VertexRef b) -> std::optional<bool>
+		{
+			const auto& face = new_faces[f];
+
+			auto closed = face;
+			closed.push_back(face.front());
+			for (const auto window : closed | std::views::slide(2))
+			{
+				if (window[0] == a && window[1] == b)
+					return true;
+				if (window[0] == b && window[1] == a)
+					return false;
+			}
+			return std::nullopt;
+		};
+
+		HalfEdge::FaceRef seed = 0;
+		visited_faces[seed] = true;
+		stack.push_back(seed);
+
+		while (!stack.empty())
+		{
+			const auto f = stack.back();
+			stack.pop_back();
+
+			const auto fh = topo.get_halfedge_from_face(f);
+			if (!fh)
+				continue;
+
+			auto h = fh->next;
+			const auto start = fh->next;
+
+			while (true)
+			{
+				const auto& he = hes[h];
+				if (he.opposite.has_value())
+				{
+					const auto other = hes[*he.opposite].face;
+					if (!visited_faces[other])
+					{
+						const auto a = he.vertex;
+						const auto b = hes[he.next].vertex;
+
+						// If the neighbor uses the same edge in the same direction,
+						if (same_direction_in_face(other, a, b) == true)
+						{
+							std::ranges::reverse(new_faces[other]);
+						}
+
+						visited_faces[other] = true;
+						stack.push_back(other);
+					}
+				}
+
+				h = he.next;
+				if (h == start)
+					break;
+			}
+		}
 
 		return Mesh{
-			new_positions,
+			positions_,
 			normals_,
-			faces_,
+			std::move(new_faces),
 		};
-	}
-
-	[[nodiscard]]
-	Mesh scaled(const float scale) const
-	{
-		return scaled(glm::vec3(scale, scale, scale));
 	}
 
 	[[nodiscard]] const Bounds& bounds() const
 	{
-		return bounds_.get([&] { return create_bounds(); });
+		return bounds_.get_or_create([&] { return create_bounds(); });
 	}
 
 	[[nodiscard]] glm::vec3 bary_center() const
 	{
-		return bary_center_.get([&] { return calc_bary_center(); });
+		return bary_center_.get_or_create([&] { return calc_bary_center(positions_); });
 	}
 
 	[[nodiscard]] std::span<const std::uint32_t> triangle_indices() const
 	{
-		auto& data = triangle_indices_.get([&] { return create_triangle_indices(); });
+		auto& data = triangle_indices_.get_or_create([&] { return create_triangle_indices(); });
 		return std::span{data.begin(), data.size()};
 	}
 
 	[[nodiscard]] std::span<const std::uint32_t> edge_indices() const
 	{
-		auto& data = edge_indices_.get([&] { return create_edge_indices(); });
-		return std::span{data.begin(), data.size()};
+		auto& data = edges_.get_or_create([&] { return create_edges(); });
+		return std::span{reinterpret_cast<const uint32_t*>(data.data()), data.size() * 2};
 	}
 
 	[[nodiscard]] size_t num_skipped_faces() const
 	{
-		return skipped_faces_.get([&] { return calc_skipped_faces(); });
+		return skipped_faces_.get_or_create([&] { return calc_skipped_faces(); });
 	}
 
+
 private:
+	[[nodiscard]] const HalfEdge::Topology& topology() const
+	{
+		return topology_.get_or_create([&] { return HalfEdge::Topology::build(faces_, positions_.size()); });
+	}
+
 	[[nodiscard]] Bounds create_bounds() const
 	{
 		Bounds b{};
@@ -286,15 +383,15 @@ private:
 		return b.valid() ? b : Bounds{glm::vec3{0.F}, glm::vec3{0.F}};
 	}
 
-	[[nodiscard]] glm::vec3 calc_bary_center() const
+	static glm::vec3 calc_bary_center(std::span<const glm::vec3> points)
 	{
-		auto x_iter = std::views::transform(positions_, [](auto& pos) { return pos.x; });
-		auto y_iter = std::views::transform(positions_, [](auto& pos) { return pos.y; });
-		auto z_iter = std::views::transform(positions_, [](auto& pos) { return pos.z; });
+		auto x_iter = std::views::transform(points, [](auto& pos) { return pos.x; });
+		auto y_iter = std::views::transform(points, [](auto& pos) { return pos.y; });
+		auto z_iter = std::views::transform(points, [](auto& pos) { return pos.z; });
 
-		double x_mean = std::accumulate(x_iter.begin(), x_iter.end(), 0.0) / static_cast<double>(positions_.size());
-		double y_mean = std::accumulate(y_iter.begin(), y_iter.end(), 0.0) / static_cast<double>(positions_.size());
-		double z_mean = std::accumulate(z_iter.begin(), z_iter.end(), 0.0) / static_cast<double>(positions_.size());
+		double x_mean = std::accumulate(x_iter.begin(), x_iter.end(), 0.0) / static_cast<double>(points.size());
+		double y_mean = std::accumulate(y_iter.begin(), y_iter.end(), 0.0) / static_cast<double>(points.size());
+		double z_mean = std::accumulate(z_iter.begin(), z_iter.end(), 0.0) / static_cast<double>(points.size());
 		return {x_mean, y_mean, z_mean};
 	}
 
@@ -317,34 +414,46 @@ private:
 		return std::move(out);
 	}
 
-	[[nodiscard]] std::vector<std::uint32_t> create_edge_indices() const
+	[[nodiscard]]
+	std::vector<Edge> create_edges() const
 	{
-		std::vector<std::pair<std::uint32_t, std::uint32_t>> edges;
-		edges.reserve(faces_.size() * 4);
+		std::vector<Edge> occurrences;
+		occurrences.reserve(faces_.size() * 4);
+
 		for (const auto& face : faces_)
 		{
 			if (!is_valid_face(face))
 				continue;
-			for (size_t i = 0; i < face.size(); ++i)
+
+			for (std::size_t i = 0; i < face.size(); ++i)
 			{
 				const auto a = static_cast<std::uint32_t>(face[i]);
 				const auto b = static_cast<std::uint32_t>(face[(i + 1) % face.size()]);
-				if (a != b)
-					edges.emplace_back(std::min(a, b), std::max(a, b));
+
+				if (a == b)
+					continue;
+
+				occurrences.emplace_back(std::min(a, b), std::max(a, b));
 			}
 		}
-		std::ranges::sort(edges);
-		const auto tail = std::ranges::unique(edges);
-		edges.erase(tail.begin(), tail.end());
 
-		std::vector<std::uint32_t> out;
-		out.reserve(edges.size() * 2);
-		for (const auto& [lo, hi] : edges)
+		std::ranges::sort(occurrences);
+
+		std::vector<Edge> edges;
+		edges.reserve(occurrences.size());
+
+		for (std::size_t i = 0; i < occurrences.size();)
 		{
-			out.push_back(lo);
-			out.push_back(hi);
+			const auto edge = occurrences[i];
+
+			std::size_t j = i + 1;
+			while (j < occurrences.size() && occurrences[j] == edge)
+				++j;
+
+			edges.push_back(edge);
+			i = j;
 		}
-		return std::move(out);
+		return edges;
 	}
 
 	[[nodiscard]] size_t calc_skipped_faces() const
@@ -356,6 +465,47 @@ private:
 	{
 		const auto n = positions_.size();
 		return face.size() >= 3 && std::ranges::all_of(face, [n](size_t i) { return i < n && i <= std::numeric_limits<std::uint32_t>::max(); });
+	}
+
+	[[nodiscard]] std::vector<std::vector<std::size_t>> boundary_loops() const
+	{
+		const auto& topo = topology();
+		const auto& hes = topo.halfedges();
+
+		auto next_boundary = [&](HalfEdge::HalfedgeRef h) -> std::optional<HalfEdge::HalfedgeRef>
+		{
+			auto g = hes[h].next;
+			for (std::size_t guard = 0; hes[g].opposite.has_value() && guard < hes.size(); ++guard)
+				g = hes[*hes[g].opposite].next;
+			return hes[g].opposite.has_value() ? std::nullopt : std::make_optional(g);
+		};
+
+		std::vector seen(hes.size(), false);
+		std::vector<std::vector<std::size_t>> loops;
+
+		for (HalfEdge::HalfedgeRef start = 0; start < hes.size(); ++start)
+		{
+			if (hes[start].opposite.has_value() || seen[start])
+				continue;
+
+			std::vector<std::size_t> loop;
+			auto h = std::make_optional(start);
+			bool closed = false;
+
+			while (h && !seen[h.value()])
+			{
+				const auto current = h.value();
+				seen[current] = true;
+				loop.push_back(hes[current].vertex);
+				h = next_boundary(current);
+				closed = h && h.value() == start;
+			}
+
+			if (closed && loop.size() >= 3)
+				loops.push_back(std::move(loop));
+		}
+
+		return loops;
 	}
 };
 

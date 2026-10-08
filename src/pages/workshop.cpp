@@ -18,7 +18,7 @@ Workshop::Workshop(QWidget* parent)
 	setupUI();
 }
 
-void Workshop::loadMesh(const Mesh& mesh)
+void Workshop::loadMesh(const Mesh& mesh) const
 {
 	auto stats = QString("Vertices: %1 | Faces: %2").arg(mesh.num_vertices()).arg(mesh.num_faces());
 	if (mesh.num_skipped_faces() > 0)
@@ -26,7 +26,9 @@ void Workshop::loadMesh(const Mesh& mesh)
 		stats += QString("\nSkipped invalid faces: %1").arg(mesh.num_skipped_faces());
 	}
 	statsLabel->setText(stats);
-	viewport->setMesh(mesh);
+
+	const auto object = mesh.translated(-mesh.bary_center()).filled_holes();
+	viewport->setMesh(object);
 }
 
 Workshop::~Workshop() = default;
@@ -74,6 +76,16 @@ void Workshop::setupUI()
 	boundingBox->setChecked(viewport->renderSettings().showBoundingBox);
 	sidebarLayout->addWidget(boundingBox);
 
+	auto* normalsBox = new QCheckBox("Show normals", sidebar);
+	normalsBox->setToolTip("Show the vertex normals on the object");
+	normalsBox->setChecked(viewport->renderSettings().showNormals);
+	sidebarLayout->addWidget(normalsBox);
+
+	auto* gridBox = new QCheckBox("Render Grid", sidebar);
+	gridBox->setToolTip("Render a grid on the ground plane");
+	gridBox->setChecked(viewport->renderSettings().showGrid);
+	sidebarLayout->addWidget(gridBox);
+
 	auto* resetViewBtn = new QPushButton("Reset view", sidebar);
 	sidebarLayout->addWidget(resetViewBtn);
 
@@ -86,31 +98,40 @@ void Workshop::setupUI()
 	sidebarLayout->addStretch();
 
 	connect(
+		gridBox, &QCheckBox::toggled, this,
+		[this](const bool checked)
+		{
+			viewport->setRenderSetting(&RenderSettings::showGrid, checked);
+		});
+
+
+	connect(
 		shadedBox, &QCheckBox::toggled, this,
 		[this](const bool checked)
 		{
-			auto settings = viewport->renderSettings();
-			settings.showSurface = checked;
-			viewport->setRenderSettings(settings);
+			viewport->setRenderSetting(&RenderSettings::showSurface, checked);
 		});
 
 	connect(
 		edgesBox, &QCheckBox::toggled, this,
 		[this](const bool checked)
 		{
-			auto settings = viewport->renderSettings();
-			settings.showEdges = checked;
-			viewport->setRenderSettings(settings);
+			viewport->setRenderSetting(&RenderSettings::showEdges, checked);
 		});
 
 	connect(
 		boundingBox, &QCheckBox::toggled, this,
 		[this](const bool checked)
 		{
-			auto settings = viewport->renderSettings();
-			settings.showBoundingBox = checked;
-			viewport->setRenderSettings(settings);
+			viewport->setRenderSetting(&RenderSettings::showBoundingBox, checked);
 		});
+
+	connect(
+	normalsBox, &QCheckBox::toggled, this,
+	[this](const bool checked)
+	{
+		viewport->setRenderSetting(&RenderSettings::showNormals, checked);
+	});
 
 	connect(resetViewBtn, &QPushButton::clicked, viewport, &MeshViewport::resetView);
 
