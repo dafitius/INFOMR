@@ -39,8 +39,8 @@ public:
 			return std::nullopt;
 		}
 
-		std::vector<Mesh::Position> positions;
-		std::vector<Mesh::Face> faces;
+		std::vector<std::array<float, 3>> positions;
+		std::vector<std::vector<size_t>> faces;
 
 		// Read the header variables
 		auto [num_vertices, num_faces, num_edges] = [&file]
@@ -83,7 +83,7 @@ public:
 			});
 
 		file.close();
-		return Mesh(std::move(positions), {}, std::move(faces));
+		return Mesh(); // TODO: fix this
 	}
 };
 

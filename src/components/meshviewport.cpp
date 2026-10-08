@@ -13,7 +13,7 @@ namespace
 	constexpr float orbitDegreesPerPixel = 0.4F;
 	constexpr float zoomFactorPerWheelStep = 0.9F;
 	constexpr float degreesPerWheelStep = 15.0F;
-}
+} // namespace
 
 MeshViewport::MeshViewport(QWidget* parent)
 	: QOpenGLWidget(parent)
@@ -26,10 +26,10 @@ MeshViewport::~MeshViewport()
 	releaseGpuResources();
 }
 
-void MeshViewport::setMesh(RenderMesh mesh)
+void MeshViewport::setMesh(const Mesh& mesh)
 {
-	camera_.frame(mesh.bounds);
-	mesh_ = std::move(mesh);
+	camera_.frame(mesh.bounds());
+	mesh_.emplace(mesh);
 	uploadPending_ = true;
 	update();
 }

@@ -10,10 +10,10 @@
 
 #include "../io/off_file.hpp"
 
-MeshPreview::MeshPreview(std::vector<float> vertex_buffer, std::vector<size_t> index_buffer, QWidget* parent)
+MeshPreview::MeshPreview(std::span<const float> vertex_buffer, std::span<const uint32_t> index_buffer, QWidget* parent)
 	: QOpenGLWidget(parent)
-	, vertex_buffer(std::move(vertex_buffer))
-	, index_buffer(std::move(index_buffer))
+	, vertex_buffer(vertex_buffer)
+	, index_buffer(index_buffer)
 {
 	setMinimumSize(180, 140);
 	setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);

@@ -17,11 +17,7 @@ BrowserCard::BrowserCard(const QString& name, const QString mesh_source, QWidget
 
 	if (path.extension() == ".obj")
 	{
-		object = ObjFile::read(path);
-	}
-	else if (path.extension() == ".off")
-	{
-		object = OffFile::read(path);
+		object.emplace(*Mesh::from_obj(path));
 	}
 	else
 	{
@@ -51,7 +47,10 @@ void BrowserCard::setupUI()
 	mainLayout->setContentsMargins(12, 12, 12, 12);
 	mainLayout->setSpacing(10);
 
-	auto* preview = new MeshPreview(object->vertex_buffer(), object->index_buffer(), this);
+	const auto mesh = object->translated(-object->bary_center());
+	object.emplace(mesh);
+
+	auto* preview = new MeshPreview(object->vertex_buffer(), object->triangle_indices(), this);
 	preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	preview->setMinimumHeight(180);
 	mainLayout->addWidget(preview, 1);

@@ -4,27 +4,27 @@
 
 #ifndef QTTEST_OBJ_READER2_H
 #define QTTEST_OBJ_READER2_H
-#include <array>
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <vector>
 
-#include "mesh.hpp"
 #include "util.hpp"
 
 class ObjFile
 {
 public:
-	static std::optional<Mesh> read(const std::filesystem::path& file_path)
+	template <typename Init_>
+	static bool read(const std::filesystem::path& file_path, Init_ init)
 	{
 		// Read entire file into memory
 		std::ifstream file(file_path, std::ios::binary);
 		if (!file.is_open())
 		{
 			std::cerr << "Can't open file" << file_path.string() << std::endl;
-			return std::nullopt;
+			return false;
 		}
 
 		file.seekg(0, std::ios::end);
@@ -35,13 +35,13 @@ public:
 		if (!file.read(buffer.data(), total_size))
 		{
 			std::cerr << "Failed to read file: " << file_path.string() << std::endl;
-			return std::nullopt;
+			return false;
 		}
 		file.close();
 
-		std::vector<Mesh::Position> positions = {};
-		std::vector<Mesh::Normal> normals = {};
-		std::vector<Mesh::Face> faces = {};
+		std::vector<std::array<float, 3>> positions = {};
+		std::vector<std::array<float, 3>> normals = {};
+		std::vector<std::vector<size_t>> faces = {};
 
 		auto lines = std::string_view(buffer) | std::views::split('\n') |
 					 std::views::transform(
@@ -73,7 +73,7 @@ public:
 			}
 			else if (tag0 == 'f' && tag1 == ' ')
 			{
-				Mesh::Face face;
+				std::vector<size_t> face;
 				face.reserve(4);
 
 				io_utils::for_each_token(
@@ -85,13 +85,15 @@ public:
 					});
 
 				if (face.size() < 3)
-					return std::nullopt;
+					return false;
 				faces.push_back(std::move(face));
 			}
 		}
-		return Mesh(std::move(positions), std::move(normals), std::move(faces));
+		init(std::move(positions), std::move(normals), std::move(faces));
+		return true;
 	}
 
+private:
 	static std::optional<size_t> parse_face_index(std::string_view tok, const size_t count)
 	{
 		if (const auto slash = tok.find('/'); slash != std::string_view::npos)

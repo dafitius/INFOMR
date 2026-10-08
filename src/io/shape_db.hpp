@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <execution>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iostream>
 #include <numeric>
@@ -109,6 +110,7 @@ public:
 		{
 			std::string file, cls;
 			size_t verts, faces, facetype;
+			float bb_radius;
 		};
 
 		std::vector<std::pair<std::filesystem::path, std::string>> work;
@@ -132,9 +134,7 @@ public:
 				std::optional<Mesh> mesh;
 
 				if (path.extension() == ".obj")
-					mesh = ObjFile::read(path);
-				else if (path.extension() == ".off")
-					mesh = OffFile::read(path);
+					mesh.emplace(*Mesh::from_obj(path));
 				else
 				{
 					std::cerr << "Unsupported mesh format: " << path.extension() << '\n';
@@ -147,16 +147,16 @@ public:
 					return;
 				}
 
-				results[i] = Row{path.string(), className, mesh->num_vertices(), mesh->num_faces(), mesh->face_type()};
+				results[i] = Row{path.string(), className, mesh->num_vertices(), mesh->num_faces(), mesh->face_type(), mesh->bounds().radius()};
 			});
 
 		std::ofstream outputFile("shape_db_statistics.csv");
-		outputFile << "file, class, vertices, faces, facetype, bounding_box\n";
+		outputFile << "file,class,vertices,faces,facetype,bounding_box\n";
 		for (auto& row : results)
 		{
 			if (!row)
 				return;
-			outputFile << row->file << ", " << row->cls << ", " << row->verts << ", " << row->faces << ", " << row->facetype << '\n';
+			outputFile << std::format("{},{},{},{},{},{}", row->file, row->cls, row->verts, row->faces, row->facetype, row->bb_radius);
 		}
 		outputFile.close();
 	}

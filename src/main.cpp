@@ -2,9 +2,8 @@
 #include "io/shape_db.hpp"
 #include "mainwindow.h"
 #include "theme.h"
-#include <qquickwindow.h>
-
 #include <QSurfaceFormat>
+#include <qquickwindow.h>
 
 int main(int argc, char* argv[])
 {

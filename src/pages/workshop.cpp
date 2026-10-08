@@ -6,7 +6,6 @@
 
 #include "../components/meshviewport.h"
 #include "../io/off_file.hpp"
-#include "../render/rendermesh.h"
 #include <QCheckBox>
 #include <QLabel>
 #include <QPushButton>
@@ -21,16 +20,13 @@ Workshop::Workshop(QWidget* parent)
 
 void Workshop::loadMesh(const Mesh& mesh)
 {
-	auto renderMesh = RenderMesh::fromPolygons(mesh.positions(), mesh.faces());
-
 	auto stats = QString("Vertices: %1 | Faces: %2").arg(mesh.num_vertices()).arg(mesh.num_faces());
-	if (renderMesh.skippedFaces > 0)
+	if (mesh.num_skipped_faces() > 0)
 	{
-		stats += QString("\nSkipped invalid faces: %1").arg(renderMesh.skippedFaces);
+		stats += QString("\nSkipped invalid faces: %1").arg(mesh.num_skipped_faces());
 	}
 	statsLabel->setText(stats);
-
-	viewport->setMesh(std::move(renderMesh));
+	viewport->setMesh(mesh);
 }
 
 Workshop::~Workshop() = default;

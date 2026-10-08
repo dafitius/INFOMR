@@ -10,7 +10,6 @@
 #include "../render/camera.h"
 #include "../render/gpumesh.h"
 #include "../render/meshrenderer.h"
-#include "../render/rendermesh.h"
 
 class MeshViewport
 	: public QOpenGLWidget
@@ -22,7 +21,7 @@ public:
 	explicit MeshViewport(QWidget* parent = nullptr);
 	~MeshViewport() override;
 
-	void setMesh(RenderMesh mesh);
+	void setMesh(const Mesh& mesh);
 
 	void setRenderSettings(const RenderSettings& settings);
 	[[nodiscard]] const RenderSettings& renderSettings() const;
@@ -47,7 +46,7 @@ private:
 	std::unique_ptr<GpuMesh> gpuMesh_;
 
 	// Kept on the CPU so the mesh can be re-uploaded when Qt recreates the OpenGL context.
-	std::optional<RenderMesh> mesh_;
+	std::optional<Mesh> mesh_;
 	bool uploadPending_ = false;
 
 	Camera camera_;
