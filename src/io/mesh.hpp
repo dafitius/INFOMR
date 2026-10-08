@@ -180,10 +180,16 @@ public:
 	[[nodiscard]]
 	std::vector<size_t> index_buffer() const
 	{
-		assert(std::ranges::all_of(faces_, [](const auto& face) { return face.size() == 3; }) && "index_buffer() assumes all faces are triangles!");
-
 		std::vector<size_t> buffer;
-		buffer.reserve(faces_.size() * 3);
+		size_t faces_size = face_type();
+		if (faces_size == 0)
+		{
+			buffer.reserve(faces_.size() * 3);
+		}
+		else
+		{
+			buffer.reserve(faces_.size() * 4);
+		}
 
 		for (const auto& face : faces_)
 		{
