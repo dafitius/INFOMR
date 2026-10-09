@@ -5,6 +5,7 @@
 #include "../lazy.hpp"
 #include "face_list.hpp"
 #include "halfedge.hpp"
+#include "ops/ops.h"
 
 #include <GL/gl.h>
 #include <algorithm>
@@ -66,7 +67,6 @@ public:
 		bool operator==(const Edge&) const = default;
 		auto operator<=>(const Edge&) const = default;
 	};
-
 	static_assert(sizeof(Edge) == sizeof(std::uint32_t) * 2, "Edge has to be two u32!!");
 
 private:
@@ -116,6 +116,10 @@ public:
 		}
 		return std::nullopt;
 	}
+
+	[[nodiscard]] Mesh withPositions(std::vector<Position> p) const { return Mesh{std::move(p), normals_, faces_}; }
+	[[nodiscard]] Mesh withNormals(std::vector<Normal> n) const    { return Mesh{positions_, std::move(n), faces_}; }
+	[[nodiscard]] Mesh withFaces(FaceList f) const                 { return Mesh{positions_, normals_, std::move(f)}; }
 
 	[[nodiscard]]
 	size_t numVertices() const
@@ -212,161 +216,31 @@ public:
 	[[nodiscard]]
 	Mesh translated(const glm::vec3& translation) const
 	{
-		auto newPositions = std::vector<Position>(positions_.size());
-		std::ranges::transform(positions_, newPositions.begin(), [translation](auto& pos) { return pos + translation; });
-
-		return Mesh{
-			newPositions,
-			normals_,
-			faces_,
-		};
+		return mesh::ops::transform::translate(*this, translation);
 	}
 
 	[[nodiscard]]
 	Mesh filledHoles() const
 	{
-		auto positions = positions_;
-		auto faces = faces_;
-
-		for (const auto& loop : boundaryLoops())
-		{
-			std::vector<Position> boundaryPositions;
-			boundaryPositions.reserve(loop.size());
-
-			for (const auto vertex : loop)
-			{
-				boundaryPositions.push_back(positions_[vertex]);
-			}
-
-			const auto center = calcBaryCenter(boundaryPositions);
-
-			const auto centerIndex = positions.size();
-			positions.push_back(center);
-
-			auto closedLoop = loop;
-			closedLoop.push_back(loop.front());
-			for (const auto window : closedLoop | std::views::slide(2))
-			{
-				faces.push_back(window[0], window[1], centerIndex);
-			}
-		}
-
-		return Mesh{std::move(positions), normals_, std::move(faces)};
+		return mesh::ops::repair::fillHoles(*this);
 	}
 
 	[[nodiscard]]
 	Mesh rotated(const glm::quat& rotation) const
 	{
-		auto newPositions = std::vector<Position>(positions_.size());
-		std::ranges::transform(positions_, newPositions.begin(), [rotation](const auto& pos) { return rotation * pos; });
-
-		auto newNormals = std::vector<Normal>(normals_.size());
-		std::ranges::transform(normals_, newNormals.begin(), [rotation](const auto& normal) { return rotation * normal; });
-
-		return Mesh{
-			newPositions,
-			newNormals,
-			faces_,
-		};
+		return mesh::ops::transform::rotate(*this, rotation);
 	}
 
 	[[nodiscard]]
 	Mesh scaled(const glm::vec3& scale) const
 	{
-		auto newPositions = std::vector<Position>(positions_.size());
-		std::ranges::transform(positions_, newPositions.begin(), [scale](auto& pos) { return pos * scale; });
-
-		return Mesh{
-			newPositions,
-			normals_,
-			faces_,
-		};
+		return mesh::ops::transform::scale(*this, scale);
 	}
 
 	[[nodiscard]]
 	Mesh withConsistentOrientations() const
 	{
-		auto newFaces = faces_;
-
-		const auto& topo = topology();
-		const auto hes = topo.halfedges();
-
-		std::vector visitedFaces(newFaces.size(), false);
-		std::vector<half_edge::FaceRef> stack;
-		stack.reserve(newFaces.size());
-
-		auto sameDirectionInFace = [&](const half_edge::FaceRef f, const half_edge::EdgeKey edge) -> std::optional<bool>
-		{
-			const auto face = newFaces[f];
-
-			for (std::size_t i = 0; i < face.size(); ++i)
-			{
-				const auto vertex0 = face[i];
-				const auto vertex1 = face[(i + 1) % face.size()];
-
-				if (vertex0 == edge.a && vertex1 == edge.b)
-				{
-					return true;
-				}
-				if (vertex0 == edge.b && vertex1 == edge.a)
-				{
-					return false;
-				}
-			}
-			return std::nullopt;
-		};
-
-		constexpr half_edge::FaceRef seed = 0;
-		visitedFaces[seed] = true;
-		stack.push_back(seed);
-
-		while (!stack.empty())
-		{
-			const auto f = stack.back();
-			stack.pop_back();
-
-			const auto fh = topo.getHalfedgeFromFace(f);
-			if (!fh)
-			{
-				continue;
-			}
-
-			auto h = fh->next;
-			const auto start = fh->next;
-
-			while (true)
-			{
-				const auto& he = hes[h];
-				if (he.opposite.has_value())
-				{
-					const auto other = hes[*he.opposite].face;
-					if (!visitedFaces[other])
-					{
-						const auto a = he.vertex;
-						const auto b = hes[he.next].vertex;
-
-						// If the neighbor uses the same edge in the same direction,
-						if (sameDirectionInFace(other, {.a = a, .b = b}) == true)
-						{
-							newFaces.reverseFace(other);
-						}
-
-						visitedFaces[other] = true;
-						stack.push_back(other);
-					}
-				}
-
-				h = he.next;
-				if (h == start)
-					break;
-			}
-		}
-
-		return Mesh{
-			positions_,
-			normals_,
-			std::move(newFaces),
-		};
+		return mesh::ops::repair::makeConsistentOrientations(*this);
 	}
 
 	[[nodiscard]] const Bounds& bounds() const
@@ -376,7 +250,7 @@ public:
 
 	[[nodiscard]] glm::vec3 baryCenter() const
 	{
-		return bary_center_.getOrCreate([&] { return calcBaryCenter(positions_); });
+		return bary_center_.getOrCreate([&] { return mesh::ops::util::calcBaryCenter(positions_); });
 	}
 
 	[[nodiscard]] std::span<const std::uint32_t> triangleIndices() const
@@ -396,13 +270,12 @@ public:
 		return skipped_faces_.getOrCreate([&] { return calcSkippedFaces(); });
 	}
 
-
-private:
 	[[nodiscard]] const half_edge::Topology& topology() const
 	{
 		return topology_.getOrCreate([&] { return half_edge::Topology::build(faces_, positions_.size()); });
 	}
 
+private:
 	[[nodiscard]] Bounds createBounds() const
 	{
 		Bounds bounds{};
@@ -415,18 +288,6 @@ private:
 			bounds.expand(position);
 		}
 		return bounds.valid() ? bounds : Bounds{glm::vec3{0.F}, glm::vec3{0.F}};
-	}
-
-	static glm::vec3 calcBaryCenter(std::span<const glm::vec3> points)
-	{
-		auto xIter = std::views::transform(points, [](auto& pos) { return pos.x; });
-		auto yIter = std::views::transform(points, [](auto& pos) { return pos.y; });
-		auto zIter = std::views::transform(points, [](auto& pos) { return pos.z; });
-
-		double const xMean = std::accumulate(xIter.begin(), xIter.end(), 0.0) / static_cast<double>(points.size());
-		double const yMean = std::accumulate(yIter.begin(), yIter.end(), 0.0) / static_cast<double>(points.size());
-		double const zMean = std::accumulate(zIter.begin(), zIter.end(), 0.0) / static_cast<double>(points.size());
-		return {xMean, yMean, zMean};
 	}
 
 	[[nodiscard]] std::vector<std::uint32_t> createTriangleIndices() const
@@ -498,53 +359,6 @@ private:
 	[[nodiscard]] size_t calcSkippedFaces() const
 	{
 		return static_cast<size_t>(std::ranges::count_if(faces_.all(), [this](const Face f) { return !FaceList::isValid(f, positions_.size()); }));
-	}
-
-	[[nodiscard]] std::vector<std::vector<std::size_t>> boundaryLoops() const
-	{
-		const auto& topo = topology();
-		const auto& hes = topo.halfedges();
-
-		auto nextBoundary = [&](half_edge::HalfedgeRef edgeIndex) -> std::optional<half_edge::HalfedgeRef>
-		{
-			auto nextEdgeIndex = hes[edgeIndex].next;
-			for (std::size_t guard = 0; hes[nextEdgeIndex].opposite.has_value() && guard < hes.size(); ++guard)
-			{
-				nextEdgeIndex = hes[*hes[nextEdgeIndex].opposite].next;
-			}
-			return hes[nextEdgeIndex].opposite.has_value() ? std::nullopt : std::make_optional(nextEdgeIndex);
-		};
-
-		std::vector seen(hes.size(), false);
-		std::vector<std::vector<std::size_t>> loops;
-
-		for (half_edge::HalfedgeRef start = 0; start < hes.size(); ++start)
-		{
-			if (hes[start].opposite.has_value() || seen[start])
-			{
-				continue;
-			}
-
-			std::vector<std::size_t> loop;
-			auto h = std::make_optional(start);
-			bool closed = false;
-
-			while (h && !seen[h.value()])
-			{
-				const auto current = h.value();
-				seen[current] = true;
-				loop.push_back(hes[current].vertex);
-				h = nextBoundary(current);
-				closed = h && h.value() == start;
-			}
-
-			if (closed && loop.size() >= 3)
-			{
-				loops.push_back(std::move(loop));
-			}
-		}
-
-		return loops;
 	}
 };
 

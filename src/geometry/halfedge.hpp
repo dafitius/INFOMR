@@ -152,6 +152,52 @@ namespace half_edge
 
 			return topo;
 		}
+
+		[[nodiscard]] std::vector<std::vector<std::size_t>> boundaryLoops() const
+		{
+			const auto& hes = this->halfedges();
+
+			auto nextBoundary = [&](const HalfedgeRef edgeIndex) -> std::optional<HalfedgeRef>
+			{
+				auto nextEdgeIndex = hes[edgeIndex].next;
+				for (std::size_t guard = 0; hes[nextEdgeIndex].opposite.has_value() && guard < hes.size(); ++guard)
+				{
+					nextEdgeIndex = hes[*hes[nextEdgeIndex].opposite].next;
+				}
+				return hes[nextEdgeIndex].opposite.has_value() ? std::nullopt : std::make_optional(nextEdgeIndex);
+			};
+
+			std::vector seen(hes.size(), false);
+			std::vector<std::vector<std::size_t>> loops;
+
+			for (HalfedgeRef start = 0; start < hes.size(); ++start)
+			{
+				if (hes[start].opposite.has_value() || seen[start])
+				{
+					continue;
+				}
+
+				std::vector<std::size_t> loop;
+				auto h = std::make_optional(start);
+				bool closed = false;
+
+				while (h && !seen[h.value()])
+				{
+					const auto current = h.value();
+					seen[current] = true;
+					loop.push_back(hes[current].vertex);
+					h = nextBoundary(current);
+					closed = h && h.value() == start;
+				}
+
+				if (closed && loop.size() >= 3)
+				{
+					loops.push_back(std::move(loop));
+				}
+			}
+
+			return loops;
+		}
 	};
 
 } // namespace half_edge
