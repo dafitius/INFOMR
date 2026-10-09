@@ -5,12 +5,15 @@
 #ifndef MULTIMEDIARETRIEVAL_HALFEDGETOPOLOGY_H
 #define MULTIMEDIARETRIEVAL_HALFEDGETOPOLOGY_H
 
+#include "face_list.hpp"
+
+
+#include <cstdint>
 #include <optional>
+#include <ranges>
 #include <span>
 #include <unordered_map>
 #include <vector>
-#include <cstdint>
-#include <ranges>
 
 namespace HalfEdge
 {
@@ -77,7 +80,7 @@ namespace HalfEdge
 			return ref.and_then([&](const HalfedgeRef refer) { return std::make_optional<Halfedge>(halfedges_[refer]); });
 		}
 
-		static Topology build(const std::span<const Face> faces, const std::size_t num_vertices)
+		static Topology build(const FaceList& faces, const std::size_t num_vertices)
 		{
 			Topology topo;
 			topo.vertex_halfedge_.assign(num_vertices, std::nullopt);
@@ -88,12 +91,12 @@ namespace HalfEdge
 				[&]
 				{
 					std::size_t total = 0;
-					for (const auto& face : faces)
+					for (const auto& face : faces.all())
 						total += face.size();
 					return total;
 				}());
 
-			for (const auto& [f, face] : faces | std::views::enumerate)
+			for (const auto& [f, face] : faces.all() | std::views::enumerate)
 			{
 				const auto face_start = topo.halfedges_.size();
 				topo.face_halfedge_[f] = face_start;

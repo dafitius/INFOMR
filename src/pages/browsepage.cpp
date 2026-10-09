@@ -104,7 +104,7 @@ void BrowsePage::setupClassList()
 
 	connect(
 		classComboBox, &QComboBox::currentIndexChanged, this,
-		[this](int index)
+		[this]
 		{
 			loadSelectedClass();
 		});

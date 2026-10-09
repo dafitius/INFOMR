@@ -210,12 +210,12 @@ public:
 	[[nodiscard]]
 	std::span<const std::size_t> index_buffer() const
 	{
-		assert(std::ranges::all_of(faces_, [](const auto& face) { return face.size() == 3; }) && "index_buffer() assumes all faces are triangles!");
+		assert(std::ranges::all_of(faces_.all(), [](const auto& face) { return face.size() == 3; }) && "index_buffer() assumes all faces are triangles!");
 
 		std::vector<size_t> buffer;
 		buffer.reserve(faces_.size() * 3);
 
-		for (const auto& face : faces_)
+		for (const Face face : faces_.all())
 		{
 			buffer.insert(buffer.end(), face.begin(), face.end());
 		}
@@ -259,7 +259,7 @@ public:
 			closed_loop.push_back(loop.front());
 			for (const auto window : closed_loop | std::views::slide(2))
 			{
-				faces.push_back({window[0], window[1], center_index});
+				faces.push_back(window[0], window[1], center_index);
 			}
 		}
 
@@ -303,28 +303,29 @@ Mesh rotated(const glm::quat& rotation) const
 		const auto& topo = topology();
 		const auto hes = topo.halfedges();
 
-		std::vector visited_faces(new_faces.size(), false);
+		std::vector visitedFaces(new_faces.size(), false);
 		std::vector<HalfEdge::FaceRef> stack;
 		stack.reserve(new_faces.size());
 
-		auto same_direction_in_face = [&](const HalfEdge::FaceRef f, const HalfEdge::VertexRef a, const HalfEdge::VertexRef b) -> std::optional<bool>
+		auto sameDirectionInFace = [&](const HalfEdge::FaceRef f, const HalfEdge::EdgeKey edge) -> std::optional<bool>
 		{
-			const auto& face = new_faces[f];
+			const auto face = new_faces[f];
 
-			auto closed = face;
-			closed.push_back(face.front());
-			for (const auto window : closed | std::views::slide(2))
+			for (std::size_t i = 0; i < face.size(); ++i)
 			{
-				if (window[0] == a && window[1] == b)
+				const auto vertex0 = face[i];
+				const auto vertex1 = face[(i + 1) % face.size()];
+
+				if (vertex0 == edge.a && vertex1 == edge.b)
 					return true;
-				if (window[0] == b && window[1] == a)
+				if (vertex0 == edge.b && vertex1 == edge.a)
 					return false;
 			}
 			return std::nullopt;
 		};
 
 		HalfEdge::FaceRef seed = 0;
-		visited_faces[seed] = true;
+		visitedFaces[seed] = true;
 		stack.push_back(seed);
 
 		while (!stack.empty())
@@ -345,18 +346,18 @@ Mesh rotated(const glm::quat& rotation) const
 				if (he.opposite.has_value())
 				{
 					const auto other = hes[*he.opposite].face;
-					if (!visited_faces[other])
+					if (!visitedFaces[other])
 					{
 						const auto a = he.vertex;
 						const auto b = hes[he.next].vertex;
 
 						// If the neighbor uses the same edge in the same direction,
-						if (same_direction_in_face(other, a, b) == true)
+						if (sameDirectionInFace(other, {.a = a, .b = b}) == true)
 						{
-							std::ranges::reverse(new_faces[other]);
+							new_faces.reverseFace(other);
 						}
 
-						visited_faces[other] = true;
+						visitedFaces[other] = true;
 						stack.push_back(other);
 					}
 				}
@@ -386,13 +387,13 @@ Mesh rotated(const glm::quat& rotation) const
 
 	[[nodiscard]] std::span<const std::uint32_t> triangle_indices() const
 	{
-		auto& data = triangle_indices_.get_or_create([&] { return create_triangle_indices(); });
+		const auto& data = triangle_indices_.get_or_create([&] { return create_triangle_indices(); });
 		return std::span{data.begin(), data.size()};
 	}
 
 	[[nodiscard]] std::span<const std::uint32_t> edge_indices() const
 	{
-		auto& data = edges_.get_or_create([&] { return create_edges(); });
+		const auto& data = edges_.get_or_create([&] { return create_edges(); });
 		return std::span{reinterpret_cast<const uint32_t*>(data.data()), data.size() * 2};
 	}
 
@@ -436,9 +437,9 @@ private:
 	{
 		std::vector<std::uint32_t> out;
 		out.reserve(faces_.size() * 3);
-		for (const Face face : faces_.all())
+		for (const auto [i, face] : faces_.all() | std::views::enumerate)
 		{
-			if (!is_valid_face(face))
+			if (!FaceList::isValid(face, positions_.size()))
 				continue;
 			// Fan triangulation, only correct for convex polygons
 			for (size_t i = 1; i + 1 < face.size(); ++i)
@@ -448,7 +449,7 @@ private:
 				out.push_back(face[i + 1]);
 			}
 		}
-		return std::move(out);
+		return out;
 	}
 
 	[[nodiscard]]
@@ -457,27 +458,17 @@ private:
 		std::vector<Edge> occurrences;
 		occurrences.reserve(faces_.size() * 4);
 
-		for (const auto& face : faces_)
-		std::vector<std::pair<std::uint32_t, std::uint32_t>> edges;
-		edges.reserve(faces_.size() * 4);
-		for (const Face face : faces_.all())
+		for (const auto& face : faces_.all())
 		{
-			if (!is_valid_face(face))
+			if (!FaceList::isValid(face, positions_.size()))
 				continue;
 
 			for (std::size_t i = 0; i < face.size(); ++i)
 			{
-				const auto a = static_cast<std::uint32_t>(face[i]);
-				const auto b = static_cast<std::uint32_t>(face[(i + 1) % face.size()]);
-
-				if (a == b)
-					continue;
-
-				occurrences.emplace_back(std::min(a, b), std::max(a, b));
 				const auto a = face[i];
 				const auto b = face[(i + 1) % face.size()];
-				if (a != b)
-					edges.emplace_back(std::min(a, b), std::max(a, b));
+				if (a == b) continue;
+				occurrences.emplace_back(std::min(a, b), std::max(a, b));
 			}
 		}
 
@@ -491,9 +482,9 @@ private:
 			const auto edge = occurrences[i];
 
 			std::size_t j = i + 1;
-			while (j < occurrences.size() && occurrences[j] == edge)
+			while (j < occurrences.size() && occurrences[j] == edge) {
 				++j;
-
+			}
 			edges.push_back(edge);
 			i = j;
 		}
@@ -502,13 +493,7 @@ private:
 
 	[[nodiscard]] size_t calc_skipped_faces() const
 	{
-		return static_cast<size_t>(std::ranges::count_if(faces_.all(), [this](const Face f) { return !is_valid_face(f); }));
-	}
-
-	[[nodiscard]] bool is_valid_face(const Face face) const
-	{
-		const auto n = positions_.size();
-		return face.size() >= 3 && std::ranges::all_of(face, [n](const std::uint32_t i) { return i < n; });
+		return static_cast<size_t>(std::ranges::count_if(faces_.all(), [this](const Face f) { return !FaceList::isValid(f, positions_.size()); }));
 	}
 
 	[[nodiscard]] std::vector<std::vector<std::size_t>> boundary_loops() const
