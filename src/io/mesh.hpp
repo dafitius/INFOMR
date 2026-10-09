@@ -267,7 +267,7 @@ public:
 	}
 
 	[[nodiscard]]
-Mesh rotated(const glm::quat& rotation) const
+	Mesh rotated(const glm::quat& rotation) const
 	{
 		auto new_positions = std::vector<Position>(positions_.size());
 		std::ranges::transform(positions_, new_positions.begin(), [rotation](const auto& pos) { return rotation * pos; });
