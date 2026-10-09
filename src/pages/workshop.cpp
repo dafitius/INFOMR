@@ -127,14 +127,14 @@ void Workshop::setupUI()
 	axesBox, &QCheckBox::toggled, this,
 	[this](const bool checked)
 	{
-		viewport->setRenderSettings(&RenderSettings::showAxes, checked);
+		viewport->setRenderSetting(&RenderSettings::showAxes, checked);
 	});
 
 	connect(
 		eigenvectorAxesBox, &QCheckBox::toggled, this,
 		[this](const bool checked)
 		{
-			viewport->setRenderSettings(&RenderSettings::showEigenvectorAxes, checked);
+			viewport->setRenderSetting(&RenderSettings::showEigenvectorAxes, checked);
 		});
 
 	connect(alignAxesButton, &QPushButton::clicked, viewport, &MeshViewport::alignEigenvectorAxesToWorldAxes);

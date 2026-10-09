@@ -47,7 +47,7 @@ void BrowserCard::setupUI()
 	const auto mesh = object->translated(-object->baryCenter()).filledHoles();
 	object.emplace(mesh);
 
-	const auto mesh2 = object->rotated(object->principle_axes());
+	const auto mesh2 = object->rotated(object->principleAxes());
 	object.emplace(mesh2);
 
 	auto* preview = new MeshPreview(object->vertexPositionBuffer(), object->triangleIndices(), this);

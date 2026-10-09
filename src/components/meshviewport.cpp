@@ -26,7 +26,7 @@ MeshViewport::~MeshViewport()
 
 void MeshViewport::setMesh(const Mesh& mesh)
 {
-	mesh_.emplace(mesh.translated(-mesh.bary_center()));
+	mesh_.emplace(mesh.translated(-mesh.baryCenter()));
 	camera_.frame(mesh_->bounds());
 
 	uploadPending_ = true;
@@ -40,7 +40,7 @@ void MeshViewport::alignEigenvectorAxesToWorldAxes()
 		return;
 	}
 
-	mesh_.emplace(mesh_->rotated(glm::inverse(mesh_->principle_axes())));
+	mesh_.emplace(mesh_->rotated(glm::inverse(mesh_->principleAxes())));
 	camera_.frame(mesh_->bounds());
 	uploadPending_ = true;
 	update();
@@ -90,7 +90,7 @@ void MeshViewport::paintGL()
 	}
 
 	const float aspectRatio = static_cast<float>(width()) / static_cast<float>(std::max(height(), 1));
-	renderer_->draw(*gpuMesh_, camera_, aspectRatio, settings_, mesh_->principle_axes());
+	renderer_->draw(*gpuMesh_, camera_, aspectRatio, settings_, mesh_->principleAxes());
 }
 
 void MeshViewport::resizeGL(const int width, const int height)

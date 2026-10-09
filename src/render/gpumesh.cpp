@@ -113,7 +113,7 @@ void GpuMesh::drawEdges()
 void GpuMesh::drawBoundingBox()
 {
 	boundingBoxVao_.bind();
-	glDrawElements(GL_LINES, boundingBoxIndexCount_, GL_UNSIGNED_INT, nullptr);
+	glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, nullptr);
 	boundingBoxVao_.release();
 }
 

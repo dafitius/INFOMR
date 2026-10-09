@@ -1,9 +1,11 @@
 #ifndef MR_MESH_H
 #define MR_MESH_H
+#define GLM_ENABLE_EXPERIMENTAL // For using glm::length2 (https://glm.g-truc.net/0.9.4/api/a00188.html)
 
 #include "../io/obj_file.hpp"
 #include "../lazy.hpp"
 #include "face_list.hpp"
+#include "glm/gtx/quaternion.hpp"
 #include "halfedge.hpp"
 #include "ops/ops.h"
 
@@ -78,6 +80,7 @@ private:
 	// mutable, lazily initialized
 	mutable Lazy<Bounds> bounds_;
 	mutable Lazy<Position> bary_center_;
+	mutable Lazy<glm::quat> principle_axes_;
 	mutable Lazy<std::vector<std::uint32_t>> triangle_indices_;
 	mutable Lazy<std::vector<Edge>> edges_;
 	mutable Lazy<size_t> skipped_faces_;
@@ -199,6 +202,11 @@ public:
 		return out;
 	}
 
+	[[nodiscard]] glm::quat principleAxes() const
+	{
+		return principle_axes_.getOrCreate([&] { return calcPrincipleAxes(); });
+	}
+
 	[[nodiscard]]
 	std::span<const float> vertexPositionBuffer() const
 	{
@@ -276,6 +284,12 @@ public:
 	}
 
 private:
+	struct EigenResult
+	{
+		std::array<float, 3> eigenvalues;
+		std::array<glm::vec3, 3> eigenvectors;
+	};
+
 	[[nodiscard]] Bounds createBounds() const
 	{
 		Bounds bounds{};
@@ -359,6 +373,148 @@ private:
 	[[nodiscard]] size_t calcSkippedFaces() const
 	{
 		return static_cast<size_t>(std::ranges::count_if(faces_.all(), [this](const Face f) { return !FaceList::isValid(f, positions_.size()); }));
+	}
+
+	[[nodiscard]] glm::quat calcPrincipleAxes() const
+	{
+		glm::mat3 covariance = calcCovariance();
+		auto [eigenvalues, eigenvectors] = calcEigen(covariance);
+
+		glm::vec3 x = eigenvectors[0];
+		glm::vec3 y = eigenvectors[1];
+
+		y = glm::normalize(y - x * glm::dot(x, y));
+		glm::vec3 z = glm::normalize(glm::cross(x, y));
+		if (glm::dot(z, eigenvectors[2]) < 0.0f)
+			z = -z;
+
+		glm::mat3 axes(x, y, z);
+
+		std::cout << "det = " << glm::determinant(axes) << std::endl;
+		return glm::normalize(glm::quat_cast(axes));
+	}
+
+	[[nodiscard]] std::vector<glm::vec3> calc_eigenvectors() const
+	{
+		glm::mat3 covariance = calcCovariance();
+		auto [eigenvalues, eigenvectors] = calcEigen(covariance);
+		return {eigenvectors.begin(), eigenvectors.end()};
+	}
+
+	[[nodiscard]] EigenResult calcEigen(glm::mat3 matrix) const
+	{
+		const float a = matrix[0][0];
+		const float b = matrix[1][0];
+		const float c = matrix[2][0];
+
+		const float d = matrix[1][1];
+		const float e = matrix[2][1];
+
+		const float f = matrix[2][2];
+
+		// Characteristic polynomial:
+		// lambda^3 - T lambda^2 + P lambda - D = 0
+		// https://en.wikipedia.org/wiki/Eigenvalue_algorithm#Symmetric_3%C3%973_matrices
+
+		const float T = a + d + f;									   // diagonal sum
+		const float P = a * d + a * f + d * f - b * b - c * c - e * e; //
+		const float D = a * (d * f - e * e) - b * (b * f - e * c) + c * (b * e - d * c);
+
+		auto eigenvalues = solve_cubic(T, P, D);
+
+		std::array<glm::vec3, 3> eigenvectors;
+		for (int i = 0; i < 3; ++i)
+		{
+			eigenvectors[i] = eigenvector(matrix, eigenvalues[i]);
+		}
+
+		// Sort largest eigenvalue first.
+		std::array<int, 3> order = {0, 1, 2};
+		std::sort(order.begin(), order.end(), [&](int lhs, int rhs) { return eigenvalues[lhs] > eigenvalues[rhs]; });
+
+		EigenResult result;
+		for (int i = 0; i < 3; ++i)
+		{
+			result.eigenvalues[i] = eigenvalues[order[i]];
+			result.eigenvectors[i] = eigenvectors[order[i]];
+		}
+
+		return result;
+	}
+
+	[[nodiscard]] glm::vec3 eigenvector(const glm::mat3& C, float lambda) const
+	{
+		glm::vec3 r1(C[0][0] - lambda, C[1][0], C[2][0]);
+		glm::vec3 r2(C[0][1], C[1][1] - lambda, C[2][1]);
+		glm::vec3 r3(C[0][2], C[1][2], C[2][2] - lambda);
+
+		glm::vec3 v = glm::cross(r1, r2);
+
+		if (glm::length2(v) < 1e-12f)
+		{
+			v = glm::cross(r1, r3);
+
+			if (glm::length2(v) < 1e-12f)
+				v = glm::cross(r2, r3);
+		}
+
+		return glm::normalize(v);
+	}
+
+	// Modified version from: https://github.com/aadilsiddiquee/quadratic_and_cubic_equation_solver/blob/main/equation_solver.cpp
+	[[nodiscard]] std::array<float, 3> solve_cubic(float b, float c, float d) const
+	{
+		// Calculate discriminant
+		float p = (3 * c - b * b) / 3;
+		float q = (2 * b * b * b - 9 * b * c + 27 * d) / 27;
+		float discriminant = q * q / 4 + p * p * p / 27;
+
+		std::array<float, 3> roots;
+		if (discriminant > 0)
+		{
+			std::cerr << "disciminant of covariance should be <= 0 with reals roots" << std::endl;
+			return roots;
+		}
+
+		roots[0] = cbrt(-q / 2 + sqrt(-discriminant));
+		roots[1] = cbrt(-q / 2 - sqrt(-discriminant));
+		roots[2] = -b / 3;
+
+		return roots;
+	}
+
+	/// @brief Assumes model is centered already
+	/// @return
+	[[nodiscard]] glm::mat3 calcCovariance() const
+	{
+		glm::mat3 covariance(0.0f);
+
+		const float N = static_cast<float>(positions_.size());
+
+		if (positions_.empty())
+			return covariance;
+
+		for (const glm::vec3& p : positions_)
+
+
+
+		{
+			covariance[0][0] += p.x * p.x;
+			covariance[0][1] += p.x * p.y;
+			covariance[0][2] += p.x * p.z;
+
+			covariance[1][0] += p.y * p.x;
+			covariance[1][1] += p.y * p.y;
+			covariance[1][2] += p.y * p.z;
+
+			covariance[2][0] += p.z * p.x;
+			covariance[2][1] += p.z * p.y;
+			covariance[2][2] += p.z * p.z;
+		}
+
+		covariance /= N;
+
+		return covariance;
 	}
 };
 
