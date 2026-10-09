@@ -20,7 +20,7 @@ struct RenderSettings
 class MeshRenderer : protected QOpenGLFunctions
 {
 public:
-	static std::optional<MeshRenderer> Init();
+	static std::optional<MeshRenderer> init();
 
 	void draw(GpuMesh& mesh, const Camera& camera, float aspectRatio, const RenderSettings& settings);
 

@@ -6,7 +6,6 @@
 #include <QOpenGLWidget>
 #include <QTimer>
 
-#include "../io/off_file.hpp"
 #include "../render/shaderprogram.h"
 
 class MeshPreview
@@ -16,9 +15,9 @@ class MeshPreview
 	Q_OBJECT
 
 public:
-	explicit MeshPreview(std::span<const float> vertex_buffer, std::span<const uint32_t> index_buffer, QWidget* parent = nullptr);
+	explicit MeshPreview(std::span<const float> vertexBuffer, std::span<const uint32_t> indexBuffer, QWidget* parent = nullptr);
 
-	void setRotationSpeed(float rotation_speed);
+	void setRotationSpeed(float rotationSpeed);
 	[[nodiscard]] float rotationSpeed() const;
 
 protected:

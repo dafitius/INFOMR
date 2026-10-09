@@ -4,14 +4,14 @@
 #include <QFrame>
 #include <QString>
 
-#include "../io/mesh.hpp"
+#include "../geometry/mesh.hpp"
 
 class BrowserCard : public QFrame
 {
 	Q_OBJECT
 
 public:
-	BrowserCard(const QString& name, QString mesh_source, QWidget* parent = nullptr);
+	BrowserCard(const QString& name, const std::filesystem::path& meshSource, QWidget* parent = nullptr);
 	~BrowserCard() override;
 
 signals:

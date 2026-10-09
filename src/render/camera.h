@@ -1,8 +1,6 @@
 #pragma once
 
-#include "../io/mesh.hpp"
-#include <glm/matrix.hpp>
-#include <glm/trigonometric.hpp>
+#include "../geometry/mesh.hpp"
 
 class Camera
 {

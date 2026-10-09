@@ -1,7 +1,5 @@
 #include "mainwindow.h"
-#include "io/mesh.hpp"
-#include "io/obj_file.hpp"
-#include "io/off_file.hpp"
+#include "geometry/mesh.hpp"
 #include "pages/browsepage.h"
 #include "pages/workshop.h"
 #include <QVBoxLayout>
@@ -33,28 +31,23 @@ void MainWindow::setupUI(std::unique_ptr<ShapeDb> database)
 
 	connect(
 		browsePage, &BrowsePage::meshSelected, this,
-		[this, workshop](const QString& source)
+		[this, workshop](const std::filesystem::path& source)
 		{
-			const std::filesystem::path path = source.toStdString();
 			std::optional<Mesh> mesh;
 
-			if (path.extension() == ".obj")
+			if (source.extension() == ".obj")
 			{
-				mesh.emplace(*Mesh::from_obj(path));
+				mesh.emplace(*Mesh::fromObj(source));
 			}
-			// else if (path.extension() == ".off")
-			// {
-			// 	mesh = OffFile::read(path);
-			// }
 			else
 			{
-				std::cerr << "Unsupported mesh format: " << path.extension() << '\n';
+				std::cerr << "Unsupported mesh format: " << source.extension() << '\n';
 				return;
 			}
 
 			if (!mesh)
 			{
-				std::cerr << "Failed to load mesh: " << path << '\n';
+				std::cerr << "Failed to load mesh: " << source << '\n';
 				return;
 			}
 

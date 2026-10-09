@@ -11,7 +11,6 @@
 #include <span>
 #include <vector>
 
-
 class FaceList
 {
 public:
@@ -36,7 +35,7 @@ public:
 
 	// Appends all inserted vertices as a face
 	template <std::convertible_to<std::size_t>... Ts>
-		requires (sizeof...(Ts) > 0)
+		requires(sizeof...(Ts) > 0)
 	void push_back(Ts... vertices)
 	{
 		(indices_.push_back(static_cast<std::size_t>(vertices)), ...);
@@ -67,14 +66,19 @@ public:
 
 	[[nodiscard]] std::optional<Face> get(std::size_t i) const noexcept
 	{
-		if (i + 1 >= offsets_.size()) return std::nullopt;
+		if (i + 1 >= offsets_.size()) {
+			return std::nullopt;
+}
 
 		const auto start = offsets_[i];
 		const auto end = offsets_[i + 1];
 
-		if (end > indices_.size() || start > end) return std::nullopt;
+		if (end > indices_.size() || start > end) {
+			return std::nullopt;
+}
 		return Face(indices_.begin() + start, indices_.begin() + end);
 	}
+
 	// Vertex indices of face i (no bounds check)
 	[[nodiscard]] Face operator[](const size_t i) const
 	{
@@ -93,18 +97,18 @@ public:
 		return indices_;
 	}
 
-	static bool isValid(const Face& face, const size_t num_vertices)
+	static bool isValid(const Face& face, const size_t numVertices)
 	{
-		return face.size() >= 3 && std::ranges::all_of(face, [num_vertices](const std::uint32_t i) { return i < num_vertices; });
+		return face.size() >= 3 && std::ranges::all_of(face, [numVertices](const std::uint32_t i) { return i < numVertices; });
 	}
 
 	// Reverse the face order
-	void reverseFace(const std::size_t face_index) noexcept
+	void reverseFace(const std::size_t faceIndex) noexcept
 	{
-		assert(face_index + 1 < offsets_.size());
-		const auto start_index = static_cast<ptrdiff_t>(offsets_[face_index]);
-		const auto end_index = static_cast<ptrdiff_t>(offsets_[face_index + 1]);
-		std::reverse(indices_.begin() + start_index, indices_.begin() + end_index);
+		assert(faceIndex + 1 < offsets_.size());
+		const auto startIndex = static_cast<ptrdiff_t>(offsets_[faceIndex]);
+		const auto endIndex = static_cast<ptrdiff_t>(offsets_[faceIndex + 1]);
+		std::reverse(indices_.begin() + startIndex, indices_.begin() + endIndex);
 	}
 
 private:

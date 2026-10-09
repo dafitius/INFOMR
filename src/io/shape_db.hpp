@@ -4,17 +4,13 @@
 
 #ifndef MR_SHAPE_DATA_ACCESS_H
 #define MR_SHAPE_DATA_ACCESS_H
-#include "mesh.hpp"
-#include "obj_file.hpp"
-#include "off_file.hpp"
-#include <QString>
+#include "../geometry/mesh.hpp"
 #include <algorithm>
 #include <execution>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <iostream>
-#include <numeric>
 #include <optional>
 #include <ranges>
 #include <sstream>
@@ -28,64 +24,65 @@ class ShapeDb
 	std::unordered_map<std::string, std::vector<std::string>> entries_; // map of shape class as key and shape names as value
 
 public:
-	static std::optional<ShapeDb> open(const std::filesystem::path& shape_database_path)
+	static std::optional<ShapeDb> open(const std::filesystem::path& shapeDatabasePath)
 	{
 		auto self = ShapeDb();
 
-		if (!std::filesystem::exists(shape_database_path))
+		if (!std::filesystem::exists(shapeDatabasePath))
 		{
-			std::cerr << "Unable to open file!" << shape_database_path.string() << std::endl;
+			std::cerr << "Unable to open file!" << shapeDatabasePath.string() << '\n';
 			return std::nullopt;
 		}
 
-		auto entries = std::filesystem::directory_iterator(shape_database_path) |
+		auto entries = std::filesystem::directory_iterator(shapeDatabasePath) |
 					   std::views::filter([](const auto& item) { return item.is_directory(); }) |
 					   std::views::transform(
 						   [&](const auto& item)
 						   {
-							   auto folder_names = std::vector<std::string>();
+							   auto folderNames = std::vector<std::string>();
 							   auto view = std::filesystem::directory_iterator(item.path()) |
 										   std::views::filter([](const auto& file) { return file.is_regular_file(); }) |
 										   std::views::transform([&](const auto& file) { return file.path().filename().string(); });
 
-							   std::ranges::copy(view, std::back_inserter(folder_names));
-							   return std::pair<std::string, std::vector<std::string>>(item.path().filename().string(), std::move(folder_names));
+							   std::ranges::copy(view, std::back_inserter(folderNames));
+							   return std::pair<std::string, std::vector<std::string>>(item.path().filename().string(), std::move(folderNames));
 						   });
 
 		std::ranges::for_each(entries, [&self](const auto& entry) { self.entries_.emplace(entry.first, entry.second); });
 
-		self.shape_database_path = shape_database_path;
+		self.shape_database_path = shapeDatabasePath;
 
 		return self;
 	}
 
-	auto iter_class_names() const
+	auto iterClassNames() const
 	{
 		return entries_ | std::views::keys;
 	}
 
-	auto iter_all_shape_paths() const
+	auto iterAllShapePaths() const
 	{
 		return entries_ |
 			   std::views::transform(
 				   [this](const auto& entry)
 				   {
 					   return entry.second |
-							  std::views::transform([this, class_ = entry.first](const auto& shape) { return resource_path(class_, shape); });
+							  std::views::transform([this, shapeClass = entry.first](const auto& shape) { return resourcePath(shapeClass, shape); });
 				   }) |
 			   std::views::join;
 	}
 
-	auto iter_class_shape_paths(std::string class_) const
+	auto iterClassShapePaths(std::string shapeClass) const
 	{
-		const auto iter = entries_.find(class_);
+		const auto iter = entries_.find(shapeClass);
 
 		std::vector<std::string> shapes;
-		if (iter != entries_.end())
+		if (iter != entries_.end()) {
 			shapes = iter->second;
+}
 
 		return std::views::transform(
-			std::move(shapes), [this, class_ = std::move(class_)](const auto& entry) { return resource_path(class_, entry); });
+			std::move(shapes), [this, shapeClass = std::move(shapeClass)](const auto& entry) { return resourcePath(shapeClass, entry); });
 	}
 
 	const std::unordered_map<std::string, std::vector<std::string>>& entries()
@@ -93,18 +90,18 @@ public:
 		return this->entries_;
 	}
 
-	size_t num_shapes() const
+	size_t numShapes() const
 	{
 		return std::ranges::fold_left(
 			entries_ | std::views::values | std::views::transform([](const auto& shapes) { return shapes.size(); }), std::size_t{0}, std::plus{});
 	}
 
-	size_t num_classes() const
+	size_t numClasses() const
 	{
 		return this->entries_.size();
 	}
 
-	void export_stats() const
+	void exportStats() const
 	{
 		struct Row
 		{
@@ -118,7 +115,7 @@ public:
 		{
 			for (const auto& meshName : meshNames)
 			{
-				auto meshPath = resource_path(className, meshName);
+				auto meshPath = resourcePath(className, meshName);
 				work.emplace_back(meshPath, className);
 			}
 		}
@@ -135,8 +132,9 @@ public:
 
 				if (path.extension() == ".obj")
 				{
-					if (auto loaded = Mesh::from_obj(path))
+					if (auto loaded = Mesh::fromObj(path)) {
 						mesh.emplace(std::move(*loaded));
+}
 				}
 				else
 				{
@@ -150,24 +148,25 @@ public:
 					return;
 				}
 
-				results[i] = Row{path.string(), className, mesh->num_vertices(), mesh->num_faces(), mesh->face_type(), mesh->bounds().radius()};
+				results[i] = Row{path.string(), className, mesh->numVertices(), mesh->numFaces(), mesh->faceType(), mesh->bounds().radius()};
 			});
 
 		std::ofstream outputFile("shape_db_statistics.csv");
 		outputFile << "file,class,vertices,faces,facetype,bounding_box\n";
 		for (auto& row : results)
 		{
-			if (!row)
+			if (!row) {
 				return;
+}
 			outputFile << std::format("{},{},{},{},{},{}", row->file, row->cls, row->verts, row->faces, row->facetype, row->bb_radius) << '\n';
 		}
 		outputFile.close();
 	}
 
 private:
-	[[nodiscard]] std::filesystem::path resource_path(const std::string& class_ = "", const std::string& filename = "") const
+	[[nodiscard]] std::filesystem::path resourcePath(const std::string& shapeClass = "", const std::string& filename = "") const
 	{
-		return this->shape_database_path / class_ / filename;
+		return this->shape_database_path / shapeClass / filename;
 	}
 };
 

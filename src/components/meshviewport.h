@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QOpenGLFunctions>
 #include <QOpenGLWidget>
 #include <QPoint>
 
@@ -27,8 +26,7 @@ public:
 	[[nodiscard]] const RenderSettings& renderSettings() const;
 
 	template <typename Func>
-		requires std::invocable<Func&, RenderSettings&> &&
-				 std::same_as<std::invoke_result_t<Func&, RenderSettings&>, void>
+		requires std::invocable<Func&, RenderSettings&> && std::same_as<std::invoke_result_t<Func&, RenderSettings&>, void>
 	void setRenderSettings(Func&& callback)
 	{
 		RenderSettings settings = renderSettings();
@@ -37,8 +35,8 @@ public:
 	}
 
 	template <typename T, typename V>
-	requires std::convertible_to<V, T>
-void setRenderSetting(T RenderSettings::* option, V&& value)
+		requires std::convertible_to<V, T>
+	void setRenderSetting(T RenderSettings::* option, V&& value)
 	{
 		RenderSettings settings = renderSettings();
 		settings.*option = std::forward<V>(value);

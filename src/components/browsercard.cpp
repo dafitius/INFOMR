@@ -4,29 +4,27 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
-#include "../io/off_file.hpp"
 #include "meshpreview.h"
 
-BrowserCard::BrowserCard(const QString& name, const QString mesh_source, QWidget* parent)
+BrowserCard::BrowserCard(const QString& name, const std::filesystem::path& meshSource, QWidget* parent)
 	: QFrame(parent)
 	, meshName(name)
 {
 	// TODO: This is somewhat duplicate code with mainwindow
-	const std::filesystem::path path = mesh_source.toStdString();
 
-	if (path.extension() == ".obj")
+	if (meshSource.extension() == ".obj")
 	{
-		object.emplace(*Mesh::from_obj(path));
+		object.emplace(*Mesh::fromObj(meshSource));
 	}
 	else
 	{
-		std::cerr << "Unsupported mesh format: " << path.extension() << '\n';
+		std::cerr << "Unsupported mesh format: " << meshSource.extension() << '\n';
 		return;
 	}
 
 	if (!object)
 	{
-		std::cerr << "Failed to load mesh: " << path << '\n';
+		std::cerr << "Failed to load mesh: " << meshSource << '\n';
 		return;
 	}
 
@@ -46,10 +44,10 @@ void BrowserCard::setupUI()
 	mainLayout->setContentsMargins(12, 12, 12, 12);
 	mainLayout->setSpacing(10);
 
-	const auto mesh = object->translated(-object->bary_center()).filled_holes();
+	const auto mesh = object->translated(-object->baryCenter()).filledHoles();
 	object.emplace(mesh);
 
-	auto* preview = new MeshPreview(object->vertex_position_buffer(), object->triangle_indices(), this);
+	auto* preview = new MeshPreview(object->vertexPositionBuffer(), object->triangleIndices(), this);
 	preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	preview->setMinimumHeight(180);
 	mainLayout->addWidget(preview, 1);
@@ -58,7 +56,7 @@ void BrowserCard::setupUI()
 	nameLabel->setStyleSheet("font-weight: bold; font-size: 14px;");
 	mainLayout->addWidget(nameLabel);
 
-	auto* statsLabel = new QLabel(QString("Vertices: %1 | Faces: %2").arg(object->num_vertices()).arg(object->num_faces()), this);
+	auto* statsLabel = new QLabel(QString("Vertices: %1 | Faces: %2").arg(object->numVertices()).arg(object->numFaces()), this);
 	statsLabel->setStyleSheet("color: #666; font-size: 11px;");
 	mainLayout->addWidget(statsLabel);
 
@@ -66,5 +64,5 @@ void BrowserCard::setupUI()
 	inspectBtn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	mainLayout->addWidget(inspectBtn);
 
-	connect(inspectBtn, &QPushButton::clicked, this, [this]() { emit meshClicked(meshName); });
+	connect(inspectBtn, &QPushButton::clicked, this, [this] { emit meshClicked(meshName); });
 }

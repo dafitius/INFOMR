@@ -12,7 +12,7 @@ class Lazy
 {
 public:
 	template <typename F>
-	const T& get_or_create(F&& f) const
+	const T& getOrCreate(F&& f) const
 	{
 		if (!value_)
 		{
@@ -36,7 +36,7 @@ public:
 		value_.reset();
 	}
 
-	[[nodiscard]] bool has_value() const noexcept
+	[[nodiscard]] bool hasValue() const noexcept
 	{
 		return value_.has_value();
 	}

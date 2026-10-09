@@ -2,8 +2,8 @@
 // Created by dafitius on 18-09-2026.
 //
 
-#ifndef QTTEST_WORKSHOP_H
-#define QTTEST_WORKSHOP_H
+#ifndef MR_WORKSHOP_H
+#define MR_WORKSHOP_H
 
 #include <QWidget>
 
@@ -26,4 +26,4 @@ private:
 	QLabel* statsLabel;
 };
 
-#endif // QTTEST_WORKSHOP_H
+#endif // MR_WORKSHOP_H

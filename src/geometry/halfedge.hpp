@@ -15,7 +15,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace HalfEdge
+namespace half_edge
 {
 
 	using HalfedgeRef = size_t;
@@ -44,9 +44,9 @@ namespace HalfEdge
 	{
 		std::size_t operator()(const EdgeKey& k) const noexcept
 		{
-			const auto lo = std::min(k.a, k.b);
-			const auto hi = std::max(k.a, k.b);
-			return std::hash<std::uint64_t>{}((static_cast<std::uint64_t>(lo) << 32) | hi);
+			const auto low = std::min(k.a, k.b);
+			const auto high = std::max(k.a, k.b);
+			return std::hash<std::uint64_t>{}((static_cast<std::uint64_t>(low) << static_cast<uint32_t>(32)) | high);
 		}
 	};
 
@@ -63,76 +63,80 @@ namespace HalfEdge
 			return std::span{halfedges_};
 		}
 
-		[[nodiscard]] auto boundary_halfedges() const
+		[[nodiscard]] auto boundaryHalfedges() const
 		{
 			return halfedges_ | std::views::filter([](const Halfedge& he) { return !he.opposite.has_value(); });
 		}
 
-		[[nodiscard]] std::optional<Halfedge> get_halfedge_from_vertex(const VertexRef vertex) const
+		[[nodiscard]] std::optional<Halfedge> getHalfedgeFromVertex(const VertexRef vertex) const
 		{
 			const auto ref = vertex_halfedge_[vertex];
 			return ref.and_then([&](const HalfedgeRef refer) { return std::make_optional<Halfedge>(halfedges_[refer]); });
 		}
 
-		[[nodiscard]] std::optional<Halfedge> get_halfedge_from_face(const FaceRef face) const
+		[[nodiscard]] std::optional<Halfedge> getHalfedgeFromFace(const FaceRef face) const
 		{
 			const auto ref = face_halfedge_[face];
 			return ref.and_then([&](const HalfedgeRef refer) { return std::make_optional<Halfedge>(halfedges_[refer]); });
 		}
 
-		static Topology build(const FaceList& faces, const std::size_t num_vertices)
+		static Topology build(const FaceList& faces, const std::size_t numVertices)
 		{
 			Topology topo;
-			topo.vertex_halfedge_.assign(num_vertices, std::nullopt);
+			topo.vertex_halfedge_.assign(numVertices, std::nullopt);
 			topo.face_halfedge_.resize(faces.size(), std::nullopt);
 
-			std::unordered_map<EdgeKey, HalfedgeRef, EdgeKeyHash> edge_map;
-			edge_map.reserve(
+			std::unordered_map<EdgeKey, HalfedgeRef, EdgeKeyHash> edgeMap;
+			edgeMap.reserve(
 				[&]
 				{
 					std::size_t total = 0;
 					for (const auto& face : faces.all())
+					{
 						total += face.size();
+					}
 					return total;
 				}());
 
 			for (const auto& [f, face] : faces.all() | std::views::enumerate)
 			{
-				const auto face_start = topo.halfedges_.size();
-				topo.face_halfedge_[f] = face_start;
+				const auto faceStart = topo.halfedges_.size();
+				topo.face_halfedge_[f] = faceStart;
 
-				const std::size_t n = face.size();
-				topo.halfedges_.resize(topo.halfedges_.size() + n);
+				const std::size_t numFaces = face.size();
+				topo.halfedges_.resize(topo.halfedges_.size() + numFaces);
 
-				for (std::size_t i = 0; i < n; ++i)
+				for (std::size_t i = 0; i < numFaces; ++i)
 				{
-					const HalfedgeRef h = face_start + i;
-					const HalfedgeRef next = face_start + (i + 1) % n;
-					const HalfedgeRef prev = face_start + (i + n - 1) % n;
+					const HalfedgeRef edgeIndex = faceStart + i;
+					const HalfedgeRef nextIndex = faceStart + ((i + 1) % numFaces);
+					const HalfedgeRef prevIndex = faceStart + ((i + numFaces - 1) % numFaces);
 
 					const auto origin = static_cast<VertexRef>(face[i]);
-					const auto dest = static_cast<VertexRef>(face[(i + 1) % n]);
+					const auto dest = static_cast<VertexRef>(face[(i + 1) % numFaces]);
 
-					topo.halfedges_[h] = Halfedge{
+					topo.halfedges_[edgeIndex] = Halfedge{
 						.vertex = origin,
 						.face = static_cast<size_t>(f),
-						.next = next,
-						.prev = prev,
+						.next = nextIndex,
+						.prev = prevIndex,
 						.opposite = std::nullopt,
 					};
 
 					if (topo.vertex_halfedge_[origin] == std::nullopt)
-						topo.vertex_halfedge_[origin] = h;
-
-					auto canonize_edge = [](const VertexRef a, const VertexRef b) -> EdgeKey { return {.a = std::min(a, b), .b = std::max(a, b)}; };
-
-					const EdgeKey key = canonize_edge(origin, dest);
-					if (auto [it, inserted] = edge_map.emplace(key, h); !inserted)
 					{
-						const HalfedgeRef other = it->second;
-						topo.halfedges_[h].opposite = other;
-						topo.halfedges_[other].opposite = h;
-						edge_map.erase(it);
+						topo.vertex_halfedge_[origin] = edgeIndex;
+					}
+
+					auto canonizeEdge = [](const VertexRef a, const VertexRef b) -> EdgeKey { return {.a = std::min(a, b), .b = std::max(a, b)}; };
+
+					const EdgeKey key = canonizeEdge(origin, dest);
+					if (auto [result, inserted] = edgeMap.emplace(key, edgeIndex); !inserted)
+					{
+						const HalfedgeRef other = result->second;
+						topo.halfedges_[edgeIndex].opposite = other;
+						topo.halfedges_[other].opposite = edgeIndex;
+						edgeMap.erase(result);
 					}
 				}
 			}
@@ -141,14 +145,16 @@ namespace HalfEdge
 			{
 				const auto& he = topo.halfedges_[h];
 				if (!he.opposite.has_value())
+				{
 					topo.vertex_halfedge_[he.vertex] = h;
+				}
 			}
 
 			return topo;
 		}
 	};
 
-} // namespace HalfEdge
+} // namespace half_edge
 
 
 #endif // MULTIMEDIARETRIEVAL_HALFEDGETOPOLOGY_H

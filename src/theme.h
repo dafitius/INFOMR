@@ -5,7 +5,7 @@
 #include <QPalette>
 #include <QStyleFactory>
 
-namespace Theme
+namespace theme
 {
 	inline void apply(QApplication& app)
 	{
@@ -175,4 +175,4 @@ namespace Theme
          }
      )");
 	}
-} // namespace Theme
+}  // namespace theme

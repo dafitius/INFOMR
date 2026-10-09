@@ -87,7 +87,7 @@ void BrowsePage::setupUI()
 	splitter->setStretchFactor(1, 2);
 	splitter->setSizes({300, 700});
 
-	connect(exportStatsBtn, &QPushButton::clicked, this, [this] { database->export_stats(); });
+	connect(exportStatsBtn, &QPushButton::clicked, this, [this] { database->exportStats(); });
 }
 
 void BrowsePage::setupClassList()
@@ -95,7 +95,7 @@ void BrowsePage::setupClassList()
 	// Empty item means that no class is selected initially.
 	// classComboBox->addItem("Select class...", QVariant());
 
-	for (const auto& className : database->iter_class_names())
+	for (const auto& className : database->iterClassNames())
 	{
 		const QString name = QString::fromStdString(className);
 
@@ -116,15 +116,15 @@ void BrowsePage::loadSelectedClass()
 
 	const QString className = classComboBox->currentData().toString();
 
-	if (className.isEmpty())
+	if (className.isEmpty()) {
 		return;
+}
 
-	for (const auto& meshPath : database->iter_class_shape_paths(className.toStdString()))
+	for (const auto& meshPath : database->iterClassShapePaths(className.toStdString()))
 	{
-		const QString source = QString::fromStdString(meshPath.string());
-		const QFileInfo fileInfo(source);
+		const QFileInfo fileInfo(meshPath);
 
-		addMeshCard({className + "/" + fileInfo.fileName(), source});
+		addMeshCard({.name = className + "/" + fileInfo.fileName(), .source = meshPath});
 	}
 }
 

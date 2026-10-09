@@ -1,12 +1,10 @@
 #include "meshrenderer.h"
-
-#include <QMatrix4x4>
 #include <glm/gtc/type_ptr.hpp>
 
-std::optional<MeshRenderer> MeshRenderer::Init()
+std::optional<MeshRenderer> MeshRenderer::init()
 {
-	auto surfaceProgram = ShaderProgram::Init(":/shaders/mesh.vert", ":/shaders/mesh.frag");
-	auto edgeProgram = ShaderProgram::Init(":/shaders/edge.vert", ":/shaders/edge.frag");
+	auto surfaceProgram = ShaderProgram::init(":/shaders/mesh.vert", ":/shaders/mesh.frag");
+	auto edgeProgram = ShaderProgram::init(":/shaders/edge.vert", ":/shaders/edge.frag");
 
 	if (!surfaceProgram || !edgeProgram)
 	{

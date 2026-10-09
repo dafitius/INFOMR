@@ -1,12 +1,10 @@
 #include "meshviewport.h"
 
-#include <QMouseEvent>
 #include <QOpenGLContext>
 #include <QWheelEvent>
 
 #include <algorithm>
 #include <cmath>
-#include <utility>
 
 namespace
 {
@@ -57,7 +55,7 @@ void MeshViewport::initializeGL()
 
 	connect(context(), &QOpenGLContext::aboutToBeDestroyed, this, &MeshViewport::releaseGpuResources, Qt::UniqueConnection);
 
-	renderer_ = MeshRenderer::Init();
+	renderer_ = MeshRenderer::init();
 	uploadPending_ = mesh_.has_value();
 }
 

@@ -1,8 +1,7 @@
 #include "gpumesh.h"
 
-#include "../io/mesh.hpp"
+#include "../geometry/mesh.hpp"
 
-#include <cstdint>
 #include <vector>
 
 
@@ -27,8 +26,8 @@ namespace
 } // namespace
 
 GpuMesh::GpuMesh(const Mesh& mesh)
-	: triangleIndexCount_(static_cast<GLsizei>(mesh.triangle_indices().size()))
-	, edgeIndexCount_(static_cast<GLsizei>(mesh.edge_indices().size()))
+	: triangleIndexCount_(static_cast<GLsizei>(mesh.triangleIndices().size()))
+	, edgeIndexCount_(static_cast<GLsizei>(mesh.edgeIndices().size()))
 {
 	initializeOpenGLFunctions();
 	const auto& [min, max] = mesh.bounds();
@@ -37,8 +36,8 @@ GpuMesh::GpuMesh(const Mesh& mesh)
 	const std::vector<std::uint32_t> boundingBoxIndices = {0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7};
 
 	allocate(vertexBuffer_, mesh.positions());
-	allocate(triangleIndexBuffer_, mesh.triangle_indices());
-	allocate(edgeIndexBuffer_, mesh.edge_indices());
+	allocate(triangleIndexBuffer_, mesh.triangleIndices());
+	allocate(edgeIndexBuffer_, mesh.edgeIndices());
 	allocate(boundingBoxVertexBuffer_, boundingBoxVertices);
 	allocate(boundingBoxIndexBuffer_, boundingBoxIndices);
 	allocateGrid();
@@ -125,7 +124,7 @@ void GpuMesh::drawBoundaryEdges()
 
 void GpuMesh::allocateGrid()
 {
-	constexpr int halfCells = 100;
+	constexpr size_t halfCells = 100;
 	constexpr float y = 0.0f;
 	constexpr float cellSize = .1;
 
@@ -134,26 +133,20 @@ void GpuMesh::allocateGrid()
 	std::vector<float> debugGridVertices;
 	std::vector<std::uint32_t> debugGridIndices;
 
-	debugGridVertices.reserve((2 * halfCells + 1) * 2 * 2 * 3);
-	debugGridIndices.reserve((2 * halfCells + 1) * 2 * 2);
+	debugGridVertices.reserve(((2 * halfCells) + 1) * 2 * 2 * 3);
+	debugGridIndices.reserve(((2 * halfCells) + 1) * 2 * 2);
 
-	for (int i = -halfCells; i <= halfCells; ++i)
+	for (size_t i = -static_cast<int>(halfCells); i <= halfCells; ++i)
 	{
 		const float v = static_cast<float>(i) * cellSize;
 
 		const auto baseA = static_cast<std::uint32_t>(debugGridVertices.size() / 3);
-		debugGridVertices.insert(debugGridVertices.end(), {
-			-extent, y, v,
-			 extent, y, v
-		});
+		debugGridVertices.insert(debugGridVertices.end(), {-extent, y, v, extent, y, v});
 		debugGridIndices.push_back(baseA + 0);
 		debugGridIndices.push_back(baseA + 1);
 
 		const auto baseB = static_cast<std::uint32_t>(debugGridVertices.size() / 3);
-		debugGridVertices.insert(debugGridVertices.end(), {
-			v, y, -extent,
-			v, y,  extent
-		});
+		debugGridVertices.insert(debugGridVertices.end(), {v, y, -extent, v, y, extent});
 		debugGridIndices.push_back(baseB + 0);
 		debugGridIndices.push_back(baseB + 1);
 	}
@@ -174,15 +167,13 @@ void GpuMesh::allocateNormals(const Mesh& mesh, const float length)
 	vertices.reserve(vertexCount * 2 * 3);
 	indices.reserve(vertexCount * 2);
 
-	for (auto&& [i, vertex] : std::views::zip(positions, normals) | std::views::enumerate) {
+	for (auto&& [i, vertex] : std::views::zip(positions, normals) | std::views::enumerate)
+	{
 		auto&& [position, normal] = vertex;
 
 		auto start = position;
 		auto end = position + normal * length;
-		vertices.insert(vertices.end(), {
-			start.x, start.y, start.z,
-			end.x, end.y, end.z
-		});
+		vertices.insert(vertices.end(), {start.x, start.y, start.z, end.x, end.y, end.z});
 
 		const auto base = static_cast<std::uint32_t>(i * 2);
 		indices.push_back(base);
@@ -196,7 +187,7 @@ void GpuMesh::allocateNormals(const Mesh& mesh, const float length)
 
 void GpuMesh::allocateBoundaryEdges(const Mesh& mesh)
 {
-	const auto edges = mesh.boundary_edges();
+	const auto edges = mesh.boundaryEdges();
 	const auto positions = mesh.positions();
 
 	std::vector<float> vertices;
@@ -212,10 +203,7 @@ void GpuMesh::allocateBoundaryEdges(const Mesh& mesh)
 		const auto start = positions[a];
 		const auto end = positions[b];
 
-		vertices.insert(vertices.end(), {
-			start.x, start.y, start.z,
-			end.x, end.y, end.z
-		});
+		vertices.insert(vertices.end(), {start.x, start.y, start.z, end.x, end.y, end.z});
 
 		const auto base = static_cast<std::uint32_t>(i * 2);
 		indices.push_back(base);

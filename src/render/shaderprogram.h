@@ -21,7 +21,7 @@ public:
 		return *this;
 	}
 
-	static std::optional<ShaderProgram> Init(const QString& vertexPath, const QString& fragmentPath);
+	static std::optional<ShaderProgram> init(const QString& vertexPath, const QString& fragmentPath);
 
 	void bound(const std::function<void(QOpenGLShaderProgram&)>&) const;
 

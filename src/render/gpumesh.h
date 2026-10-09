@@ -36,11 +36,11 @@ private:
 	QOpenGLBuffer boundingBoxVertexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
 	QOpenGLBuffer boundingBoxIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
 	QOpenGLBuffer debugGridVertexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
-	QOpenGLBuffer debugGridIndexBuffer_  = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
+	QOpenGLBuffer debugGridIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
 	QOpenGLBuffer debugNormalsVertexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
-	QOpenGLBuffer debugNormalsIndexBuffer_  = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
+	QOpenGLBuffer debugNormalsIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
 	QOpenGLBuffer boundaryEdgesVertexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
-	QOpenGLBuffer boundaryEdgesIndexBuffer_  = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
+	QOpenGLBuffer boundaryEdgesIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
 
 	QOpenGLVertexArrayObject triangleVao_;
 	QOpenGLVertexArrayObject edgeVao_;

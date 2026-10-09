@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 	QSurfaceFormat::setDefaultFormat(format);
 
 	QApplication app(argc, argv);
-	Theme::apply(app);
+	theme::apply(app);
 
 	MainWindow window(std::make_unique<ShapeDb>(*shapeDb));
 	window.setWindowTitle("Geometry Retrieval");

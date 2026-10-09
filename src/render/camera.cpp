@@ -56,7 +56,7 @@ glm::mat4 Camera::viewMatrix() const
 glm::mat4 Camera::projectionMatrix(const float aspectRatio) const
 {
 	const float nearPlane = distance_ * 0.01F;
-	const float farPlane = distance_ + framedBounds_.radius() * 20.0F;
+	const float farPlane = distance_ + (framedBounds_.radius() * 20.0F);
 	return glm::perspective(glm::radians(fieldOfView_), aspectRatio, nearPlane, farPlane);
 }
 
