@@ -26,6 +26,7 @@ private:
 	MeshViewport* viewport;
 	QLabel* statsLabel;
 	QPushButton* alignAxesButton;
+	QPushButton* scaleToUnitButton;
 };
 
 #endif // MR_WORKSHOP_H

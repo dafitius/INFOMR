@@ -28,6 +28,7 @@ void Workshop::loadMesh(const Mesh& mesh) const
 	const auto object = mesh.translated(-mesh.baryCenter());
 	viewport->setMesh(object);
 	alignAxesButton->setEnabled(true);
+	scaleToUnitButton->setEnabled(true);
 }
 
 Workshop::~Workshop() = default;
@@ -99,6 +100,12 @@ void Workshop::setupUI()
 	alignAxesButton->setToolTip("Rotate the mesh so its eigenvector axes align with the world axes");
 	alignAxesButton->setEnabled(false);
 	sidebarLayout->addWidget(alignAxesButton);
+
+	scaleToUnitButton = new QPushButton("Scale to unit", sidebar);
+	scaleToUnitButton->setToolTip("Scales the object, so the x axis is exactly 1 unit (Should only be used after aligning eigenvector)");
+	scaleToUnitButton->setEnabled(false);
+	sidebarLayout->addWidget(scaleToUnitButton);
+
 	auto* resetViewBtn = new QPushButton("Reset view", sidebar);
 	sidebarLayout->addWidget(resetViewBtn);
 
@@ -123,21 +130,14 @@ void Workshop::setupUI()
 
 	connect(normalsBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showNormals, checked); });
 
-	connect(
-	axesBox, &QCheckBox::toggled, this,
-	[this](const bool checked)
-	{
-		viewport->setRenderSetting(&RenderSettings::showAxes, checked);
-	});
+	connect(axesBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showAxes, checked); });
 
 	connect(
 		eigenvectorAxesBox, &QCheckBox::toggled, this,
-		[this](const bool checked)
-		{
-			viewport->setRenderSetting(&RenderSettings::showEigenvectorAxes, checked);
-		});
+		[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showEigenvectorAxes, checked); });
 
 	connect(alignAxesButton, &QPushButton::clicked, viewport, &MeshViewport::alignEigenvectorAxesToWorldAxes);
+	connect(scaleToUnitButton, &QPushButton::clicked, viewport, &MeshViewport::scaleToUnit);
 	connect(resetViewBtn, &QPushButton::clicked, viewport, &MeshViewport::resetView);
 
 	splitter->setStretchFactor(0, 2);

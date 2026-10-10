@@ -46,6 +46,23 @@ void MeshViewport::alignEigenvectorAxesToWorldAxes()
 	update();
 }
 
+void MeshViewport::scaleToUnit()
+{
+	if (!mesh_)
+	{
+		return;
+	}
+
+	auto bounds = mesh_->bounds();
+	// X axis should be the largest axis after aligning with eigen vectors
+	auto scale = 1 / (bounds.max.x - bounds.min.x);
+	mesh_.emplace(mesh_->scaled(glm::vec3{scale}));
+	// TODO: Disabled on purpose, so you can see the scaling happen.
+	// camera_.frame(mesh_->bounds());
+	uploadPending_ = true;
+	update();
+}
+
 void MeshViewport::setRenderSettings(const RenderSettings& settings)
 {
 	settings_ = settings;
@@ -59,6 +76,7 @@ const RenderSettings& MeshViewport::renderSettings() const
 
 void MeshViewport::resetView()
 {
+	camera_.frame(mesh_->bounds());
 	camera_.reset();
 	update();
 }
