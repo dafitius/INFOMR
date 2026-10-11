@@ -3,8 +3,10 @@
 
 #include <QFrame>
 #include <QString>
+#include <filesystem>
 
 #include "../geometry/mesh.hpp"
+
 
 class BrowserCard : public QFrame
 {

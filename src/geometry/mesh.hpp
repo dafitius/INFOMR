@@ -6,6 +6,7 @@
 #include "face_list.hpp"
 #include "halfedge.hpp"
 #include "ops/ops.h"
+#include "submesh.h"
 #include "pca.hpp"
 
 #include <GL/gl.h>
@@ -82,6 +83,7 @@ private:
 	mutable Lazy<std::vector<Edge>> edges_;
 	mutable Lazy<size_t> skipped_faces_;
 	mutable Lazy<half_edge::Topology> topology_;
+	mutable Lazy<SubMesh> hull_;
 
 public:
 	Mesh() = default;
@@ -256,6 +258,11 @@ public:
 	[[nodiscard]] glm::vec3 baryCenter() const
 	{
 		return bary_center_.getOrCreate([&] { return mesh::ops::util::calcBaryCenter(positions_); });
+	}
+
+	[[nodiscard]] std::optional<SubMesh> convexHull() const
+	{
+		return hull_.getOrTryCreate([&] { return mesh::ops::derive::makeConvexHull(*this); });
 	}
 
 	[[nodiscard]] std::span<const std::uint32_t> triangleIndices() const

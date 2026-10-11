@@ -81,6 +81,11 @@ void Workshop::setupUI()
 	normalsBox->setChecked(viewport->renderSettings().showNormals);
 	sidebarLayout->addWidget(normalsBox);
 
+	auto* hullBox = new QCheckBox("Show Hull", sidebar);
+	hullBox->setToolTip("Render a convex hull around the object");
+	hullBox->setChecked(viewport->renderSettings().showHull);
+	sidebarLayout->addWidget(hullBox);
+
 	auto* gridBox = new QCheckBox("Render Grid", sidebar);
 	gridBox->setToolTip("Render a grid on the ground plane");
 	gridBox->setChecked(viewport->renderSettings().showGrid);
@@ -127,6 +132,11 @@ void Workshop::setupUI()
 	connect(
 		boundingBox, &QCheckBox::toggled, this,
 		[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showBoundingBox, checked); });
+
+	connect(
+		hullBox, &QCheckBox::toggled, this,
+		[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showHull, checked); });
+
 
 	connect(normalsBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showNormals, checked); });
 

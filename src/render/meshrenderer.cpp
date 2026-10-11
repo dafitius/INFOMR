@@ -148,4 +148,17 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 			});
 		glEnable(GL_DEPTH_TEST);
 	}
+
+	if (settings.showHull)
+	{
+		constexpr auto hullColor = QVector3D(0.1F, 0.65F, 0.1F);
+
+		edgeProgram_.bound(
+			[&](QOpenGLShaderProgram& program)
+			{
+				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
+				program.setUniformValue("edgeColor", hullColor);
+				mesh.drawHullEdges();
+			});
+	}
 }

@@ -42,6 +42,18 @@ public:
 		offsets_.push_back(indices_.size());
 	}
 
+	template <std::ranges::input_range R>
+	requires std::convertible_to<std::ranges::range_value_t<R>, Index>
+	void push_range(R&& range)
+	{
+		for (const auto v : range)
+		{
+			indices_.push_back(static_cast<Index>(v));
+		}
+		offsets_.push_back(indices_.size());
+	}
+
+
 	// Adds one vertex index to the face being built, call end_face() when it is complete
 	void push_index(const Index index)
 	{

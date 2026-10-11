@@ -24,10 +24,13 @@ public:
 	void drawGrid();
 	void drawNormals();
 	void drawBoundaryEdges();
+	void drawHullEdges();
 
 	void allocateGrid();
 	void allocateNormals(const Mesh& mesh, float length);
 	void allocateBoundaryEdges(const Mesh& mesh);
+	void allocateHullEdges(const Mesh& mesh);
+
 
 private:
 	void configureVertexArray(QOpenGLVertexArrayObject& vao, QOpenGLBuffer& vertexBuffer, QOpenGLBuffer& indexBuffer);
@@ -45,12 +48,16 @@ private:
 	QOpenGLBuffer boundaryEdgesIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
 	QOpenGLBuffer axisVertexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
 
+	// hullEdgesVertexBuffer_ is the same as vertexBuffer_
+	QOpenGLBuffer hullEdgesIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
+
 	QOpenGLVertexArrayObject triangleVao_;
 	QOpenGLVertexArrayObject edgeVao_;
 	QOpenGLVertexArrayObject boundingBoxVao_;
 	QOpenGLVertexArrayObject debugGridVao_;
 	QOpenGLVertexArrayObject debugNormalsVao_;
 	QOpenGLVertexArrayObject boundaryEdgesVao_;
+	QOpenGLVertexArrayObject hullEdgesVao_;
 	QOpenGLVertexArrayObject axisVao_;
 
 	GLsizei triangleIndexCount_ = 0;
@@ -58,5 +65,6 @@ private:
 	GLsizei debugGridIndexCount_ = 0;
 	GLsizei debugNormalsIndexCount_ = 0;
 	GLsizei boundaryEdgesIndexCount_ = 0;
+	GLsizei hullEdgesIndexCount_ = 0;
 	float axisLength_ = 1.0F;
 };

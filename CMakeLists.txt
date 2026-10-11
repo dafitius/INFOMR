@@ -29,10 +29,24 @@ find_package(Qt6 REQUIRED COMPONENTS
 FetchContent_Declare(
         glm
         GIT_REPOSITORY	https://github.com/g-truc/glm.git
-        GIT_TAG 	8d1fd52e5ab5590e2c81768ace50c72bae28f2ed #refs/tags/1.0.3
+        GIT_TAG 	    8d1fd52e5ab5590e2c81768ace50c72bae28f2ed #refs/tags/1.0.3
 )
-
 FetchContent_MakeAvailable(glm)
+
+FetchContent_Declare(
+        qhull
+        GIT_REPOSITORY  https://github.com/qhull/qhull
+        GIT_TAG         d1c2fc0caa5f644f3a0f220290d4a868c68ed4f6 #refs/tags/v8.1-alpha6
+)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(BUILD_STATIC_LIBS ON  CACHE BOOL "" FORCE)
+set(CMAKE_AUTOMOC OFF)
+set(CMAKE_AUTORCC OFF)
+set(CMAKE_AUTOUIC OFF)
+FetchContent_MakeAvailable(qhull)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_source_files_properties(*.c LANGUAGE C)
@@ -56,7 +70,7 @@ source_group(${PROJECT_NAME} ${main_src})
 
 qt_add_executable(${PROJECT_NAME} ${main_src} resources/resources.qrc)
 
-target_include_directories(${PROJECT_NAME} PRIVATE "${PROJECT_SOURCE_DIR}/extern/glm")
+target_include_directories(${PROJECT_NAME} PRIVATE "${qhull_SOURCE_DIR}/src")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Core
@@ -67,6 +81,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Quick
         Qt6::QuickWidgets
         glm::glm
+        qhullcpp qhullstatic_r
 )
 
 if(WIN32)

@@ -7,6 +7,7 @@
 #include "glm/fwd.hpp"
 
 class Mesh;
+class SubMesh;
 
 namespace mesh::ops
 {
@@ -20,6 +21,12 @@ namespace mesh::ops
 	{
 		Mesh fillHoles(const Mesh& mesh);
 		Mesh makeConsistentOrientations(const Mesh& mesh);
+	}
+
+	namespace derive
+	{
+		std::optional<SubMesh> makeConvexHull(const Mesh& mesh);
+		std::optional<SubMesh> makeTriangleMesh(const Mesh& mesh);
 	}
 
 	namespace util

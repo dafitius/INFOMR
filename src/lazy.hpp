@@ -21,6 +21,16 @@ public:
 		return *value_;
 	}
 
+	template <typename F>
+	const T& getOrTryCreate(F&& f) const
+	{
+		if (!value_)
+		{
+			value_ = std::forward<F>(f)();
+		}
+		return *value_;
+	}
+
 	const T& get() const
 	{
 		return *value_;

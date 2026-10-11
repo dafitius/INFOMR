@@ -50,6 +50,7 @@ GpuMesh::GpuMesh(const Mesh& mesh)
 	allocateGrid();
 	allocateNormals(mesh, 0.005f);
 	allocateBoundaryEdges(mesh);
+	allocateHullEdges(mesh);
 
 	configureVertexArray(triangleVao_, vertexBuffer_, triangleIndexBuffer_);
 	configureVertexArray(edgeVao_, vertexBuffer_, edgeIndexBuffer_);
@@ -57,6 +58,7 @@ GpuMesh::GpuMesh(const Mesh& mesh)
 	configureVertexArray(debugGridVao_, debugGridVertexBuffer_, debugGridIndexBuffer_);
 	configureVertexArray(debugNormalsVao_, debugNormalsVertexBuffer_, debugNormalsIndexBuffer_);
 	configureVertexArray(boundaryEdgesVao_, boundaryEdgesVertexBuffer_, boundaryEdgesIndexBuffer_);
+	configureVertexArray(hullEdgesVao_, vertexBuffer_, hullEdgesIndexBuffer_);
 	axisVao_.create();
 	axisVao_.bind();
 	axisVertexBuffer_.bind();
@@ -148,6 +150,13 @@ void GpuMesh::drawBoundaryEdges()
 	boundaryEdgesVao_.bind();
 	glDrawElements(GL_LINES, boundaryEdgesIndexCount_, GL_UNSIGNED_INT, nullptr);
 	boundaryEdgesVao_.release();
+}
+
+void GpuMesh::drawHullEdges()
+{
+	hullEdgesVao_.bind();
+	glDrawElements(GL_LINES, hullEdgesIndexCount_, GL_UNSIGNED_INT, nullptr);
+	hullEdgesVao_.release();
 }
 
 void GpuMesh::allocateGrid()
@@ -242,4 +251,28 @@ void GpuMesh::allocateBoundaryEdges(const Mesh& mesh)
 
 	allocate(boundaryEdgesVertexBuffer_, vertices);
 	allocate(boundaryEdgesIndexBuffer_, indices);
+}
+
+void GpuMesh::allocateHullEdges(const Mesh& mesh)
+{
+	const auto hull = mesh.convexHull();
+	if (!hull.has_value())
+	{
+		return;
+	}
+
+	const auto faces = hull->faceList();
+
+	std::vector<std::uint32_t> indices;
+	for (const auto face : faces.all())
+	{
+		for (size_t i = 0; i < face.size(); ++i)
+		{
+			indices.push_back(static_cast<std::uint32_t>(face[i]));
+			indices.push_back(static_cast<std::uint32_t>(face[(i + 1) % face.size()]));
+		}
+	}
+
+	hullEdgesIndexCount_ = static_cast<GLsizei>(indices.size());
+	allocate(hullEdgesIndexBuffer_, indices);
 }
