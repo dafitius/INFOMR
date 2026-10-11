@@ -26,7 +26,18 @@ MeshViewport::~MeshViewport()
 
 void MeshViewport::setMesh(const Mesh& mesh)
 {
-	mesh_.emplace(mesh.translated(-mesh.baryCenter()));
+	mesh_.emplace(mesh.translated(-mesh.baryCenter())
+		.triangulated()
+		.withConsistentOrientations()
+		.filledHoles()
+		.withConsistentOrientations()
+		// .subdivided()
+		);
+	if (!mesh_->topology().isClosed())
+	{
+		const auto& hes = mesh.topology().halfedges();
+		const auto& pos = mesh.positions();
+	}
 	camera_.frame(mesh_->bounds());
 
 	uploadPending_ = true;

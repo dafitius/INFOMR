@@ -43,11 +43,22 @@ void BrowserCard::setupUI()
 	mainLayout->setContentsMargins(12, 12, 12, 12);
 	mainLayout->setSpacing(10);
 
-	const auto mesh = object->translated(-object->baryCenter()).filledHoles();
+	std::cout << meshName.toStdString() << "\n";
+	const auto mesh = object->translated(-object->baryCenter())
+						.filledHoles()
+						.withConsistentOrientations()
+						.triangulated();
+						// .subdivided();
 	object.emplace(mesh);
 
 	const auto mesh2 = object->rotated(object->principleAxes());
 	object.emplace(mesh2);
+	//
+	// if (object->isTriangleMesh())
+	// {
+	// 	const auto mesh3 = object->subdivided();
+	// 	object.emplace(mesh3);
+	// }
 
 	auto* preview = new MeshPreview(object->vertexPositionBuffer(), object->triangleIndices(), this);
 	preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);

@@ -69,6 +69,8 @@ public:
 	};
 	static_assert(sizeof(Edge) == sizeof(std::uint32_t) * 2, "Edge has to be two u32!!");
 
+	enum class FaceType : uint8_t {TRI = 0, QUAD = 1, MIXED = 2,};
+
 private:
 	// non-mutable, create a new Mesh if you want to change these
 	const std::vector<Position> positions_;
@@ -77,6 +79,7 @@ private:
 
 	// mutable, lazily initialized
 	mutable Lazy<Bounds> bounds_;
+	mutable Lazy<FaceType> face_type_;
 	mutable Lazy<Position> bary_center_;
 	mutable Lazy<glm::quat> principle_axes_;
 	mutable Lazy<std::vector<std::uint32_t>> triangle_indices_;
@@ -138,15 +141,14 @@ public:
 	/// @brief Check what type the faces are
 	/// @return 0 = all faces tris, 1 = all faces quads, 2 = mixed/other
 	[[nodiscard]]
-	size_t faceType() const
+	FaceType faceType() const
 	{
-		auto tris = std::ranges::all_of(faces_.all(), [](const Face face) { return face.size() == 3; });
-		if (tris)
-		{
-			return 0;
-		}
-		const auto quads = std::ranges::all_of(faces_.all(), [](const Face face) { return face.size() == 4; });
-		return quads ? 1 : 2;
+		return face_type_.getOrCreate([&]{ return calcFaceType(); });
+	}
+
+	bool isTriangleMesh() const
+	{
+		return faceType() == FaceType::TRI;
 	}
 
 	[[nodiscard]]
@@ -245,6 +247,18 @@ public:
 	}
 
 	[[nodiscard]]
+	Mesh subdivided() const
+	{
+		return mesh::ops::repair::makeLoopSubdividedMesh(*this);
+	}
+
+	[[nodiscard]]
+	Mesh triangulated() const
+	{
+		return mesh::ops::derive::makeTriangleMesh(*this)->toMesh();
+	}
+
+	[[nodiscard]]
 	Mesh withConsistentOrientations() const
 	{
 		return mesh::ops::repair::makeConsistentOrientations(*this);
@@ -301,6 +315,22 @@ private:
 			bounds.expand(position);
 		}
 		return bounds.valid() ? bounds : Bounds{glm::vec3{0.F}, glm::vec3{0.F}};
+	}
+
+	[[nodiscard]] FaceType calcFaceType() const
+	{
+		if (faces_.empty()) { return FaceType::MIXED; }
+		auto faceSize = faces_[0].size();
+		const auto equal = std::ranges::all_of(faces_.all(), [&faceSize](const Face face) { return face.size() == faceSize; });
+		if (equal && faceSize == 3)
+		{
+			return FaceType::TRI;
+		}
+		if (equal && faceSize == 4)
+		{
+			return FaceType::QUAD;
+		}
+		return FaceType::MIXED;
 	}
 
 	[[nodiscard]] std::vector<std::uint32_t> createTriangleIndices() const

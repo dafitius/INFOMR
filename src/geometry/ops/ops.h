@@ -21,6 +21,7 @@ namespace mesh::ops
 	{
 		Mesh fillHoles(const Mesh& mesh);
 		Mesh makeConsistentOrientations(const Mesh& mesh);
+		Mesh makeLoopSubdividedMesh(const Mesh& mesh);
 	}
 
 	namespace derive
@@ -32,7 +33,7 @@ namespace mesh::ops
 	namespace util
 	{
 		glm::vec3 calcBaryCenter(std::span<const glm::vec3> points);
-	}  // namespace util
-}  // namespace mesh::ops
+	}
+}
 
 #endif // MULTIMEDIARETRIEVAL_OPS_H

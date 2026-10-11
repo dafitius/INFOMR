@@ -67,6 +67,11 @@ namespace mesh::ops::derive
 
 	std::optional<SubMesh> makeTriangleMesh(const Mesh& mesh)
 	{
+		if (mesh.isTriangleMesh())
+		{
+			return SubMesh{mesh.positions(), mesh.normals(), mesh.faces()};
+		}
+
 		const auto positions = mesh.positions();
 		const auto normals = mesh.normals();
 		const auto& faces = mesh.faces();

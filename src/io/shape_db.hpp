@@ -148,7 +148,7 @@ public:
 					return;
 				}
 
-				results[i] = Row{path.string(), className, mesh->numVertices(), mesh->numFaces(), mesh->faceType(), mesh->bounds().radius()};
+				results[i] = Row{path.string(), className, mesh->numVertices(), mesh->numFaces(), static_cast<std::uint8_t>(mesh->faceType()), mesh->bounds().radius()};
 			});
 
 		std::ofstream outputFile("shape_db_statistics.csv");
