@@ -1,20 +1,24 @@
 #include "mainwindow.h"
+
+#include "components/histogram.h"
 #include "geometry/mesh.hpp"
 #include "pages/browsepage.h"
+#include "pages/statistics.h"
 #include "pages/workshop.h"
 #include <QVBoxLayout>
 #include <QWidget>
 
-MainWindow::MainWindow(std::unique_ptr<ShapeDb> database, QWidget* parent)
-	: QMainWindow(parent)
+MainWindow::MainWindow(std::shared_ptr<ShapeDb> database, QWidget* parent)
+	: QMainWindow(parent), database_(database)
 {
-	setupUI(std::move(database));
+	setupUI();
 }
 
 MainWindow::~MainWindow() {}
 
-void MainWindow::setupUI(std::unique_ptr<ShapeDb> database)
+void MainWindow::setupUI()
 {
+
 	auto* centralWidget = new QWidget(this);
 	auto* layout = new QVBoxLayout(centralWidget);
 	layout->setContentsMargins(0, 0, 0, 0);
@@ -22,39 +26,108 @@ void MainWindow::setupUI(std::unique_ptr<ShapeDb> database)
 	tabWidget = new QTabWidget(this);
 
 	// Browse tab
-	auto* browsePage = new BrowsePage(std::move(database), this);
+	auto* browsePage = new BrowsePage(database_, this);
 	tabWidget->addTab(browsePage, "Browse");
 
 	// Workshop tab
 	auto* workshop = new Workshop(this);
 	tabWidget->addTab(workshop, "Workshop");
 
-	connect(
-		browsePage, &BrowsePage::meshSelected, this,
-		[this, workshop](const std::filesystem::path& source)
+	auto* stats = new Statistics(this);
+	stats->setProvider(
+		[&](const int limit)
 		{
-			std::optional<Mesh> mesh;
+			QVector<Histogram> result;
 
-			if (source.extension() == ".obj")
+
+			std::vector<std::filesystem::path> work;
+			for (const auto& meshPath : database_->iterRandomShapesClassDistributed(limit))
 			{
-				mesh.emplace(*Mesh::fromObj(source));
-			}
-			else
-			{
-				std::cerr << "Unsupported mesh format: " << source.extension() << '\n';
-				return;
+				work.emplace_back(meshPath);
 			}
 
-			if (!mesh)
-			{
-				std::cerr << "Failed to load mesh: " << source << '\n';
-				return;
-			}
+			std::vector<std::pair<std::optional<Mesh>, std::filesystem::path>> meshes(work.size());
+			auto indices = std::views::iota(size_t{0}, work.size());
 
-			workshop->loadMesh(*mesh);
-			tabWidget->setCurrentWidget(workshop);
+			std::for_each(
+				std::execution::par, indices.begin(), indices.end(),
+				[&](const size_t i)
+				{
+					if (auto mesh = Mesh::fromObj(work[i]))
+					{
+						meshes[i].first.emplace(std::move(*mesh));
+						meshes[i].second = std::move(work[i]);
+					}
+				});
+
+			auto createHistogram = [&meshes, limit] (const std::string& name, const size_t bucketSize, const std::function<double(const Mesh&)>& callback)
+			{
+				auto samples = QVector<Sample>{};
+				samples.reserve(limit);
+				for (const auto& [mesh, path] : meshes)
+				{
+					if (mesh)
+					{
+						samples.push_back(Sample(callback(mesh.value()), path));
+					}
+				}
+				return Histogram{name.c_str(), bucketSize, samples};
+			};
+
+
+			auto numVertices = createHistogram("Number of vertices", 2000, [](const auto& mesh) -> double
+			{
+				return mesh.numVertices();
+			});
+
+			result.push_back(numVertices);
+
+			result.push_back(
+				Histogram{
+					"Test histogram", 10,
+					QVector{
+						Sample{0.434, ""},
+						Sample{0.4184, ""},
+						Sample{0.4144, ""},
+						Sample{0.4184, ""},
+						Sample{0.2184, ""},
+					}});
+			return result;
 		});
+	tabWidget->addTab(stats, tr("Statistics"));
+
+	connect(stats, &Statistics::openModel, this, [this](const std::filesystem::path& source) { openModel(source); });
+
+
+	connect(browsePage, &BrowsePage::meshSelected, this, [this](const std::filesystem::path& source) { openModel(source); });
 
 	layout->addWidget(tabWidget);
 	setCentralWidget(centralWidget);
+}
+
+void MainWindow::openModel(std::filesystem::path source)
+{
+	std::optional<Mesh> mesh;
+
+	if (source.extension() == ".obj")
+	{
+		mesh.emplace(*Mesh::fromObj(source));
+	}
+	else
+	{
+		std::cerr << "Unsupported mesh format: " << source.extension() << '\n';
+		return;
+	}
+
+	if (!mesh)
+	{
+		std::cerr << "Failed to load mesh: " << source << '\n';
+		return;
+	}
+
+	if (auto* const workshop = qobject_cast<Workshop*>(tabWidget->widget(1)); workshop != nullptr)
+	{
+		workshop->loadMesh(*mesh);
+		tabWidget->setCurrentWidget(workshop);
+	}
 }

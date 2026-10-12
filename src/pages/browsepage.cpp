@@ -10,7 +10,7 @@
 #include <QSplitter>
 #include <qquickwindow.h>
 
-BrowsePage::BrowsePage(std::unique_ptr<ShapeDb> database, QWidget* parent)
+BrowsePage::BrowsePage(std::shared_ptr<ShapeDb> database, QWidget* parent)
 	: QWidget(parent)
 	, database(std::move(database))
 {

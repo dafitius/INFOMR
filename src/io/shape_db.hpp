@@ -77,9 +77,10 @@ public:
 		const auto iter = entries_.find(shapeClass);
 
 		std::vector<std::string> shapes;
-		if (iter != entries_.end()) {
+		if (iter != entries_.end())
+		{
 			shapes = iter->second;
-}
+		}
 
 		return std::views::transform(
 			std::move(shapes), [this, shapeClass = std::move(shapeClass)](const auto& entry) { return resourcePath(shapeClass, entry); });
@@ -88,6 +89,29 @@ public:
 	const std::unordered_map<std::string, std::vector<std::string>>& entries()
 	{
 		return this->entries_;
+	}
+
+	auto iterRandomShapesClassDistributed(const size_t limit) const
+	{
+		const auto classNames = iterClassNames();
+		const size_t numClasses = this->numClasses();
+
+		const size_t numPerClass = limit / numClasses;
+		size_t rem = limit % numClasses;
+
+		return classNames |
+			   std::views::transform(
+				   [this, numPerClass, &rem](const auto& className)
+				   {
+				   	   const size_t classSize = iterClassShapePaths(className).size();
+					   const size_t count = numPerClass + (rem > 0 ? 1 : 0);
+					   if (rem > 0)
+					   {
+						   --rem;
+					   }
+					   return iterClassShapePaths(className) | std::views::take(std::min(count, classSize));
+				   }) |
+			   std::views::join;
 	}
 
 	size_t numShapes() const
@@ -132,9 +156,10 @@ public:
 
 				if (path.extension() == ".obj")
 				{
-					if (auto loaded = Mesh::fromObj(path)) {
+					if (auto loaded = Mesh::fromObj(path))
+					{
 						mesh.emplace(std::move(*loaded));
-}
+					}
 				}
 				else
 				{
@@ -155,9 +180,10 @@ public:
 		outputFile << "file,class,vertices,faces,facetype,bounding_box\n";
 		for (auto& row : results)
 		{
-			if (!row) {
+			if (!row)
+			{
 				return;
-}
+			}
 			outputFile << std::format("{},{},{},{},{},{}", row->file, row->cls, row->verts, row->faces, row->facetype, row->bb_radius) << '\n';
 		}
 		outputFile.close();
