@@ -39,13 +39,14 @@ void MainWindow::setupUI()
 		{
 			QVector<Histogram> result;
 
-
+			//Get all paths we want to analyse, this is where we limit the population
 			std::vector<std::filesystem::path> work;
 			for (const auto& meshPath : database_->iterRandomShapesClassDistributed(limit))
 			{
 				work.emplace_back(meshPath);
 			}
 
+			//Create [mesh, path] pairs using a parallel foreach
 			std::vector<std::pair<std::optional<Mesh>, std::filesystem::path>> meshes(work.size());
 			auto indices = std::views::iota(size_t{0}, work.size());
 
@@ -60,6 +61,8 @@ void MainWindow::setupUI()
 					}
 				});
 
+			//lambda taking a name, size and callback in order to create the histogram.
+			//Could maybe be moved to be a constructor on Historgram, but you'd need to pass in meshes and limit
 			auto createHistogram = [&meshes, limit] (const std::string& name, const size_t bucketSize, const std::function<double(const Mesh&)>& callback)
 			{
 				auto samples = QVector<Sample>{};
@@ -74,24 +77,13 @@ void MainWindow::setupUI()
 				return Histogram{name.c_str(), bucketSize, samples};
 			};
 
-
-			auto numVertices = createHistogram("Number of vertices", 2000, [](const auto& mesh) -> double
+			//example usage of createHistogram
+			result.push_back(createHistogram("Number of vertices", 2000, [](const auto& mesh) -> double
 			{
 				return mesh.numVertices();
-			});
+			}));
 
-			result.push_back(numVertices);
-
-			result.push_back(
-				Histogram{
-					"Test histogram", 10,
-					QVector{
-						Sample{0.434, ""},
-						Sample{0.4184, ""},
-						Sample{0.4144, ""},
-						Sample{0.4184, ""},
-						Sample{0.2184, ""},
-					}});
+			//After creating this histogram you can freely modify the population if that's required for other stats
 			return result;
 		});
 	tabWidget->addTab(stats, tr("Statistics"));
