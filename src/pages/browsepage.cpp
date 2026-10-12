@@ -1,5 +1,7 @@
 #include "browsepage.h"
 
+#include "../stats/shape_stats.hpp"
+
 #include <QDebug>
 #include <QFileInfo>
 #include <QHBoxLayout>
@@ -87,7 +89,17 @@ void BrowsePage::setupUI()
 	splitter->setStretchFactor(1, 2);
 	splitter->setSizes({300, 700});
 
-	connect(exportStatsBtn, &QPushButton::clicked, this, [this] { database->exportStats(); });
+	connect(
+		exportStatsBtn, &QPushButton::clicked, this,
+		[this]
+		{
+			const auto databaseStats = stats::compute(*database);
+			for (const auto& path : databaseStats.failed)
+			{
+				qWarning() << "Failed to load mesh:" << QString::fromStdString(path.string());
+			}
+			stats::writeCsv("shape_db_statistics.csv", databaseStats.shapes);
+		});
 }
 
 void BrowsePage::setupClassList()

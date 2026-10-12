@@ -75,6 +75,13 @@ public:
 	};
 	static_assert(sizeof(Edge) == sizeof(std::uint32_t) * 2, "Edge has to be two u32!!");
 
+	enum class FaceType : std::uint8_t
+	{
+		Triangles,
+		Quads,
+		Mixed,
+	};
+
 private:
 	// non-mutable, create a new Mesh if you want to change these
 	const std::vector<Position> positions_;
@@ -142,17 +149,17 @@ public:
 	}
 
 	/// @brief Check what type the faces are
-	/// @return 0 = all faces tris, 1 = all faces quads, 2 = mixed/other
+	/// @return Triangles or Quads if all faces are of that type, Mixed otherwise
 	[[nodiscard]]
-	size_t faceType() const
+	FaceType faceType() const
 	{
 		auto tris = std::ranges::all_of(faces_.all(), [](const Face face) { return face.size() == 3; });
 		if (tris)
 		{
-			return 0;
+			return FaceType::Triangles;
 		}
 		const auto quads = std::ranges::all_of(faces_.all(), [](const Face face) { return face.size() == 4; });
-		return quads ? 1 : 2;
+		return quads ? FaceType::Quads : FaceType::Mixed;
 	}
 
 	[[nodiscard]]

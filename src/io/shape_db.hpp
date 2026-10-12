@@ -6,10 +6,7 @@
 #define MR_SHAPE_DATA_ACCESS_H
 #include "../geometry/mesh.hpp"
 #include <algorithm>
-#include <execution>
 #include <filesystem>
-#include <format>
-#include <fstream>
 #include <iostream>
 #include <optional>
 #include <ranges>
@@ -85,7 +82,7 @@ public:
 			std::move(shapes), [this, shapeClass = std::move(shapeClass)](const auto& entry) { return resourcePath(shapeClass, entry); });
 	}
 
-	const std::unordered_map<std::string, std::vector<std::string>>& entries()
+	[[nodiscard]] const std::unordered_map<std::string, std::vector<std::string>>& entries() const
 	{
 		return this->entries_;
 	}
@@ -101,69 +98,6 @@ public:
 		return this->entries_.size();
 	}
 
-	void exportStats() const
-	{
-		struct Row
-		{
-			std::string file, cls;
-			size_t verts, faces, facetype;
-			float bb_radius;
-		};
-
-		std::vector<std::pair<std::filesystem::path, std::string>> work;
-		for (const auto& [className, meshNames] : entries_)
-		{
-			for (const auto& meshName : meshNames)
-			{
-				auto meshPath = resourcePath(className, meshName);
-				work.emplace_back(meshPath, className);
-			}
-		}
-
-		std::vector<std::optional<Row>> results(work.size());
-		auto indices = std::views::iota(size_t{0}, work.size());
-
-		std::for_each(
-			std::execution::par, indices.begin(), indices.end(),
-			[&](const size_t i)
-			{
-				const auto& [path, className] = work[i];
-				std::optional<Mesh> mesh;
-
-				if (path.extension() == ".obj")
-				{
-					if (auto loaded = Mesh::fromObj(path)) {
-						mesh.emplace(std::move(*loaded));
-}
-				}
-				else
-				{
-					std::cerr << "Unsupported mesh format: " << path.extension() << '\n';
-					return;
-				}
-
-				if (!mesh)
-				{
-					std::cerr << "Failed to load mesh: " << path << '\n';
-					return;
-				}
-
-				results[i] = Row{path.string(), className, mesh->numVertices(), mesh->numFaces(), mesh->faceType(), mesh->bounds().radius()};
-			});
-
-		std::ofstream outputFile("shape_db_statistics.csv");
-		outputFile << "file,class,vertices,faces,facetype,bounding_box\n";
-		for (auto& row : results)
-		{
-			if (!row) {
-				return;
-}
-			outputFile << std::format("{},{},{},{},{},{}", row->file, row->cls, row->verts, row->faces, row->facetype, row->bb_radius) << '\n';
-		}
-		outputFile.close();
-	}
-
-private:
 	[[nodiscard]] std::filesystem::path resourcePath(const std::string& shapeClass = "", const std::string& filename = "") const
 	{
 		return this->shape_database_path / shapeClass / filename;
