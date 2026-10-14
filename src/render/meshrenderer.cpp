@@ -111,7 +111,8 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 
 	if (settings.showAxes || settings.showEigenvectorAxes)
 	{
-		const float axisLength = std::max(mesh.axisLength(), 1e-3F);
+		// const float axisLength = std::max(mesh.axisLength(), 1e-3F);
+		const float axisLength = 1;
 		const glm::mat4 axisScale = glm::scale(glm::mat4(1.0F), glm::vec3(axisLength));
 		const std::array<QVector3D, 3> worldColors = {
 			QVector3D(1.0F, 0.2F, 0.2F),
@@ -128,6 +129,7 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 		edgeProgram_.bound(
 			[&](QOpenGLShaderProgram& program)
 			{
+				glLineWidth(3);
 				for (int axis = 0; axis < 3; ++axis)
 				{
 					if (settings.showAxes)
@@ -145,6 +147,7 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 						mesh.drawAxis(axis);
 					}
 				}
+				glLineWidth(1);
 			});
 		glEnable(GL_DEPTH_TEST);
 	}

@@ -25,6 +25,9 @@ private:
 
 	MeshViewport* viewport;
 	QLabel* statsLabel;
+	QPushButton* fixNormalsButton;
+	QPushButton* fillHolesButton;
+	QPushButton* normalizeTranslationButton;
 	QPushButton* alignAxesButton;
 	QPushButton* scaleToUnitButton;
 };

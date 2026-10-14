@@ -6,14 +6,16 @@
 #include "face_list.hpp"
 #include "halfedge.hpp"
 #include "ops/ops.h"
-#include "submesh.h"
 #include "pca.hpp"
+#include "submesh.h"
 
 
 #ifdef _WIN32
-	#define WIN32_LEAN_AND_MEAN
-	#define NOMINMAX
-	#include <windows.h>
+#define WIN32_LEAN_AND_MEAN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
 #endif
 #include <GL/gl.h>
 #include <algorithm>
@@ -73,6 +75,7 @@ public:
 		bool operator==(const Edge&) const = default;
 		auto operator<=>(const Edge&) const = default;
 	};
+
 	static_assert(sizeof(Edge) == sizeof(std::uint32_t) * 2, "Edge has to be two u32!!");
 
 private:
@@ -125,9 +128,20 @@ public:
 		return std::nullopt;
 	}
 
-	[[nodiscard]] Mesh withPositions(std::vector<Position> p) const { return Mesh{std::move(p), normals_, faces_}; }
-	[[nodiscard]] Mesh withNormals(std::vector<Normal> n) const    { return Mesh{positions_, std::move(n), faces_}; }
-	[[nodiscard]] Mesh withFaces(FaceList f) const                 { return Mesh{positions_, normals_, std::move(f)}; }
+	[[nodiscard]] Mesh withPositions(std::vector<Position> p) const
+	{
+		return Mesh{std::move(p), normals_, faces_};
+	}
+
+	[[nodiscard]] Mesh withNormals(std::vector<Normal> n) const
+	{
+		return Mesh{positions_, std::move(n), faces_};
+	}
+
+	[[nodiscard]] Mesh withFaces(FaceList f) const
+	{
+		return Mesh{positions_, normals_, std::move(f)};
+	}
 
 	[[nodiscard]]
 	size_t numVertices() const
@@ -294,7 +308,6 @@ public:
 	}
 
 private:
-
 	[[nodiscard]] Bounds createBounds() const
 	{
 		Bounds bounds{};

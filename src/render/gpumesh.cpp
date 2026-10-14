@@ -36,9 +36,7 @@ GpuMesh::GpuMesh(const Mesh& mesh)
 	const std::vector<std::uint32_t> boundingBoxIndices = {0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7};
 	axisLength_ = std::max(mesh.bounds().radius(), 1e-3F) * 1.25F;
 	const std::vector axisVertices = {
-		-1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F,
-		0.0F, -1.0F, 0.0F, 0.0F, 1.0F, 0.0F,
-		0.0F, 0.0F, -1.0F, 0.0F, 0.0F, 1.0F,
+		-1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, -1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, -1.0F, 0.0F, 0.0F, 1.0F,
 	};
 	allocate(vertexBuffer_, mesh.positions());
 	allocate(triangleIndexBuffer_, mesh.triangleIndices());

@@ -1,9 +1,9 @@
 #include "browsercard.h"
 
+#include "meshpreview.h"
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
-#include "meshpreview.h"
 
 BrowserCard::BrowserCard(const QString& name, const std::filesystem::path& meshSource, QWidget* parent)
 	: QFrame(parent)
@@ -43,11 +43,11 @@ void BrowserCard::setupUI()
 	mainLayout->setContentsMargins(12, 12, 12, 12);
 	mainLayout->setSpacing(10);
 
-	const auto mesh = object->translated(-object->baryCenter()).filledHoles();
-	object.emplace(mesh);
+	// const auto mesh = object->translated(-object->baryCenter()).filledHoles();
+	// object.emplace(mesh);
 
-	const auto mesh2 = object->rotated(object->principleAxes());
-	object.emplace(mesh2);
+	// const auto mesh2 = object->rotated(object->principleAxes());
+	// object.emplace(mesh2);
 
 	auto* preview = new MeshPreview(object->vertexPositionBuffer(), object->triangleIndices(), this);
 	preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
