@@ -74,9 +74,10 @@ public:
 		const auto iter = entries_.find(shapeClass);
 
 		std::vector<std::string> shapes;
-		if (iter != entries_.end()) {
+		if (iter != entries_.end())
+		{
 			shapes = iter->second;
-}
+		}
 
 		return std::views::transform(
 			std::move(shapes), [this, shapeClass = std::move(shapeClass)](const auto& entry) { return resourcePath(shapeClass, entry); });
@@ -85,6 +86,29 @@ public:
 	[[nodiscard]] const std::unordered_map<std::string, std::vector<std::string>>& entries() const
 	{
 		return this->entries_;
+	}
+
+	auto iterRandomShapesClassDistributed(const size_t limit) const
+	{
+		const auto classNames = iterClassNames();
+		const size_t numClasses = this->numClasses();
+
+		const size_t numPerClass = limit / numClasses;
+		size_t rem = limit % numClasses;
+
+		return classNames |
+			   std::views::transform(
+				   [this, numPerClass, &rem](const auto& className)
+				   {
+				   	   const size_t classSize = iterClassShapePaths(className).size();
+					   const size_t count = numPerClass + (rem > 0 ? 1 : 0);
+					   if (rem > 0)
+					   {
+						   --rem;
+					   }
+					   return iterClassShapePaths(className) | std::views::take(std::min(count, classSize));
+				   }) |
+			   std::views::join;
 	}
 
 	size_t numShapes() const

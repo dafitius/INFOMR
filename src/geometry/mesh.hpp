@@ -108,6 +108,15 @@ public:
 	{
 	}
 
+	static Mesh copy(const Mesh& mesh)
+	{
+		Mesh const result;
+		return result
+			.withPositions(mesh.positions_)
+			.withNormals(mesh.normals_)
+			.withFaces(mesh.faces_);
+	}
+
 	template <typename... Args>
 	static std::optional<Mesh> fromObj(Args&&... args)
 	{

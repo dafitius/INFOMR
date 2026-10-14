@@ -21,7 +21,7 @@ class BrowsePage : public QWidget
 	Q_OBJECT
 
 public:
-	explicit BrowsePage(std::unique_ptr<ShapeDb> database, QWidget* parent = nullptr);
+	explicit BrowsePage(std::shared_ptr<ShapeDb> database, QWidget* parent = nullptr);
 	~BrowsePage() override;
 
 signals:
@@ -34,7 +34,7 @@ private:
 	void loadSelectedClass();
 	void clearMeshCards();
 
-	std::unique_ptr<ShapeDb> database;
+	std::shared_ptr<ShapeDb> database;
 
 	QScrollArea* scrollArea;
 	QWidget* containerWidget;
