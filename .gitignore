@@ -46,7 +46,6 @@ Thumbs.db
 *.out
 *.app
 *.o
-*.obj
 *.so
 *.a
 *.lib
