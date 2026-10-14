@@ -72,6 +72,8 @@ file(GLOB_RECURSE main_src
 
 source_group(${PROJECT_NAME} ${main_src})
 
+set(VCPKG_APPLOCAL_DEPS OFF)
+
 qt_add_executable(${PROJECT_NAME} ${main_src} resources/resources.qrc)
 
 target_include_directories(${PROJECT_NAME} PRIVATE "${qhull_SOURCE_DIR}/src")
@@ -91,7 +93,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 if(WIN32)
     get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
     get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
-    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_BIN_DIR}")
+    # Only look next to the Qt we link against, so a windeployqt from another Qt install (vcpkg) is never used
+    unset(WINDEPLOYQT_EXECUTABLE CACHE)
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt PATHS "${QT_BIN_DIR}" NO_DEFAULT_PATH NO_CACHE)
 
     if(WINDEPLOYQT_EXECUTABLE)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
