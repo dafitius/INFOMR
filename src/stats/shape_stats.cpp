@@ -132,35 +132,49 @@ namespace stats
 
 	DatabaseStats compute(const ShapeDb& database)
 	{
+		return compute(database, database.shapes());
+	}
+
+	DatabaseStats compute(const ShapeDb& database, const std::span<const ShapeRef> shapes, const std::atomic<bool>* cancel, const ProgressCallback& onProgress)
+	{
 		struct Job
 		{
-			std::string className;
-			std::string fileName;
+			const ShapeRef* shape;
 			std::optional<ShapeStats> result;
+			bool skipped = false;
 		};
 
 		std::vector<Job> jobs;
-		jobs.reserve(database.numShapes());
-		for (const auto& [className, fileNames] : database.entries())
+		jobs.reserve(shapes.size());
+		for (const auto& shape : shapes)
 		{
-			for (const auto& fileName : fileNames)
-			{
-				jobs.push_back(Job{.className = className, .fileName = fileName, .result = std::nullopt});
-			}
+			jobs.push_back(Job{.shape = &shape, .result = std::nullopt});
 		}
 
+		std::atomic<size_t> done{0};
 		std::for_each(
 			std::execution::par, jobs.begin(), jobs.end(),
-			[&database](Job& job)
+			[&](Job& job)
 			{
-				const auto path = database.resourcePath(job.className, job.fileName);
-				if (path.extension() != ".obj")
+				if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
 				{
+					job.skipped = true;
 					return;
 				}
-				if (const auto mesh = Mesh::fromObj(path))
+
+				const auto path = database.resourcePath(job.shape->className, job.shape->fileName);
+				if (path.extension() == ".obj")
 				{
-					job.result = compute(*mesh, job.className, job.fileName);
+					if (const auto mesh = Mesh::fromObj(path))
+					{
+						job.result = compute(*mesh, job.shape->className, job.shape->fileName);
+					}
+				}
+
+				const auto count = done.fetch_add(1, std::memory_order_relaxed) + 1;
+				if (onProgress)
+				{
+					onProgress(count, jobs.size());
 				}
 			});
 
@@ -172,9 +186,9 @@ namespace stats
 			{
 				stats.shapes.push_back(std::move(*job.result));
 			}
-			else
+			else if (!job.skipped)
 			{
-				stats.failed.push_back(database.resourcePath(job.className, job.fileName));
+				stats.failed.push_back(database.resourcePath(job.shape->className, job.shape->fileName));
 			}
 		}
 

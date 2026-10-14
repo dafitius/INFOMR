@@ -8,8 +8,10 @@
 #include "../geometry/mesh.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <span>
 #include <string>
@@ -19,6 +21,7 @@
 #include <glm/vec3.hpp>
 
 class ShapeDb;
+struct ShapeRef;
 
 namespace stats
 {
@@ -61,10 +64,18 @@ namespace stats
 		double (*value)(const ShapeStats&);
 	};
 
+	/// @brief Called with the number of processed shapes and the total, may be called from multiple threads at once
+	using ProgressCallback = std::function<void(size_t done, size_t total)>;
+
 	[[nodiscard]] ShapeStats compute(const Mesh& mesh, std::string className, std::string fileName);
 
 	/// @brief Loads every shape in the database (in parallel) and computes its statistics
 	[[nodiscard]] DatabaseStats compute(const ShapeDb& database);
+
+	/// @brief Loads the given shapes (in parallel) and computes their statistics
+	/// @param cancel Optional flag, when set the remaining shapes are skipped (and not reported as failed)
+	[[nodiscard]] DatabaseStats compute(
+		const ShapeDb& database, std::span<const ShapeRef> shapes, const std::atomic<bool>* cancel = nullptr, const ProgressCallback& onProgress = {});
 
 	[[nodiscard]] std::span<const Column> columns();
 	[[nodiscard]] std::optional<Column> findColumn(std::string_view name);

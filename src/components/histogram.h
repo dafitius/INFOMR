@@ -20,14 +20,30 @@ struct Sample
 
 struct Histogram
 {
+	/// @brief Aggregates over the finite sample values
+	struct Summary
+	{
+		size_t count = 0;
+		double min = 0.0;
+		double max = 0.0;
+		double mean = 0.0;
+		double median = 0.0;
+		double stddev = 0.0;
+	};
+
 	QString name;
-	size_t bucket_size;
+	size_t bucket_size; // default number of buckets to show
 	QVector<Sample> samples;
 
 	Histogram(const QString& name, const size_t bucketSize, const QVector<Sample>& samples)
 		: name(name)
 		, bucket_size(bucketSize)
 		, samples(samples){}
+
+	/// @brief A bucket count that suits the number of samples (square root rule, clamped to [1, maxBuckets])
+	static size_t defaultBucketCount(size_t numSamples, size_t maxBuckets = 200);
+
+	[[nodiscard]] Summary summary() const;
 };
 
 class HistogramView : public QWidget

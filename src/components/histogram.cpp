@@ -7,7 +7,59 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QToolTip>
+#include <algorithm>
+#include <cmath>
 #include <iostream>
+#include <ranges>
+#include <vector>
+
+size_t Histogram::defaultBucketCount(const size_t numSamples, const size_t maxBuckets)
+{
+	const auto buckets = static_cast<size_t>(std::ceil(std::sqrt(static_cast<double>(numSamples))));
+	return std::clamp(buckets, size_t{1}, maxBuckets);
+}
+
+Histogram::Summary Histogram::summary() const
+{
+	std::vector<double> values;
+	values.reserve(samples.size());
+	for (const Sample& sample : samples)
+	{
+		if (std::isfinite(sample.value))
+		{
+			values.push_back(sample.value);
+		}
+	}
+
+	Summary result;
+	if (values.empty())
+	{
+		return result;
+	}
+
+	std::ranges::sort(values);
+	result.count = values.size();
+	result.min = values.front();
+	result.max = values.back();
+
+	const size_t mid = values.size() / 2;
+	result.median = values.size() % 2 == 0 ? (values[mid - 1] + values[mid]) / 2.0 : values[mid];
+
+	double sum = 0.0;
+	for (const double value : values)
+	{
+		sum += value;
+	}
+	result.mean = sum / static_cast<double>(values.size());
+
+	double squaredError = 0.0;
+	for (const double value : values)
+	{
+		squaredError += (value - result.mean) * (value - result.mean);
+	}
+	result.stddev = std::sqrt(squaredError / static_cast<double>(values.size()));
+	return result;
+}
 
 HistogramView::HistogramView(QWidget* parent) : QWidget(parent)
 {
@@ -38,18 +90,24 @@ void HistogramView::rebuild()
 	m_buckets.clear();
 	m_hover_index = std::nullopt;
 
-	if ((m_histogram != nullptr) && !m_histogram->samples.isEmpty())
+	if (m_histogram == nullptr)
 	{
-		const auto& s = m_histogram->samples;
-		auto [low, high] = std::minmax_element(s.begin(), s.end(),
-			[](const Sample& a, const Sample& b) { return a.value < b.value; });
-		m_min = low->value;
-		m_max = high->value;
+		update();
+		return;
+	}
+
+	// NaN or infinite values can't be placed in a bucket, so they are left out
+	auto finite = m_histogram->samples | std::views::filter([](const Sample& sample) { return std::isfinite(sample.value); });
+	if (!std::ranges::empty(finite))
+	{
+		auto [low, high] = std::ranges::minmax(finite, {}, &Sample::value);
+		m_min = low.value;
+		m_max = high.value;
 		if (m_max <= m_min) m_max = m_min + 1.0;
 
 		m_buckets.resize(m_bucketCount);
 		const double w = bucketWidth();
-		for (const Sample& sample : s)
+		for (const Sample& sample : finite)
 		{
 			auto const index = std::min(static_cast<size_t>((sample.value - m_min) / w), m_bucketCount - 1);
 			m_buckets[index].append(sample);
@@ -81,7 +139,7 @@ void HistogramView::paintEvent(QPaintEvent*)
 	if (m_buckets.isEmpty())
 	{
 		p.setPen(palette().text().color());
-		p.drawText(rect(), Qt::AlignCenter, tr("No histograms to show. press Load to add them."));
+		p.drawText(rect(), Qt::AlignCenter, tr("No histogram to show. Compute or load statistics first."));
 		return;
 	}
 

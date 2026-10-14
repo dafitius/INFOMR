@@ -8,17 +8,26 @@
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
+#include <cstdint>
 #include <optional>
+#include <random>
 #include <ranges>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
+
+struct ShapeRef
+{
+	std::string className;
+	std::string fileName;
+};
 
 class ShapeDb
 {
 	std::filesystem::path shape_database_path;
-	std::unordered_map<std::string, std::vector<std::string>> entries_; // map of shape class as key and shape names as value
+	std::unordered_map<std::string, std::vector<std::string>> entries_;
 
 public:
 	static std::optional<ShapeDb> open(const std::filesystem::path& shapeDatabasePath)
@@ -88,27 +97,63 @@ public:
 		return this->entries_;
 	}
 
-	auto iterRandomShapesClassDistributed(const size_t limit) const
+	[[nodiscard]] std::vector<ShapeRef> shapes() const
 	{
-		const auto classNames = iterClassNames();
-		const size_t numClasses = this->numClasses();
+		std::vector<ShapeRef> out;
+		out.reserve(numShapes());
+		for (const auto& [className, fileNames] : entries_)
+		{
+			for (const auto& fileName : fileNames)
+			{
+				out.push_back(ShapeRef{.className = className, .fileName = fileName});
+			}
+		}
+		std::ranges::sort(out, {}, [](const ShapeRef& s) { return std::tie(s.className, s.fileName); });
+		return out;
+	}
 
-		const size_t numPerClass = limit / numClasses;
-		size_t rem = limit % numClasses;
+	[[nodiscard]] std::vector<ShapeRef> randomClassBalancedShapes(const size_t limit, const std::uint32_t seed = std::random_device{}()) const
+	{
+		if (limit == 0 || limit >= numShapes())
+		{
+			return shapes();
+		}
 
-		return classNames |
-			   std::views::transform(
-				   [this, numPerClass, &rem](const auto& className)
-				   {
-				   	   const size_t classSize = iterClassShapePaths(className).size();
-					   const size_t count = numPerClass + (rem > 0 ? 1 : 0);
-					   if (rem > 0)
-					   {
-						   --rem;
-					   }
-					   return iterClassShapePaths(className) | std::views::take(std::min(count, classSize));
-				   }) |
-			   std::views::join;
+		std::mt19937 rng(seed);
+
+		std::vector<std::vector<ShapeRef>> perClass;
+		for (const auto& [className, fileNames] : entries_)
+		{
+			auto& classShapes = perClass.emplace_back();
+			for (const auto& fileName : fileNames)
+			{
+				classShapes.push_back(ShapeRef{.className = className, .fileName = fileName});
+			}
+			std::ranges::shuffle(classShapes, rng);
+		}
+		std::ranges::shuffle(perClass, rng);
+
+		std::vector<ShapeRef> out;
+		out.reserve(limit);
+		for (size_t round = 0; out.size() < limit; ++round)
+		{
+			bool tookAny = false;
+			for (auto& classShapes : perClass)
+			{
+				if (round < classShapes.size() && out.size() < limit)
+				{
+					out.push_back(std::move(classShapes[round]));
+					tookAny = true;
+				}
+			}
+			if (!tookAny)
+			{
+				break;
+			}
+		}
+
+		std::ranges::sort(out, {}, [](const ShapeRef& s) { return std::tie(s.className, s.fileName); });
+		return out;
 	}
 
 	size_t numShapes() const
