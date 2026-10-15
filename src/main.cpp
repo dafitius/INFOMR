@@ -6,6 +6,8 @@
 
 int main(int argc, char* argv[])
 {
+	constexpr auto theme = theme::Mode::Dark;
+
 	// auto shapeDb = ShapeDb::open(TEST_SHAPE_DB_ROOT);
 	auto shapeDb = ShapeDb::open(SHAPE_DB_ROOT);
 
@@ -25,7 +27,7 @@ int main(int argc, char* argv[])
 	QSurfaceFormat::setDefaultFormat(format);
 
 	QApplication app(argc, argv);
-	theme::apply(app);
+	theme::apply(app, theme);
 
 	MainWindow window(std::make_unique<ShapeDb>(*shapeDb));
 	window.setWindowTitle("Geometry Retrieval");

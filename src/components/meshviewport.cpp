@@ -115,7 +115,8 @@ void MeshViewport::initializeGL()
 
 void MeshViewport::paintGL()
 {
-	glClearColor(0xFF / 255.0F, 0xFF / 255.0F, 0xFF / 255.0F, 1.0F);
+	QColor const backgroundColor = palette().color(QPalette::Window);
+	glClearColor(backgroundColor.redF(), backgroundColor.greenF(), backgroundColor.blueF(), backgroundColor.alphaF());
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	if (uploadPending_)
