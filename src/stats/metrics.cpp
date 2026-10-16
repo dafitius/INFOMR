@@ -200,6 +200,7 @@ namespace stats
 			Metric{"extent_x", "Bounding box size along x", [](const Mesh& m) { return static_cast<double>(extent(m).x); }},
 			Metric{"extent_y", "Bounding box size along y", [](const Mesh& m) { return static_cast<double>(extent(m).y); }},
 			Metric{"extent_z", "Bounding box size along z", [](const Mesh& m) { return static_cast<double>(extent(m).z); }},
+			Metric{"bounding_radius", "Bounding box radius", [](const Mesh& m) { return static_cast<double>(m.bounds().radius()); }},
 			Metric{
 				"max_extent", "Largest bounding box side, 1 after scaling to the unit cube",
 				[](const Mesh& m)
