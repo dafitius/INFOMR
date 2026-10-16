@@ -25,7 +25,8 @@ namespace mesh::pca
 	{
 		glm::mat3 cov(0.0f);
 
-		if (positions.empty()) {
+		if (positions.empty())
+		{
 			return cov;
 		}
 		for (const auto& p : positions)
@@ -61,13 +62,13 @@ namespace mesh::pca
 		const float e = covariance[2][1];
 		const float f = covariance[2][2];
 
-		auto p1 = (b*b) + (c*c) + (e*e);
+		auto p1 = (b * b) + (c * c) + (e * e);
 		if (p1 <= std::numeric_limits<float>::epsilon() && p1 >= -std::numeric_limits<float>::epsilon())
 		{
 			return {a, d, f};
 		}
 
-		auto q = (a + d + f)/3.0f;
+		auto q = (a + d + f) / 3.0f;
 		auto p2 = (a - q) * (a - q) + (d - q) * (d - q) + (f - q) * (f - q) + 2 * p1;
 		p2 = std::max(0.0f, p2);
 		auto p = std::sqrt(p2 / 6.0f);
@@ -81,21 +82,35 @@ namespace mesh::pca
 		auto r = glm::determinant(B) / 2;
 		r = std::clamp(r, -1.0f, 1.0f);
 		float phi = 0;
-		if (r <= -1) {
+		if (r <= -1)
+		{
 			phi = glm::pi<float>() / 3.0f;
-		} else if (r >= 1) {
+		}
+		else if (r >= 1)
+		{
 			phi = 0.0f;
-		} else {
+		}
+		else
+		{
 			phi = std::acos(r) / 3.0f;
 		}
 
 		float eig1 = q + (2 * p * std::cos(phi));
-		float eig3 = q + (2 * p * std::cos(phi + (2 * glm::pi<float>() /3)));
+		float eig3 = q + (2 * p * std::cos(phi + (2 * glm::pi<float>() / 3)));
 		float eig2 = (3 * q) - eig1 - eig3;
 
-		if (eig1 < eig2) { std::swap(eig1, eig2); }
-		if (eig1 < eig3) { std::swap(eig1, eig3); }
-		if (eig2 < eig3) { std::swap(eig2, eig3); }
+		if (eig1 < eig2)
+		{
+			std::swap(eig1, eig2);
+		}
+		if (eig1 < eig3)
+		{
+			std::swap(eig1, eig3);
+		}
+		if (eig2 < eig3)
+		{
+			std::swap(eig2, eig3);
+		}
 		return {eig1, eig2, eig3};
 	}
 
@@ -113,7 +128,8 @@ namespace mesh::pca
 		{
 			v = glm::cross(r1, r3);
 
-			if (glm::length2(v) <= eps) {
+			if (glm::length2(v) <= eps)
+			{
 				v = glm::cross(r2, r3);
 			}
 		}
@@ -146,11 +162,11 @@ namespace mesh::pca
 		}
 		if (glm::length2(y) < eps)
 		{
-			y = glm::cross(x, glm::vec3{0,1,0});
+			y = glm::cross(x, glm::vec3{0, 1, 0});
 		}
 		y = glm::normalize(y);
 
-		glm::vec3 z = glm::cross(x, y); //Try to derive z from other components
+		glm::vec3 z = glm::cross(x, y); // Try to derive z from other components
 		if (glm::length2(z) < eps)
 		{
 			z = glm::normalize(e2);
@@ -161,7 +177,6 @@ namespace mesh::pca
 		}
 		glm::mat3 const axes(x, y, z);
 
-		std::cout << "det = " << glm::determinant(axes) << '\n';
 		if (std::isnan(glm::determinant(axes)))
 		{
 			std::cout << "eigenvalue[0] = " << eigenvalues_[0] << '\n';
@@ -173,7 +188,7 @@ namespace mesh::pca
 		}
 		return glm::normalize(glm::quat_cast(axes));
 	}
-}
+} // namespace mesh::pca
 
 
 #endif // MULTIMEDIARETRIEVAL_PRINCIPLEAXES_HPP

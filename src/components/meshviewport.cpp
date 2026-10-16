@@ -26,22 +26,48 @@ MeshViewport::~MeshViewport()
 
 void MeshViewport::setMesh(const Mesh& mesh)
 {
-	mesh_.emplace(mesh.translated(-mesh.baryCenter()));
-	camera_.frame(mesh_->bounds());
+	mesh_.emplace(mesh);
 
 	uploadPending_ = true;
 	update();
 }
 
-void MeshViewport::alignEigenvectorAxesToWorldAxes()
+void MeshViewport::orientNormals()
 {
 	if (!mesh_)
-	{
 		return;
-	}
+
+	mesh_.emplace(mesh_->withConsistentOrientations());
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::fillHoles()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->filledHoles());
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::normalizeTranslation()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->translated(-mesh_->baryCenter()));
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::normalizeRotation()
+{
+	if (!mesh_)
+		return;
 
 	mesh_.emplace(mesh_->rotated(glm::inverse(mesh_->principleAxes())));
-	camera_.frame(mesh_->bounds());
 	uploadPending_ = true;
 	update();
 }
@@ -49,16 +75,12 @@ void MeshViewport::alignEigenvectorAxesToWorldAxes()
 void MeshViewport::scaleToUnit()
 {
 	if (!mesh_)
-	{
 		return;
-	}
 
 	auto bounds = mesh_->bounds();
 	// X axis should be the largest axis after aligning with eigen vectors
 	auto scale = 1 / (bounds.max.x - bounds.min.x);
 	mesh_.emplace(mesh_->scaled(glm::vec3{scale}));
-	// TODO: Disabled on purpose, so you can see the scaling happen.
-	// camera_.frame(mesh_->bounds());
 	uploadPending_ = true;
 	update();
 }
@@ -93,7 +115,8 @@ void MeshViewport::initializeGL()
 
 void MeshViewport::paintGL()
 {
-	glClearColor(0x11 / 255.0F, 0x13 / 255.0F, 0x18 / 255.0F, 1.0F);
+	QColor const backgroundColor = palette().color(QPalette::Window);
+	glClearColor(backgroundColor.redF(), backgroundColor.greenF(), backgroundColor.blueF(), backgroundColor.alphaF());
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	if (uploadPending_)

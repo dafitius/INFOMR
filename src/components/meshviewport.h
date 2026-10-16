@@ -45,7 +45,10 @@ public:
 
 public slots:
 	void resetView();
-	void alignEigenvectorAxesToWorldAxes();
+	void orientNormals();
+	void fillHoles();
+	void normalizeTranslation();
+	void normalizeRotation();
 	void scaleToUnit();
 
 protected:

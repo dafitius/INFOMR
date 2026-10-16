@@ -81,6 +81,8 @@ Mesh mesh::ops::repair::makeConsistentOrientations(const Mesh& mesh)
 	visitedFaces[seed] = true;
 	stack.push_back(seed);
 
+	int iterations = 0;
+
 	while (!stack.empty())
 	{
 		const auto f = stack.back();
@@ -110,6 +112,7 @@ Mesh mesh::ops::repair::makeConsistentOrientations(const Mesh& mesh)
 					if (sameDirectionInFace(other, {.a = a, .b = b}) == true)
 					{
 						newFaces.reverseFace(other);
+						iterations++;
 					}
 
 					visitedFaces[other] = true;
@@ -122,6 +125,7 @@ Mesh mesh::ops::repair::makeConsistentOrientations(const Mesh& mesh)
 				break;
 		}
 	}
+
+	std::cout << "Flipped " << iterations << " normals." << std::endl;
 	return mesh.withFaces(newFaces);
 }
-

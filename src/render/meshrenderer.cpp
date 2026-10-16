@@ -42,7 +42,7 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 			{
 				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 				program.setUniformValue("edgeColor", gridColor);
-				mesh.drawGrid();
+				mesh.grid_.bound([&] { glDrawElements(GL_LINES, mesh.grid_.indexCount(), GL_UNSIGNED_INT, nullptr); });
 			});
 	}
 
@@ -58,7 +58,7 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 				glUniformMatrix4fv(program.uniformLocation("modelView"), 1, GL_FALSE, glm::value_ptr(view));
 				program.setUniformValue("fillColor", settings.surfaceColor);
-				mesh.drawTriangles();
+				mesh.triangleMesh_.bound([&] { glDrawElements(GL_TRIANGLES, mesh.triangleMesh_.indexCount(), GL_UNSIGNED_INT, nullptr); });
 			});
 
 		glDisable(GL_POLYGON_OFFSET_FILL);
@@ -73,7 +73,7 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 			{
 				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 				program.setUniformValue("edgeColor", {1.0f, 0.0f, 0.0f});
-				mesh.drawBoundaryEdges();
+				mesh.boundaryEdges_.bound([&] { glDrawElements(GL_LINES, mesh.boundaryEdges_.indexCount(), GL_UNSIGNED_INT, nullptr); });
 			});
 
 		edgeProgram_.bound(
@@ -81,7 +81,7 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 			{
 				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 				program.setUniformValue("edgeColor", edgeColor);
-				mesh.drawEdges();
+				mesh.edgeMesh_.bound([&] { glDrawElements(GL_LINES, mesh.edgeMesh_.indexCount(), GL_UNSIGNED_INT, nullptr); });
 			});
 	}
 
@@ -92,7 +92,8 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 			{
 				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 				program.setUniformValue("edgeColor", QVector3D(1.0F, 0.65F, 0.1F));
-				mesh.drawBoundingBox();
+
+				mesh.boundingBox_.bound([&] { glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, nullptr); });
 			});
 	}
 
@@ -105,13 +106,14 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 			{
 				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 				program.setUniformValue("edgeColor", normalColor);
-				mesh.drawNormals();
+				mesh.vertexNormals_.bound([&] { glDrawElements(GL_LINES, mesh.vertexNormals_.indexCount(), GL_UNSIGNED_INT, nullptr); });
 			});
 	}
 
 	if (settings.showAxes || settings.showEigenvectorAxes)
 	{
-		const float axisLength = std::max(mesh.axisLength(), 1e-3F);
+		// const float axisLength = std::max(mesh.axisLength(), 1e-3F);
+		const float axisLength = 1;
 		const glm::mat4 axisScale = glm::scale(glm::mat4(1.0F), glm::vec3(axisLength));
 		const std::array<QVector3D, 3> worldColors = {
 			QVector3D(1.0F, 0.2F, 0.2F),
@@ -128,13 +130,14 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 		edgeProgram_.bound(
 			[&](QOpenGLShaderProgram& program)
 			{
+				glLineWidth(3);
 				for (int axis = 0; axis < 3; ++axis)
 				{
 					if (settings.showAxes)
 					{
 						glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(projection * view * axisScale));
 						program.setUniformValue("edgeColor", worldColors[axis]);
-						mesh.drawAxis(axis);
+						mesh.axis_.bound([&] { glDrawArrays(GL_LINES, axis * 2, 2); });
 					}
 
 					if (settings.showEigenvectorAxes)
@@ -142,9 +145,10 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 						const glm::mat4 eigenTransform = glm::mat4_cast(eigenAxes) * axisScale;
 						glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(projection * view * eigenTransform));
 						program.setUniformValue("edgeColor", eigenColors[axis]);
-						mesh.drawAxis(axis);
+						mesh.axis_.bound([&] { glDrawArrays(GL_LINES, axis * 2, 2); });
 					}
 				}
+				glLineWidth(1);
 			});
 		glEnable(GL_DEPTH_TEST);
 	}
@@ -158,7 +162,7 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 			{
 				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 				program.setUniformValue("edgeColor", hullColor);
-				mesh.drawHullEdges();
+				mesh.hull_.bound([&] { glDrawElements(GL_LINES, mesh.hull_.indexCount(), GL_UNSIGNED_INT, nullptr); });
 			});
 	}
 }

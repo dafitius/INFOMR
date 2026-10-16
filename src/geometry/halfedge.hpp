@@ -160,10 +160,10 @@ namespace half_edge
 
 			auto nextBoundary = [&](const HalfedgeRef edgeIndex) -> std::optional<HalfedgeRef>
 			{
-				auto nextEdgeIndex = hes[edgeIndex].next;
+				auto nextEdgeIndex = hes[edgeIndex].prev;
 				for (std::size_t guard = 0; hes[nextEdgeIndex].opposite.has_value() && guard < hes.size(); ++guard)
 				{
-					nextEdgeIndex = hes[*hes[nextEdgeIndex].opposite].next;
+					nextEdgeIndex = hes[*hes[nextEdgeIndex].opposite].prev;
 				}
 				return hes[nextEdgeIndex].opposite.has_value() ? std::nullopt : std::make_optional(nextEdgeIndex);
 			};
