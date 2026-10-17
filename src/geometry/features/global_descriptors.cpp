@@ -32,6 +32,9 @@ float mesh::features::global_descriptors::volume(const Mesh& mesh)
 	for (size_t i = 0; i < faces.size(); i++)
 	{
 		auto face = faces[i];
+		if (face.size() != 3)
+			std::cerr << "Contains non-triangle faces" << std::endl;
+
 		auto p1 = verts[face[0]];
 		auto p2 = verts[face[1]];
 		auto p3 = verts[face[2]];
