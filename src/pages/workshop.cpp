@@ -4,6 +4,7 @@
 
 #include "workshop.h"
 #include "../components/meshviewport.h"
+#include "../geometry/features/features.h"
 #include <QCheckBox>
 #include <QLabel>
 #include <QPushButton>
@@ -18,12 +19,7 @@ Workshop::Workshop(QWidget* parent)
 
 void Workshop::loadMesh(const Mesh& mesh) const
 {
-	auto stats = QString("Vertices: %1 | Faces: %2").arg(mesh.numVertices()).arg(mesh.numFaces());
-	if (mesh.numSkippedFaces() > 0)
-	{
-		stats += QString("\nSkipped invalid faces: %1").arg(mesh.numSkippedFaces());
-	}
-	statsLabel->setText(stats);
+	std::cout << mesh::features::global_descriptors::surfaceArea(mesh) << std::endl;
 
 	const auto object = mesh;
 	viewport->setMesh(object);
@@ -32,6 +28,31 @@ void Workshop::loadMesh(const Mesh& mesh) const
 	normalizeTranslationButton->setEnabled(true);
 	alignAxesButton->setEnabled(true);
 	scaleToUnitButton->setEnabled(true);
+	recalcStats();
+}
+
+void Workshop::recalcStats() const
+{
+	auto meshOpt = viewport->getMesh();
+	if (!meshOpt.has_value())
+	{
+		statsLabel->setText("No mesh loaded");
+		statsLabel->setWordWrap(true);
+		return;
+	}
+
+	const auto& mesh = meshOpt.value();
+	auto stats = QString("Vertices: %1 | Faces: %2 | Surface area: %3")
+					 .arg(mesh.numVertices())
+					 .arg(mesh.numFaces())
+					 .arg(mesh::features::global_descriptors::surfaceArea(mesh));
+
+	if (mesh.numSkippedFaces() > 0)
+	{
+		stats += QString("\nSkipped invalid faces: %1").arg(mesh.numSkippedFaces());
+	}
+	statsLabel->setText(stats);
+	statsLabel->setWordWrap(true);
 }
 
 Workshop::~Workshop() = default;
@@ -63,6 +84,10 @@ void Workshop::setupUI()
 	statsLabel = new QLabel("No mesh loaded", sidebar);
 	statsLabel->setObjectName("meshStats");
 	sidebarLayout->addWidget(statsLabel);
+
+	auto* recalcStatsBtn = new QPushButton("Recalc stats", sidebar);
+	recalcStatsBtn->setObjectName("recalcStatsButton");
+	sidebarLayout->addWidget(recalcStatsBtn);
 
 	auto* shadedBox = new QCheckBox("Shaded", sidebar);
 	shadedBox->setToolTip("Render the mesh surface");
@@ -168,6 +193,7 @@ void Workshop::setupUI()
 	connect(alignAxesButton, &QPushButton::clicked, viewport, &MeshViewport::normalizeRotation);
 	connect(scaleToUnitButton, &QPushButton::clicked, viewport, &MeshViewport::scaleToUnit);
 	connect(resetViewBtn, &QPushButton::clicked, viewport, &MeshViewport::resetView);
+	connect(recalcStatsBtn, &QPushButton::clicked, this, &Workshop::recalcStats);
 
 	splitter->setStretchFactor(0, 2);
 	splitter->setStretchFactor(1, 1);

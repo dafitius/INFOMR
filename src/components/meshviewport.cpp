@@ -32,6 +32,11 @@ void MeshViewport::setMesh(const Mesh& mesh)
 	update();
 }
 
+const std::optional<Mesh> MeshViewport::getMesh()
+{
+	return mesh_;
+}
+
 void MeshViewport::orientNormals()
 {
 	if (!mesh_)

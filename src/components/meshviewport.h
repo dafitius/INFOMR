@@ -21,6 +21,7 @@ public:
 	~MeshViewport() override;
 
 	void setMesh(const Mesh& mesh);
+	[[nodiscard]] const std::optional<Mesh> getMesh();
 
 	void setRenderSettings(const RenderSettings& settings);
 	[[nodiscard]] const RenderSettings& renderSettings() const;

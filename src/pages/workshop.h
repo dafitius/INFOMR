@@ -19,6 +19,7 @@ public:
 	explicit Workshop(QWidget* parent = nullptr);
 	~Workshop() override;
 	void loadMesh(const class Mesh& mesh) const;
+	void recalcStats() const;
 
 private:
 	void setupUI();
