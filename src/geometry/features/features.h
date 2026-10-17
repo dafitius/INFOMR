@@ -8,11 +8,14 @@ namespace mesh::features
 	namespace global_descriptors
 	{
 		float surfaceArea(const Mesh& mesh);
+		float volume(const Mesh& mesh);
 		float compactness(const Mesh& mesh);
 		float rectangularity(const Mesh& mesh);
 		float diameter(const Mesh& mesh);
 		float convexity(const Mesh& mesh);
 		float eccentricity(const Mesh& mesh);
+
+		float signedVolumeOfTriangle(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3);
 	} // namespace global_descriptors
 
 	namespace property_descriptors

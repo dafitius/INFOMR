@@ -19,8 +19,6 @@ Workshop::Workshop(QWidget* parent)
 
 void Workshop::loadMesh(const Mesh& mesh) const
 {
-	std::cout << mesh::features::global_descriptors::surfaceArea(mesh) << std::endl;
-
 	const auto object = mesh;
 	viewport->setMesh(object);
 	fixNormalsButton->setEnabled(true);
@@ -42,10 +40,11 @@ void Workshop::recalcStats() const
 	}
 
 	const auto& mesh = meshOpt.value();
-	auto stats = QString("Vertices: %1 | Faces: %2 | Surface area: %3")
+	auto stats = QString("Vertices: %1 | Faces: %2 | Surface area: %3 | Volume: %4")
 					 .arg(mesh.numVertices())
 					 .arg(mesh.numFaces())
-					 .arg(mesh::features::global_descriptors::surfaceArea(mesh));
+					 .arg(mesh::features::global_descriptors::surfaceArea(mesh))
+					 .arg(mesh::features::global_descriptors::volume(mesh));
 
 	if (mesh.numSkippedFaces() > 0)
 	{
