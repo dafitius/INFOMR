@@ -20,6 +20,7 @@ namespace
 		result.reserve(std::min(count, vertices.size()));
 
 		std::sample(vertices.begin(), vertices.end(), std::back_inserter(result), count, randomEngine());
+		std::shuffle(samples.begin(), samples.end(), randomEngine());
 
 		return result;
 	}
