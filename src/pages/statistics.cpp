@@ -540,7 +540,7 @@ void Statistics::updateView()
 	{
 		// Only shapes that are in both runs can be compared one by one
 		QVector<Sample> differences;
-		for (const auto [first, second] : stats::matchRows(*run, *other))
+		for (const auto& [first, second] : stats::matchRows(*run, *other))
 		{
 			const auto& row = run->rows()[first];
 			if (classFilter.empty() || row.className == classFilter)

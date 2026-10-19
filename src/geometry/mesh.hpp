@@ -56,6 +56,12 @@ public:
 			return (min + max) * 0.5f;
 		}
 
+		[[nodiscard]] float volume() const
+		{
+			auto size = (max - min);
+			return size.x * size.y * size.z;
+		}
+
 		[[nodiscard]] float radius() const
 		{
 			return glm::length(max - min) * 0.5F;
@@ -95,6 +101,7 @@ private:
 	mutable Lazy<Bounds> bounds_;
 	mutable Lazy<Position> bary_center_;
 	mutable Lazy<glm::quat> principle_axes_;
+	mutable Lazy<std::array<float, 3>> eigen_values_;
 	mutable Lazy<std::vector<std::uint32_t>> triangle_indices_;
 	mutable Lazy<std::vector<Edge>> edges_;
 	mutable Lazy<size_t> skipped_faces_;
@@ -237,6 +244,11 @@ public:
 	[[nodiscard]] glm::quat principleAxes() const
 	{
 		return principle_axes_.getOrCreate([&] { return mesh::pca::compute(this->positions()); });
+	}
+
+	[[nodiscard]] std::array<float, 3> eigenValues() const
+	{
+		return eigen_values_.getOrCreate([&] { return mesh::pca::eigenvalues(mesh::pca::covariance(this->positions())); });
 	}
 
 	[[nodiscard]]

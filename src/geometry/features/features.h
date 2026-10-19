@@ -18,6 +18,7 @@ namespace mesh::features
 		float eccentricity(const Mesh& mesh);
 
 		float signedVolumeOfTriangle(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3);
+		float sphericity(const Mesh& mesh);
 	} // namespace global_descriptors
 
 	namespace property_descriptors
