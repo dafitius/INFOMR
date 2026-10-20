@@ -48,8 +48,19 @@ namespace mesh::features::property_descriptors
 
 		for (std::size_t i = 0; i < count; ++i)
 		{
-			// TODO
-			result.push_back(-1);
+			const glm::vec3 ab = b[i] - a[i];
+			const glm::vec3 ac = c[i] - a[i];
+
+			const float lenAB = glm::length(ab);
+			const float lenAC = glm::length(ac);
+
+			// Accidentally use same point
+			if (lenAB == 0.0f || lenAC == 0.0f)
+				continue;
+
+			auto angle = std::acos(glm::dot(ab, ac) / (lenAB * lenAC));
+
+			result.push_back(angle);
 		}
 
 		return result;
@@ -149,8 +160,15 @@ namespace mesh::features::property_descriptors
 
 		for (std::size_t i = 0; i < count; ++i)
 		{
-			// TODO
-			result.push_back(-1);
+			// https://stackoverflow.com/questions/9866452/calculate-volume-of-any-tetrahedron-given-4-points
+			const glm::vec3 ad = a[i] - d[i];
+			const glm::vec3 bd = b[i] - d[i];
+			const glm::vec3 cd = c[i] - d[i];
+			const glm::vec3 cross = glm::cross(bd, cd);
+			const float dot = glm::dot(ad, cross);
+			float vol = std::abs(dot) / 6;
+
+			result.push_back(std::cbrt(vol));
 		}
 
 		return result;
