@@ -30,6 +30,7 @@ private:
 	QPushButton* fillHolesButton;
 	QPushButton* normalizeTranslationButton;
 	QPushButton* alignAxesButton;
+	QPushButton* normalizePoseButton;
 	QPushButton* scaleToUnitButton;
 };
 

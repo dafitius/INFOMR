@@ -101,6 +101,7 @@ private:
 	mutable Lazy<Bounds> bounds_;
 	mutable Lazy<Position> bary_center_;
 	mutable Lazy<glm::quat> principle_axes_;
+	mutable Lazy<glm::vec3> moment_;
 	mutable Lazy<std::array<float, 3>> eigen_values_;
 	mutable Lazy<std::vector<std::uint32_t>> triangle_indices_;
 	mutable Lazy<std::vector<Edge>> edges_;
@@ -251,6 +252,11 @@ public:
 		return eigen_values_.getOrCreate([&] { return mesh::pca::eigenvalues(mesh::pca::covariance(this->positions())); });
 	}
 
+	[[nodiscard]] glm::vec3 moment() const
+	{
+		return moment_.getOrCreate([&] { return calculateMoment(); });
+	}
+
 	[[nodiscard]]
 	std::span<const float> vertexPositionBuffer() const
 	{
@@ -345,6 +351,16 @@ private:
 			bounds.expand(position);
 		}
 		return bounds.valid() ? bounds : Bounds{glm::vec3{0.F}, glm::vec3{0.F}};
+	}
+
+	[[nodiscard]] glm::vec3 calculateMoment() const
+	{
+		glm::vec3 moment{};
+		for (const auto& position : positions_)
+		{
+			moment += position * position * position;
+		}
+		return (1.0f / positions_.size()) * moment;
 	}
 
 	[[nodiscard]] std::vector<std::uint32_t> createTriangleIndices() const

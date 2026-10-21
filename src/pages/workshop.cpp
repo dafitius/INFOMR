@@ -25,6 +25,7 @@ void Workshop::loadMesh(const Mesh& mesh) const
 	fillHolesButton->setEnabled(true);
 	normalizeTranslationButton->setEnabled(true);
 	alignAxesButton->setEnabled(true);
+	normalizePoseButton->setEnabled(true);
 	scaleToUnitButton->setEnabled(true);
 	recalcStats();
 }
@@ -155,6 +156,11 @@ void Workshop::setupUI()
 	alignAxesButton->setEnabled(false);
 	sidebarLayout->addWidget(alignAxesButton);
 
+	normalizePoseButton = new QPushButton("Normalize Pose", sidebar);
+	normalizePoseButton->setToolTip("Flip the mesh based on its moment");
+	normalizePoseButton->setEnabled(false);
+	sidebarLayout->addWidget(normalizePoseButton);
+
 	scaleToUnitButton = new QPushButton("Scale to unit", sidebar);
 	scaleToUnitButton->setToolTip("Scales the object, so the x axis is exactly 1 unit (Should only be used after aligning eigenvector)");
 	scaleToUnitButton->setEnabled(false);
@@ -197,6 +203,7 @@ void Workshop::setupUI()
 	connect(fillHolesButton, &QPushButton::clicked, viewport, &MeshViewport::fillHoles);
 	connect(normalizeTranslationButton, &QPushButton::clicked, viewport, &MeshViewport::normalizeTranslation);
 	connect(alignAxesButton, &QPushButton::clicked, viewport, &MeshViewport::normalizeRotation);
+	connect(normalizePoseButton, &QPushButton::clicked, viewport, &MeshViewport::normalizePose);
 	connect(scaleToUnitButton, &QPushButton::clicked, viewport, &MeshViewport::scaleToUnit);
 	connect(resetViewBtn, &QPushButton::clicked, viewport, &MeshViewport::resetView);
 	connect(recalcStatsBtn, &QPushButton::clicked, this, &Workshop::recalcStats);

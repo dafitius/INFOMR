@@ -77,6 +77,19 @@ void MeshViewport::normalizeRotation()
 	update();
 }
 
+void MeshViewport::normalizePose()
+{
+	if (!mesh_)
+		return;
+
+	if (mesh_->moment().x < 0)
+	{
+		mesh_.emplace(mesh_->rotated(glm::quat{0, 0, 0, 1}));
+		uploadPending_ = true;
+		update();
+	}
+}
+
 void MeshViewport::scaleToUnit()
 {
 	if (!mesh_)

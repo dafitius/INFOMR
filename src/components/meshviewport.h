@@ -50,6 +50,7 @@ public slots:
 	void fillHoles();
 	void normalizeTranslation();
 	void normalizeRotation();
+	void normalizePose();
 	void scaleToUnit();
 
 protected:
