@@ -74,7 +74,7 @@ namespace theme
 		}
 
 		return {
-			QColor("#F5F7FA"), // window
+			QColor("#FFFFFF"), // window
 			QColor("#202733"), // windowText
 			QColor("#FFFFFF"), // base
 			QColor("#F0F3F7"), // alternateBase

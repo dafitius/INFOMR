@@ -19,6 +19,9 @@ namespace
 		std::vector<glm::vec3> result;
 		result.reserve(std::min(count, vertices.size()));
 
+		// TODO: The shape is sampled completely randomly, and not uniformly.
+		// From the technical tips: "The shape property distributions are quite sensitive to a good spread of the sample points over a shape's
+		// surface"
 		std::sample(vertices.begin(), vertices.end(), std::back_inserter(result), count, randomEngine());
 		std::shuffle(result.begin(), result.end(), randomEngine());
 
