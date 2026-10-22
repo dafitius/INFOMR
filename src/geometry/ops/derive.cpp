@@ -2,8 +2,8 @@
 // Created by dafitius on 11-10-2026.
 //
 
-#include "../../../cmake-build-debug/_deps/qhull-src/src/libqhullcpp/Qhull.h"
-#include "../../../cmake-build-debug/_deps/qhull-src/src/libqhullcpp/QhullVertexSet.h"
+#include <libqhullcpp/Qhull.h>
+#include <libqhullcpp/QhullVertexSet.h>
 #include "../submesh.h"
 #include "../mesh.hpp"
 #include "libqhullcpp/QhullError.h"

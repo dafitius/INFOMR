@@ -25,8 +25,11 @@ void Workshop::loadMesh(const Mesh& mesh) const
 	}
 	statsLabel->setText(stats);
 
-	const auto object = mesh.translated(-mesh.baryCenter());
+	const auto object = mesh;
 	viewport->setMesh(object);
+	fixNormalsButton->setEnabled(true);
+	fillHolesButton->setEnabled(true);
+	normalizeTranslationButton->setEnabled(true);
 	alignAxesButton->setEnabled(true);
 	scaleToUnitButton->setEnabled(true);
 }
@@ -101,7 +104,22 @@ void Workshop::setupUI()
 	eigenvectorAxesBox->setChecked(viewport->renderSettings().showEigenvectorAxes);
 	sidebarLayout->addWidget(eigenvectorAxesBox);
 
-	alignAxesButton = new QPushButton("Align eigenvectors to world axes", sidebar);
+	fixNormalsButton = new QPushButton("Repair normals", sidebar);
+	fixNormalsButton->setToolTip("Makes all normals face a consistent direction, either outwards or inwards.");
+	fixNormalsButton->setEnabled(false);
+	sidebarLayout->addWidget(fixNormalsButton);
+
+	fillHolesButton = new QPushButton("Fill holes", sidebar);
+	fillHolesButton->setToolTip("Detect and fill holes.");
+	fillHolesButton->setEnabled(false);
+	sidebarLayout->addWidget(fillHolesButton);
+
+	normalizeTranslationButton = new QPushButton("Normalize translation", sidebar);
+	normalizeTranslationButton->setToolTip("Move the barycenter to the world center.");
+	normalizeTranslationButton->setEnabled(false);
+	sidebarLayout->addWidget(normalizeTranslationButton);
+
+	alignAxesButton = new QPushButton("Normalize Orientation", sidebar);
 	alignAxesButton->setToolTip("Rotate the mesh so its eigenvector axes align with the world axes");
 	alignAxesButton->setEnabled(false);
 	sidebarLayout->addWidget(alignAxesButton);
@@ -133,9 +151,7 @@ void Workshop::setupUI()
 		boundingBox, &QCheckBox::toggled, this,
 		[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showBoundingBox, checked); });
 
-	connect(
-		hullBox, &QCheckBox::toggled, this,
-		[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showHull, checked); });
+	connect(hullBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showHull, checked); });
 
 
 	connect(normalsBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showNormals, checked); });
@@ -146,7 +162,10 @@ void Workshop::setupUI()
 		eigenvectorAxesBox, &QCheckBox::toggled, this,
 		[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showEigenvectorAxes, checked); });
 
-	connect(alignAxesButton, &QPushButton::clicked, viewport, &MeshViewport::alignEigenvectorAxesToWorldAxes);
+	connect(fixNormalsButton, &QPushButton::clicked, viewport, &MeshViewport::orientNormals);
+	connect(fillHolesButton, &QPushButton::clicked, viewport, &MeshViewport::fillHoles);
+	connect(normalizeTranslationButton, &QPushButton::clicked, viewport, &MeshViewport::normalizeTranslation);
+	connect(alignAxesButton, &QPushButton::clicked, viewport, &MeshViewport::normalizeRotation);
 	connect(scaleToUnitButton, &QPushButton::clicked, viewport, &MeshViewport::scaleToUnit);
 	connect(resetViewBtn, &QPushButton::clicked, viewport, &MeshViewport::resetView);
 

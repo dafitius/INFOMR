@@ -10,7 +10,11 @@ set(CMAKE_AUTOUIC ON)
 
 set(CMAKE_PREFIX_PATH "/home/dafitius/Documents/bin/qt/6.11.2/gcc_64/lib/cmake/;C:/Qt/6.11.2/msvc2022_64/lib/cmake/;C:/Qt/6.11.2/mingw_64/lib/cmake/")
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+if (MSVC)
+    add_compile_options(/W4)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
@@ -68,6 +72,8 @@ file(GLOB_RECURSE main_src
 
 source_group(${PROJECT_NAME} ${main_src})
 
+set(VCPKG_APPLOCAL_DEPS OFF)
+
 qt_add_executable(${PROJECT_NAME} ${main_src} resources/resources.qrc)
 
 target_include_directories(${PROJECT_NAME} PRIVATE "${qhull_SOURCE_DIR}/src")
@@ -87,7 +93,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 if(WIN32)
     get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
     get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
-    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_BIN_DIR}")
+    # Only look next to the Qt we link against, so a windeployqt from another Qt install (vcpkg) is never used
+    unset(WINDEPLOYQT_EXECUTABLE CACHE)
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt PATHS "${QT_BIN_DIR}" NO_DEFAULT_PATH NO_CACHE)
 
     if(WINDEPLOYQT_EXECUTABLE)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

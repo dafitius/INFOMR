@@ -7,9 +7,18 @@
 #include "ops/ops.h"
 #include "pca.hpp"
 #include "submesh.h"
+#include "submesh.h"
 #include "topology/faceset.hpp"
 #include "topology/halfedge.hpp"
 
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 #include <GL/gl.h>
 #include <algorithm>
 #include <cassert>
@@ -69,6 +78,7 @@ public:
 		bool operator==(const Edge&) const = default;
 		auto operator<=>(const Edge&) const = default;
 	};
+
 	static_assert(sizeof(Edge) == sizeof(std::uint32_t) * 2, "Edge has to be two u32!!");
 
 private:
@@ -102,7 +112,6 @@ public:
 
 	static std::optional<Mesh> fromObj(const std::filesystem::path& path)
 	{
-		return ObjFile::read(path);
 	}
 
 	void exportObj(const std::filesystem::path& path) const
@@ -128,6 +137,7 @@ public:
 	}
 
 	/// @brief Check what type the faces are
+	/// @return 0 = all faces tris, 1 = all faces quads, 2 = mixed/other
 	[[nodiscard]]
 	FaceSet::FaceType faceType() const
 	{
@@ -303,7 +313,6 @@ public:
 	}
 
 private:
-
 	[[nodiscard]] Bounds createBounds() const
 	{
 		Bounds bounds{};

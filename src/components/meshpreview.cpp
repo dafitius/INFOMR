@@ -85,7 +85,8 @@ void MeshPreview::resizeGL(const int width, const int height)
 
 void MeshPreview::paintGL()
 {
-	glClearColor(0x11 / 255.0, 0x13 / 255.0, 0x18 / 255.0, 1.0F);
+	QColor const backgroundColor = palette().color(QPalette::Window);
+	glClearColor(backgroundColor.redF(), backgroundColor.greenF(), backgroundColor.blueF(), backgroundColor.alphaF());
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	const float aspectRatio = static_cast<float>(width()) / static_cast<float>(height());

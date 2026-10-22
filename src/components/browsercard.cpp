@@ -1,9 +1,9 @@
 #include "browsercard.h"
 
+#include "meshpreview.h"
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
-#include "meshpreview.h"
 
 BrowserCard::BrowserCard(const QString& name, const std::filesystem::path& meshSource, QWidget* parent)
 	: QFrame(parent)
