@@ -45,9 +45,9 @@ void BrowserCard::setupUI()
 
 	std::cout << meshName.toStdString() << "\n";
 	const auto mesh = object->translated(-object->baryCenter())
-						.filledHoles()
-						.withConsistentOrientations()
-						.triangulated();
+						 .filledHoles()
+						.withConsistentOrientations();
+						// .triangulated();
 						// .subdivided();
 	object.emplace(mesh);
 

@@ -69,12 +69,12 @@ namespace mesh::ops::derive
 	{
 		if (mesh.isTriangleMesh())
 		{
-			return SubMesh{mesh.positions(), mesh.normals(), mesh.faces()};
+			return SubMesh{mesh.positions(), mesh.normals(), mesh.faceList()};
 		}
 
 		const auto positions = mesh.positions();
 		const auto normals = mesh.normals();
-		const auto& faces = mesh.faces();
+		const auto& faces = mesh.faceList();
 
 		FaceList triangleFaces;
 		triangleFaces.reserve(faces.size() * 2, faces.size() * 3);

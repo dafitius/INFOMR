@@ -29,15 +29,12 @@ void MeshViewport::setMesh(const Mesh& mesh)
 	mesh_.emplace(mesh.translated(-mesh.baryCenter())
 		.triangulated()
 		.withConsistentOrientations()
-		.filledHoles()
+		.removeNonManifold()
 		.withConsistentOrientations()
-		// .subdivided()
+		.filledHoles()
+		.subdivided()
 		);
-	if (!mesh_->topology().isClosed())
-	{
-		const auto& hes = mesh.topology().halfedges();
-		const auto& pos = mesh.positions();
-	}
+	mesh_.value().exportObj("/tmp/testing.obj");
 	camera_.frame(mesh_->bounds());
 
 	uploadPending_ = true;

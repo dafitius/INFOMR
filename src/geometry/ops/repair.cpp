@@ -2,13 +2,10 @@
 // Created by dafitius on 09-10-2026.
 //
 
-//
-// Created by dafitius on 09-10-2026.
-//
-
 #include "../mesh.hpp"
 #include "ops.h"
 
+#include <unordered_set>
 #include <vector>
 
 namespace mesh::ops::repair
@@ -18,7 +15,7 @@ namespace mesh::ops::repair
 		auto positions = std::vector<Mesh::Position>(mesh.positions().size());
 		positions.assign(mesh.positions().begin(), mesh.positions().end());
 
-		auto faces = mesh.faces();
+		auto faces = mesh.faceList();
 		const auto& topo = mesh.topology();
 
 		for (const auto& loop : topo.boundaryLoops())
@@ -40,7 +37,7 @@ namespace mesh::ops::repair
 			closedLoop.push_back(loop.front());
 			for (const auto window : closedLoop | std::views::slide(2))
 			{
-				faces.push_back(window[0], window[1], centerIndex);
+				faces.push_back(window[1], window[0], centerIndex);
 			}
 		}
 
@@ -49,84 +46,166 @@ namespace mesh::ops::repair
 
 	Mesh makeConsistentOrientations(const Mesh& mesh)
 	{
-		auto newFaces = mesh.faces();
+		auto newFaces = FaceSet(mesh.faces().list());
+		const auto incidence = newFaces.edgeIncidence();
 
-		const auto& topo = mesh.topology();
-		const auto hes = topo.halfedges();
+		const auto numFaces = newFaces.list().size();
 
-		std::vector visitedFaces(newFaces.size(), false);
-		std::vector<half_edge::FaceRef> stack;
-		stack.reserve(newFaces.size());
+		// nullopt = unvisited, false = keep winding, true = flip winding
+		std::vector<std::optional<bool>> flipState(numFaces, std::nullopt);
+		std::vector<FaceList::Index> stack;
+		stack.reserve(numFaces);
 
-		auto sameDirectionInFace = [&](const half_edge::FaceRef f, const half_edge::EdgeKey edge) -> std::optional<bool>
+		struct Neighbor
 		{
-			const auto face = newFaces[f];
-
-			for (std::size_t i = 0; i < face.size(); ++i)
-			{
-				const auto vertex0 = face[i];
-				const auto vertex1 = face[(i + 1) % face.size()];
-
-				if (vertex0 == edge.a && vertex1 == edge.b)
-				{
-					return true;
-				}
-				if (vertex0 == edge.b && vertex1 == edge.a)
-				{
-					return false;
-				}
-			}
-			return std::nullopt;
+			FaceList::Index face;
+			bool sameDirection;
 		};
 
-		constexpr half_edge::FaceRef seed = 0;
-		visitedFaces[seed] = true;
-		stack.push_back(seed);
+		std::vector<std::vector<Neighbor>> neighbors(numFaces);
 
-		while (!stack.empty())
+		for (const auto& occurrences : incidence | std::views::values)
 		{
-			const auto f = stack.back();
-			stack.pop_back();
-
-			const auto fh = topo.getHalfedgeFromFace(f);
-			if (!fh)
+			if (occurrences.size() != 2)
 			{
 				continue;
 			}
 
-			auto h = fh->next;
-			const auto start = fh->next;
+			const auto& a = occurrences[0];
+			const auto& b = occurrences[1];
 
-			while (true)
+			if (a.face == b.face)
 			{
-				const auto& he = hes[h];
-				if (he.opposite.has_value())
+				continue;
+			}
+
+			const bool sameDirection = a.from == b.from && a.to == b.to;
+
+			neighbors[a.face].push_back({b.face, sameDirection});
+			neighbors[b.face].push_back({a.face, sameDirection});
+		}
+
+		for (FaceList::Index seed = 0; seed < numFaces; ++seed)
+		{
+			if (flipState[seed].has_value())
+			{
+				continue;
+			}
+
+			flipState[seed] = false;
+			stack.push_back(seed);
+
+			while (!stack.empty())
+			{
+				const FaceList::Index current = stack.back();
+				stack.pop_back();
+
+				for (const auto& [face, sameDirection] : neighbors[current])
 				{
-					const auto other = hes[*he.opposite].face;
-					if (!visitedFaces[other])
+					const bool requiredState = flipState[current].value() ^ sameDirection;
+
+					if (!flipState[face].has_value())
 					{
-						const auto a = he.vertex;
-						const auto b = hes[he.next].vertex;
-
-						// If the neighbor uses the same edge in the same direction,
-						if (sameDirectionInFace(other, {.a = a, .b = b}) == true)
-						{
-							newFaces.reverseFace(other);
-						}
-
-						visitedFaces[other] = true;
-						stack.push_back(other);
+						flipState[face] = requiredState;
+						stack.push_back(face);
 					}
-				}
-
-				h = he.next;
-				if (h == start)
-				{
-					break;
+					else if (flipState[face].value() != requiredState)
+					{
+						std::cerr << "Failed to make consistent orientation\n";
+						return mesh;
+					}
 				}
 			}
 		}
+
+		for (FaceList::Index f = 0; f < numFaces; ++f)
+		{
+			if (flipState[f].value())
+			{
+				newFaces.mutableList().reverseFace(f);
+			}
+		}
+
 		return mesh.withFaces(newFaces);
+	}
+
+	using CutResult = std::pair<Mesh, std::vector<half_edge::EdgeKey>>;
+
+	inline CutResult cutNonManifoldEdges(const Mesh& mesh)
+	{
+		auto positions = std::vector(mesh.positions().begin(), mesh.positions().end());
+
+		auto faces = mesh.faceList();
+		const auto& topo = mesh.topology();
+
+		using VertexRef = FaceList::Index;
+		using half_edge::FaceRef;
+
+		std::vector<std::pair<half_edge::EdgeKey, std::vector<FaceRef>>> singularEdges;
+
+		for (const auto& edge : topo.nonManifoldEdges())
+		{
+			singularEdges.emplace_back(edge, topo.getFaceswithEdge(edge));
+		}
+
+		std::vector<std::unordered_map<VertexRef, VertexRef>> replacements(faces.size());
+
+		for (const VertexRef vertex : std::views::iota(std::size_t{0}, mesh.positions().size()))
+		{
+			const auto subsets = topo.vertexStarSubsets(vertex);
+
+			if (subsets.empty())
+			{
+				continue;
+			}
+
+			for (const auto subsetIndex : std::views::iota(std::size_t{1}, subsets.size()))
+			{
+				const auto duplicate = positions.size();
+				positions.push_back(mesh.positions()[vertex]);
+
+				for (const FaceRef face : subsets[subsetIndex])
+				{
+					replacements[face][vertex] = duplicate;
+				}
+			}
+		}
+
+		for (const auto faceIndex : std::views::iota(std::size_t{0}, faces.size()))
+		{
+			for (const auto& [original, duplicate] : replacements[faceIndex])
+			{
+				faces.replace(faceIndex, original, duplicate);
+			}
+		}
+
+		std::unordered_set<half_edge::EdgeKey, UndirectedEdgeKeyHash> cutEdgeSet;
+
+		for (const auto& [originalEdge, incidentFaces] : singularEdges)
+		{
+			for (const FaceRef face : incidentFaces)
+			{
+				const auto remap = [&](const VertexRef vertex) -> VertexRef
+				{
+					const auto it = replacements[face].find(vertex);
+					return it != replacements[face].end() ? it->second : vertex;
+				};
+
+				const half_edge::EdgeKey cutEdge{.a = remap(originalEdge.a), .b = remap(originalEdge.b)};
+
+				cutEdgeSet.insert(cutEdge.canonize());
+			}
+		}
+
+		std::vector const cutEdges(cutEdgeSet.begin(), cutEdgeSet.end());
+
+		auto newMesh = mesh.withPositions(positions).withFaces(faces);
+		return std::make_pair(newMesh, cutEdges);
+	}
+
+	Mesh makeManifold(const Mesh& mesh)
+	{
+		return cutNonManifoldEdges(mesh).first;
 	}
 
 	Mesh makeLoopSubdividedMesh(const Mesh& mesh)
@@ -143,13 +222,13 @@ namespace mesh::ops::repair
 			return (0.625F - (center * center)) / static_cast<float>(n);
 		};
 
-		if (mesh.faceType() != Mesh::FaceType::TRI)
+		if (mesh.faceType() != FaceSet::FaceType::TRI)
 		{
 			std::cerr << "Loop subdivision needs a triangle mesh" << "\n";
 			return Mesh{};
 		}
 
-		if (mesh.topology().isClosed())
+		if (!mesh.topology().isClosed())
 		{
 			std::cerr << "Loop subdivision requires a closed mesh" << "\n";
 			return Mesh{};
@@ -173,13 +252,13 @@ namespace mesh::ops::repair
 			}
 
 			const glm::vec3 a = pos[he.vertex];
-			const glm::vec3 b = pos[hes[he.next].vertex];
+			const glm::vec3 b = pos[hes[he.prev].vertex];
 
 			glm::vec3 p{};
 			if (he.opposite)
 			{
-				const glm::vec3 c = pos[hes[he.prev].vertex];
-				const glm::vec3 d = pos[hes[hes[*he.opposite].prev].vertex];
+				const glm::vec3 c = pos[hes[he.next].vertex];
+				const glm::vec3 d = pos[hes[hes[*he.opposite].next].vertex];
 				p = 0.375F * (a + b) + 0.125F * (c + d);
 			}
 			else
@@ -199,7 +278,7 @@ namespace mesh::ops::repair
 		// Reposition original vertices.
 		for (std::size_t v = 0; v < numVertices; ++v)
 		{
-			const auto ring = topo.vertexRing(v);
+			const auto ring = topo.orderedVertexNeighbors(v);
 			if (ring.empty())
 			{
 				continue;
@@ -227,13 +306,13 @@ namespace mesh::ops::repair
 			const std::size_t h1 = h0 + 1;
 			const std::size_t h2 = h0 + 2;
 
-			const auto v0 = static_cast<std::uint32_t>(hes[h0].vertex);
-			const auto v1 = static_cast<std::uint32_t>(hes[h1].vertex);
-			const auto v2 = static_cast<std::uint32_t>(hes[h2].vertex);
+			const auto v0 = static_cast<std::uint32_t>(hes[h2].vertex); // A
+			const auto v1 = static_cast<std::uint32_t>(hes[h0].vertex); // B
+			const auto v2 = static_cast<std::uint32_t>(hes[h1].vertex); // C
 
-			const auto e0 = static_cast<std::uint32_t>(edgeVert[h0]); // v0->v1
-			const auto e1 = static_cast<std::uint32_t>(edgeVert[h1]); // v1->v2
-			const auto e2 = static_cast<std::uint32_t>(edgeVert[h2]); // v2->v0
+			const auto e0 = static_cast<std::uint32_t>(edgeVert[h0]); // AB
+			const auto e1 = static_cast<std::uint32_t>(edgeVert[h1]); // BC
+			const auto e2 = static_cast<std::uint32_t>(edgeVert[h2]); // CA
 
 			outFaces.push_back({v0, e0, e2});
 			outFaces.push_back({v1, e1, e0});
@@ -241,7 +320,6 @@ namespace mesh::ops::repair
 			outFaces.push_back({e0, e1, e2});
 		}
 
-		// Rebuild face list.
 		FaceList faces;
 		faces.reserve(outFaces.size(), outFaces.size() * 3);
 

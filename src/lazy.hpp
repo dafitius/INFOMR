@@ -22,13 +22,13 @@ public:
 	}
 
 	template <typename F>
-	const T& getOrTryCreate(F&& f) const
+	const std::optional<T>& getOrTryCreate(F&& f) const
 	{
 		if (!value_)
 		{
 			value_ = std::forward<F>(f)();
 		}
-		return *value_;
+		return value_;
 	}
 
 	const T& get() const
