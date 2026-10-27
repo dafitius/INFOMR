@@ -5,9 +5,13 @@
 #include "workshop.h"
 #include "../components/meshviewport.h"
 #include "../geometry/features/features.h"
+#include "../stats/distributions.hpp"
 #include <QCheckBox>
+#include <QComboBox>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QSpinBox>
 #include <QSplitter>
 #include <QVBoxLayout>
 
@@ -17,7 +21,7 @@ Workshop::Workshop(QWidget* parent)
 	setupUI();
 }
 
-void Workshop::loadMesh(const Mesh& mesh) const
+void Workshop::loadMesh(const Mesh& mesh)
 {
 	const auto object = mesh;
 	viewport->setMesh(object);
@@ -30,8 +34,10 @@ void Workshop::loadMesh(const Mesh& mesh) const
 	recalcStats();
 }
 
-void Workshop::recalcStats() const
+void Workshop::recalcStats()
 {
+	updateDistribution();
+
 	auto meshOpt = viewport->getMesh();
 	if (!meshOpt.has_value())
 	{
@@ -62,6 +68,88 @@ void Workshop::recalcStats() const
 	statsLabel->setWordWrap(true);
 }
 
+void Workshop::updateDistribution()
+{
+	distributionView->setHistogram(nullptr);
+	distributionHistogram.reset();
+	distributionSummary->clear();
+
+	const auto mesh = viewport->getMesh();
+	const auto distribution = stats::findDistribution(distributionBox->currentData().toString().toStdString());
+	if (!mesh || !distribution)
+	{
+		return;
+	}
+
+	QVector<Sample> samples;
+	for (const auto value : distribution->sample(*mesh))
+	{
+		samples.push_back(Sample(value, {}));
+	}
+
+	const auto name = distributionBox->currentText();
+	distributionHistogram.emplace(name, static_cast<size_t>(distributionBinsSpin->value()), samples);
+	distributionView->setFixedRange(std::make_pair(distribution->range.min, distribution->range.max));
+	distributionView->setBucketCount(distributionBinsSpin->value());
+	distributionView->setHistogram(&*distributionHistogram);
+
+	const auto summary = distributionHistogram->summary();
+	distributionSummary->setText(QString("n = %1    min = %2    max = %3    mean = %4    median = %5    std = %6")
+									 .arg(summary.count)
+									 .arg(summary.min, 0, 'g', 4)
+									 .arg(summary.max, 0, 'g', 4)
+									 .arg(summary.mean, 0, 'g', 4)
+									 .arg(summary.median, 0, 'g', 4)
+									 .arg(summary.stddev, 0, 'g', 4));
+}
+
+QWidget* Workshop::setupDistributionPanel(QWidget* parent)
+{
+	auto* panel = new QWidget(parent);
+	auto* layout = new QVBoxLayout(panel);
+	layout->setContentsMargins(0, 8, 0, 0);
+
+	auto* controls = new QHBoxLayout;
+	distributionBox = new QComboBox(panel);
+	for (const auto& distribution : stats::distributions())
+	{
+		const auto name = QString::fromUtf8(distribution.name.data(), static_cast<qsizetype>(distribution.name.size()));
+		distributionBox->addItem(name.toUpper(), name);
+		distributionBox->setItemData(
+			distributionBox->count() - 1, QString::fromUtf8(distribution.description.data(), static_cast<qsizetype>(distribution.description.size())),
+			Qt::ToolTipRole);
+	}
+	distributionBox->setToolTip("Shape property distribution of the current mesh, computed from random vertices");
+
+	distributionBinsSpin = new QSpinBox(panel);
+	distributionBinsSpin->setRange(5, 100);
+	distributionBinsSpin->setValue(20);
+	distributionBinsSpin->setPrefix("Bins: ");
+	distributionBinsSpin->setToolTip("Number of bins over the fixed range of the descriptor, the same for every mesh");
+
+	auto* resampleButton = new QPushButton("Resample", panel);
+	resampleButton->setToolTip("Draw new random vertices, the samples differ a little every time");
+
+	controls->addWidget(distributionBox);
+	controls->addWidget(distributionBinsSpin);
+	controls->addWidget(resampleButton);
+	controls->addStretch();
+
+	distributionView = new HistogramView(panel);
+	distributionView->setMinimumHeight(160);
+	distributionSummary = new QLabel(panel);
+	distributionSummary->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+	layout->addLayout(controls);
+	layout->addWidget(distributionView, 1);
+	layout->addWidget(distributionSummary);
+
+	connect(distributionBox, &QComboBox::currentIndexChanged, this, [this](int) { updateDistribution(); });
+	connect(distributionBinsSpin, &QSpinBox::valueChanged, distributionView, &HistogramView::setBucketCount);
+	connect(resampleButton, &QPushButton::clicked, this, &Workshop::updateDistribution);
+	return panel;
+}
+
 Workshop::~Workshop() = default;
 
 void Workshop::setupUI()
@@ -73,8 +161,15 @@ void Workshop::setupUI()
 	splitter->setChildrenCollapsible(false);
 	mainLayout->addWidget(splitter);
 
-	viewport = new MeshViewport(splitter);
+	auto* viewSplitter = new QSplitter(Qt::Vertical, splitter);
+	viewSplitter->setChildrenCollapsible(true);
+
+	viewport = new MeshViewport(viewSplitter);
 	viewport->setObjectName("workshopViewport");
+	viewSplitter->addWidget(viewport);
+	viewSplitter->addWidget(setupDistributionPanel(viewSplitter));
+	viewSplitter->setStretchFactor(0, 3);
+	viewSplitter->setStretchFactor(1, 1);
 
 	auto* sidebar = new QWidget(splitter);
 	sidebar->setObjectName("workshopSidebar");

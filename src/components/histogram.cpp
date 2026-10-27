@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <optional>
 #include <ranges>
+#include <utility>
 #include <vector>
 
 size_t Histogram::defaultBucketCount(const size_t numSamples, const size_t maxBuckets)
@@ -120,6 +121,12 @@ void HistogramView::setScale(const Scale scale)
 void HistogramView::setClipOutliers(const bool clip)
 {
 	m_clipOutliers = clip;
+	rebuild();
+}
+
+void HistogramView::setFixedRange(std::optional<std::pair<double, double>> range)
+{
+	m_fixedRange = range;
 	rebuild();
 }
 
@@ -260,8 +267,16 @@ void HistogramView::rebuild()
 		return;
 	}
 
-	m_clipLow = m_clipOutliers ? percentile(positions, clipFraction) : positions.front();
-	m_clipHigh = m_clipOutliers ? percentile(positions, 1.0 - clipFraction) : positions.back();
+	if (m_fixedRange)
+	{
+		m_clipLow = toAxis(m_fixedRange->first);
+		m_clipHigh = toAxis(m_fixedRange->second);
+	}
+	else
+	{
+		m_clipLow = m_clipOutliers ? percentile(positions, clipFraction) : positions.front();
+		m_clipHigh = m_clipOutliers ? percentile(positions, 1.0 - clipFraction) : positions.back();
+	}
 
 	if (m_wholeNumbers)
 	{

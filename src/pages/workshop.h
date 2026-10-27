@@ -5,11 +5,16 @@
 #ifndef MR_WORKSHOP_H
 #define MR_WORKSHOP_H
 
+#include "../components/histogram.h"
+
 #include <QWidget>
+#include <optional>
 
 class MeshViewport;
+class QComboBox;
 class QLabel;
 class QPushButton;
+class QSpinBox;
 
 class Workshop : public QWidget
 {
@@ -18,14 +23,22 @@ class Workshop : public QWidget
 public:
 	explicit Workshop(QWidget* parent = nullptr);
 	~Workshop() override;
-	void loadMesh(const class Mesh& mesh) const;
-	void recalcStats() const;
+	void loadMesh(const class Mesh& mesh);
+	void recalcStats();
 
 private:
 	void setupUI();
+	QWidget* setupDistributionPanel(QWidget* parent);
+
+	void updateDistribution();
 
 	MeshViewport* viewport;
 	QLabel* statsLabel;
+	QComboBox* distributionBox;
+	QSpinBox* distributionBinsSpin;
+	HistogramView* distributionView;
+	QLabel* distributionSummary;
+	std::optional<Histogram> distributionHistogram;
 	QPushButton* fixNormalsButton;
 	QPushButton* fillHolesButton;
 	QPushButton* normalizeTranslationButton;

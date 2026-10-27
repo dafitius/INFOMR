@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <optional>
+#include <utility>
 #include <vector>
 
 struct Sample
@@ -77,6 +78,8 @@ public:
 
 	void setClipOutliers(bool clip);
 
+	void setFixedRange(std::optional<std::pair<double, double>> range);
+
 	size_t bucketCount() const
 	{
 		return m_bucketCount;
@@ -129,6 +132,7 @@ private:
 	size_t m_bucketCount = 20;
 	Scale m_scale = Scale::Linear;
 	bool m_clipOutliers = false;
+	std::optional<std::pair<double, double>> m_fixedRange;
 
 	size_t m_numBuckets = 0;
 	double m_low = 0.0;
