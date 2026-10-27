@@ -20,9 +20,10 @@ namespace stats
 {
 	namespace
 	{
-		constexpr double unitCubeDiagonal = std::numbers::sqrt3;
-		constexpr double sqrtMaxTriangleArea = 0.9306048591020996;
-		constexpr double cbrtMaxTetrahedronVolume = 0.6933612743506347;
+		constexpr double maxD1 = 0.8;
+		constexpr double maxD2 = 1.2;
+		constexpr double maxD3 = 0.65;
+		constexpr double maxD4 = 0.35;
 	} // namespace
 
 	std::span<const Distribution> distributions()
@@ -31,14 +32,12 @@ namespace stats
 
 		static constexpr std::array all{
 			Distribution{"a3", "Angle between three random vertices", BinRange{.min = 0.0, .max = std::numbers::pi}, descriptors::A3},
-			Distribution{"d1", "Distance between the barycenter and a random vertex", BinRange{.min = 0.0, .max = unitCubeDiagonal}, descriptors::D1},
-			Distribution{"d2", "Distance between two random vertices", BinRange{.min = 0.0, .max = unitCubeDiagonal}, descriptors::D2},
+			Distribution{"d1", "Distance between the barycenter and a random vertex", BinRange{.min = 0.0, .max = maxD1}, descriptors::D1},
+			Distribution{"d2", "Distance between two random vertices", BinRange{.min = 0.0, .max = maxD2}, descriptors::D2},
 			Distribution{
-				"d3", "Square root of the area of the triangle between three random vertices", BinRange{.min = 0.0, .max = sqrtMaxTriangleArea},
-				descriptors::D3},
+				"d3", "Square root of the area of the triangle between three random vertices", BinRange{.min = 0.0, .max = maxD3}, descriptors::D3},
 			Distribution{
-				"d4", "Cube root of the volume of the tetrahedron between four random vertices",
-				BinRange{.min = 0.0, .max = cbrtMaxTetrahedronVolume}, descriptors::D4},
+				"d4", "Cube root of the volume of the tetrahedron between four random vertices", BinRange{.min = 0.0, .max = maxD4}, descriptors::D4},
 		};
 		return all;
 	}
