@@ -2,6 +2,7 @@
 #include "features.h"
 
 #include <cmath>
+#include <numbers>
 #include <vector>
 
 namespace mesh::features::global_descriptors
