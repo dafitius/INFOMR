@@ -24,8 +24,21 @@ namespace mesh
 	{
 		static constexpr std::array all{
 			Operation{
+				"orient_faces", "Flip faces so neighbouring faces have a consistent orientation",
+				[](const Mesh& mesh) { return mesh.withConsistentOrientations(); }},
+			Operation{"triangulate", "Triangulate the mesh", [](const Mesh& mesh) { return mesh.triangulated(); }},
+			Operation{"remove_non-manifold", "Removes all faces that are non-manifold", [](const Mesh& mesh) { return mesh.removeNonManifold(); }},
+			Operation{"fill_holes", "Close every boundary loop with a triangle fan", [](const Mesh& mesh) { return mesh.filledHoles(); }},
+			Operation{"subdivide", "Subdivide the mesh", [](const Mesh& mesh) { return mesh.subdivided(); }},
+			Operation{
 				"center", "Translate the shape so its barycenter is at the origin",
 				[](const Mesh& mesh) { return mesh.translated(-mesh.baryCenter()); }},
+			Operation{
+				"align_axes", "Rotate the shape so its principal axes align with the world axes (center first)",
+				[](const Mesh& mesh) { return mesh.rotated(glm::inverse(mesh.principleAxes())); }},
+			Operation{
+				"flip object", "Flip the mesh based on its moment",
+				[](const Mesh& mesh) { return mesh.moment().x < 0 ? mesh.rotated(glm::quat{0, 0, 0, 1}) : Mesh::copy(mesh); }},
 			Operation{
 				"scale_to_unit", "Scale the shape uniformly so its largest bounding box side is 1",
 				[](const Mesh& mesh)
@@ -34,13 +47,6 @@ namespace mesh
 					const auto largest = std::max({size.x, size.y, size.z});
 					return largest > 0.0F ? mesh.scaled(glm::vec3{1.0F / largest}) : Mesh::copy(mesh);
 				}},
-			Operation{
-				"align_axes", "Rotate the shape so its principal axes align with the world axes (center first)",
-				[](const Mesh& mesh) { return mesh.rotated(glm::inverse(mesh.principleAxes())); }},
-			Operation{"fill_holes", "Close every boundary loop with a triangle fan", [](const Mesh& mesh) { return mesh.filledHoles(); }},
-			Operation{
-				"orient_faces", "Flip faces so neighbouring faces have a consistent orientation",
-				[](const Mesh& mesh) { return mesh.withConsistentOrientations(); }},
 		};
 		return all;
 	}

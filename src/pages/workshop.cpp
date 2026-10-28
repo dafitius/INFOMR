@@ -170,7 +170,7 @@ void Workshop::setupUI()
 
 	auto* splitter = new QSplitter(Qt::Horizontal, this);
 	splitter->setObjectName("workshopMainSplitter");
-	splitter->setChildrenCollapsible(false);
+	splitter->setChildrenCollapsible(true);
 	mainLayout->addWidget(splitter);
 
 	auto* viewSplitter = new QSplitter(Qt::Vertical, splitter);
@@ -335,8 +335,8 @@ void Workshop::setupUI()
 	sidebarScroll->setWidget(sidebar);
 	splitter->addWidget(viewSplitter);
 	splitter->addWidget(sidebarScroll);
-	splitter->setStretchFactor(0, 4);
-	splitter->setStretchFactor(1, 0);
+	splitter->setStretchFactor(0, 1);
+	splitter->setStretchFactor(1, 4);
 	splitter->setSizes({1000, 330});
 
 	connect(gridBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showGrid, checked); });

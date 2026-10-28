@@ -30,6 +30,8 @@ void MeshViewport::setMesh(const Mesh& mesh)
 
 	uploadPending_ = true;
 	update();
+
+	resetView();
 }
 
 const std::optional<Mesh> MeshViewport::getMesh()
