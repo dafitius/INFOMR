@@ -5,8 +5,8 @@
 #include "metrics.hpp"
 
 #include "../geometry/face_list.hpp"
-#include "../geometry/halfedge.hpp"
 #include "../geometry/mesh.hpp"
+#include "../geometry/topology/halfedge.hpp"
 
 #include <algorithm>
 #include <array>
@@ -35,7 +35,7 @@ namespace stats
 		void forEachTriangle(const Mesh& mesh, Fn&& fn)
 		{
 			const auto positions = mesh.positions();
-			for (const auto face : mesh.faces().all())
+			for (const auto face : mesh.faces().list().all())
 			{
 				if (!FaceList::isValid(face, positions.size()))
 				{
@@ -56,7 +56,7 @@ namespace stats
 			const auto threshold = 1e-10F * diagonal * diagonal;
 
 			return static_cast<double>(static_cast<std::int64_t>(std::ranges::count_if(
-				mesh.faces().all(),
+				mesh.faces().list().all(),
 				[&](const Mesh::Face face)
 				{
 					if (!FaceList::isValid(face, positions.size()))
@@ -77,8 +77,8 @@ namespace stats
 		double countNonManifoldEdges(const Mesh& mesh)
 		{
 			std::vector<std::pair<size_t, size_t>> edges;
-			edges.reserve(mesh.faces().indices().size());
-			for (const auto face : mesh.faces().all())
+			edges.reserve(mesh.faces().list().indices().size());
+			for (const auto face : mesh.faces().list().all())
 			{
 				if (!FaceList::isValid(face, mesh.numVertices()))
 				{
@@ -116,7 +116,7 @@ namespace stats
 		std::vector<bool> referencedVertices(const Mesh& mesh)
 		{
 			std::vector referenced(mesh.numVertices(), false);
-			for (const auto face : mesh.faces().all())
+			for (const auto face : mesh.faces().list().all())
 			{
 				if (FaceList::isValid(face, mesh.numVertices()))
 				{
@@ -149,7 +149,7 @@ namespace stats
 				return vertex;
 			};
 
-			for (const auto face : mesh.faces().all())
+			for (const auto face : mesh.faces().list().all())
 			{
 				if (!FaceList::isValid(face, mesh.numVertices()))
 				{
@@ -189,7 +189,7 @@ namespace stats
 				[](const Mesh& m)
 				{
 					return static_cast<double>(
-						static_cast<std::int64_t>(std::ranges::count_if(m.faces().all(), [](const Mesh::Face f) { return f.size() != 3; })));
+						static_cast<std::int64_t>(std::ranges::count_if(m.faces().list().all(), [](const Mesh::Face f) { return f.size() != 3; })));
 				}},
 			Metric{"min_x", "Bounding box minimum x", [](const Mesh& m) { return static_cast<double>(m.bounds().min.x); }},
 			Metric{"min_y", "Bounding box minimum y", [](const Mesh& m) { return static_cast<double>(m.bounds().min.y); }},

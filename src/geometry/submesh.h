@@ -4,8 +4,8 @@
 
 #ifndef MULTIMEDIARETRIEVAL_SUBMESH_HPP
 #define MULTIMEDIARETRIEVAL_SUBMESH_HPP
-#include "glm/vec3.hpp"
 #include "face_list.hpp"
+#include "glm/vec3.hpp"
 #include <span>
 
 class Mesh;

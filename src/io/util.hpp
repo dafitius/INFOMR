@@ -28,7 +28,7 @@ namespace io_utils
 		return out;
 	}
 
-	static std::string_view trim(std::string_view s)
+	inline std::string_view trim(std::string_view s)
 	{
 		while (!s.empty() && (std::isspace(static_cast<unsigned char>(s.front())) != 0))
 		{

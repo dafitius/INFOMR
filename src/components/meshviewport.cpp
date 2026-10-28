@@ -37,6 +37,49 @@ const std::optional<Mesh> MeshViewport::getMesh()
 	return mesh_;
 }
 
+void MeshViewport::runFullPipeline()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->triangulated()
+					  ->withConsistentOrientations()
+					  ->removeNonManifold()
+					  ->withConsistentOrientations()
+					  ->filledHoles()
+					  ->subdivided()
+					  ->translated(-mesh_->baryCenter())
+					  ->rotated(glm::inverse(mesh_->principleAxes())));
+
+	if (mesh_->moment().x < 0)
+		mesh_.emplace(mesh_->rotated(glm::quat{0, 0, 0, 1}));
+
+	auto bounds = mesh_->bounds();
+	mesh_.emplace(mesh_->scaled(glm::vec3{1 / (bounds.max.x - bounds.min.x)}));
+
+	resetView();
+
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::exportMesh()
+{
+	if (!mesh_)
+		return;
+	mesh_.value().exportObj("/tmp/testing.obj");
+}
+
+void MeshViewport::triangulate()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->triangulated());
+	uploadPending_ = true;
+	update();
+}
+
 void MeshViewport::orientNormals()
 {
 	if (!mesh_)
@@ -47,12 +90,32 @@ void MeshViewport::orientNormals()
 	update();
 }
 
+void MeshViewport::removeNonManifold()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->removeNonManifold());
+	uploadPending_ = true;
+	update();
+}
+
 void MeshViewport::fillHoles()
 {
 	if (!mesh_)
 		return;
 
 	mesh_.emplace(mesh_->filledHoles());
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::subdivide()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->subdivided());
 	uploadPending_ = true;
 	update();
 }

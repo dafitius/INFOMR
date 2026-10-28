@@ -1,13 +1,14 @@
 #ifndef MR_MESH_H
 #define MR_MESH_H
 
-#include "../io/obj_file.hpp"
+#include "../io/obj_file.h"
 #include "../lazy.hpp"
 #include "face_list.hpp"
-#include "halfedge.hpp"
 #include "ops/ops.h"
 #include "pca.hpp"
 #include "submesh.h"
+#include "topology/faceset.hpp"
+#include "topology/halfedge.hpp"
 
 
 #ifdef _WIN32
@@ -22,6 +23,7 @@
 #include <cassert>
 #include <cmath>
 #include <execution>
+#include <filesystem>
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -95,7 +97,7 @@ private:
 	// non-mutable, create a new Mesh if you want to change these
 	const std::vector<Position> positions_;
 	const std::vector<Normal> normals_;
-	const FaceList faces_;
+	const FaceSet faces_;
 
 	// mutable, lazily initialized
 	mutable Lazy<Bounds> bounds_;
@@ -106,13 +108,20 @@ private:
 	mutable Lazy<std::vector<std::uint32_t>> triangle_indices_;
 	mutable Lazy<std::vector<Edge>> edges_;
 	mutable Lazy<size_t> skipped_faces_;
-	mutable Lazy<half_edge::Topology> topology_;
+	mutable Lazy<half_edge::HalfEdgeSet> topology_;
 	mutable Lazy<SubMesh> hull_;
 
 public:
 	Mesh() = default;
 
-	Mesh(std::vector<Position> positions, std::vector<Normal> normals, FaceList faces)
+	Mesh(std::vector<Position> positions, std::vector<Normal> normals, const FaceList& faces)
+		: positions_(std::move(positions))
+		, normals_(std::move(normals))
+		, faces_(faces)
+	{
+	}
+
+	Mesh(std::vector<Position> positions, std::vector<Normal> normals, FaceSet faces)
 		: positions_(std::move(positions))
 		, normals_(std::move(normals))
 		, faces_(std::move(faces))
@@ -125,28 +134,14 @@ public:
 		return result.withPositions(mesh.positions_).withNormals(mesh.normals_).withFaces(mesh.faces_);
 	}
 
-	template <typename... Args>
-	static std::optional<Mesh> fromObj(Args&&... args)
+	static std::optional<Mesh> fromObj(const std::filesystem::path& path)
 	{
-		std::optional<Mesh> result;
-		auto isOk = ObjFile::read(
-			std::forward<Args>(args)...,
-			[&result](auto pos, auto normal, auto faces)
-			{
-				auto convert = [](const auto& src)
-				{
-					std::vector<glm::vec3> dst;
-					dst.reserve(src.size());
-					std::ranges::transform(src, std::back_inserter(dst), [](const std::array<float, 3>& a) { return glm::vec3{a[0], a[1], a[2]}; });
-					return dst;
-				};
-				result.emplace(Mesh{convert(pos), convert(normal), std::move(faces)});
-			});
-		if (isOk)
-		{
-			return result;
-		}
-		return std::nullopt;
+		return ObjFile::read(path);
+	}
+
+	void exportObj(const std::filesystem::path& path) const
+	{
+		ObjFile::write(path, *this);
 	}
 
 	[[nodiscard]] Mesh withPositions(std::vector<Position> p) const
@@ -159,9 +154,14 @@ public:
 		return Mesh{positions_, std::move(n), faces_};
 	}
 
-	[[nodiscard]] Mesh withFaces(FaceList f) const
+	[[nodiscard]] Mesh withFaces(FaceSet f) const
 	{
 		return Mesh{positions_, normals_, std::move(f)};
+	}
+
+	[[nodiscard]] Mesh withFaces(FaceList f) const
+	{
+		return Mesh{positions_, normals_, f};
 	}
 
 	[[nodiscard]]
@@ -173,21 +173,20 @@ public:
 	[[nodiscard]]
 	size_t numFaces() const
 	{
-		return faces_.size();
+		return faces_.list().size();
 	}
 
 	/// @brief Check what type the faces are
 	/// @return Triangles or Quads if all faces are of that type, Mixed otherwise
 	[[nodiscard]]
-	FaceType faceType() const
+	FaceSet::FaceType faceType() const
 	{
-		auto tris = std::ranges::all_of(faces_.all(), [](const Face face) { return face.size() == 3; });
-		if (tris)
-		{
-			return FaceType::Triangles;
-		}
-		const auto quads = std::ranges::all_of(faces_.all(), [](const Face face) { return face.size() == 4; });
-		return quads ? FaceType::Quads : FaceType::Mixed;
+		return faces_.faceType();
+	}
+
+	bool isTriangleMesh() const
+	{
+		return faceType() == FaceSet::FaceType::TRI;
 	}
 
 	[[nodiscard]]
@@ -210,7 +209,13 @@ public:
 	}
 
 	[[nodiscard]]
-	const FaceList& faces() const
+	const FaceList& faceList() const
+	{
+		return faces_.list();
+	}
+
+	[[nodiscard]]
+	const FaceSet& faces() const
 	{
 		return faces_;
 	}
@@ -235,10 +240,11 @@ public:
 				continue;
 			}
 
-			const auto a = static_cast<std::uint32_t>(he.vertex);
-			const auto b = static_cast<std::uint32_t>(hes[he.next].vertex);
-			out.push_back(Edge{a, b});
+			const auto a = static_cast<std::uint32_t>(hes[he.prev].vertex);
+			const auto b = static_cast<std::uint32_t>(he.vertex);
+			out.push_back(Edge{.a = a, .b = b});
 		}
+		std::cout << "There are " << out.size() << " edges without an opposite" << "\n";
 		return out;
 	}
 
@@ -284,6 +290,12 @@ public:
 	}
 
 	[[nodiscard]]
+	Mesh removeNonManifold() const
+	{
+		return mesh::ops::repair::makeManifold(*this);
+	}
+
+	[[nodiscard]]
 	Mesh rotated(const glm::quat& rotation) const
 	{
 		return mesh::ops::transform::rotate(*this, rotation);
@@ -293,6 +305,18 @@ public:
 	Mesh scaled(const glm::vec3& scale) const
 	{
 		return mesh::ops::transform::scale(*this, scale);
+	}
+
+	[[nodiscard]]
+	Mesh subdivided() const
+	{
+		return mesh::ops::repair::makeLoopSubdividedMesh(*this);
+	}
+
+	[[nodiscard]]
+	Mesh triangulated() const
+	{
+		return mesh::ops::derive::makeTriangleMesh(*this)->toMesh();
 	}
 
 	[[nodiscard]]
@@ -333,9 +357,9 @@ public:
 		return skipped_faces_.getOrCreate([&] { return calcSkippedFaces(); });
 	}
 
-	[[nodiscard]] const half_edge::Topology& topology() const
+	[[nodiscard]] const half_edge::HalfEdgeSet& topology() const
 	{
-		return topology_.getOrCreate([&] { return half_edge::Topology::build(faces_, positions_.size()); });
+		return topology_.getOrCreate([&] { return half_edge::HalfEdgeSet::build(faces_.list(), positions_.size()); });
 	}
 
 private:
@@ -363,11 +387,12 @@ private:
 		return (1.0f / positions_.size()) * moment;
 	}
 
+	// TODO: We should probably remove this, or move it to the renderer as a fallback.
 	[[nodiscard]] std::vector<std::uint32_t> createTriangleIndices() const
 	{
 		std::vector<std::uint32_t> out;
-		out.reserve(faces_.size() * 3);
-		for (const auto [i, face] : faces_.all() | std::views::enumerate)
+		out.reserve(faces_.list().size() * 3);
+		for (const auto [i, face] : faces_.list().all() | std::views::enumerate)
 		{
 			if (!FaceList::isValid(face, positions_.size()))
 			{
@@ -388,9 +413,9 @@ private:
 	std::vector<Edge> createEdges() const
 	{
 		std::vector<Edge> occurrences;
-		occurrences.reserve(faces_.size() * 4);
+		occurrences.reserve(faces_.list().size() * 4);
 
-		for (const auto& face : faces_.all())
+		for (const auto& face : faces_.list().all())
 		{
 			if (!FaceList::isValid(face, positions_.size()))
 			{
@@ -431,7 +456,8 @@ private:
 
 	[[nodiscard]] size_t calcSkippedFaces() const
 	{
-		return static_cast<size_t>(std::ranges::count_if(faces_.all(), [this](const Face f) { return !FaceList::isValid(f, positions_.size()); }));
+		return static_cast<size_t>(
+			std::ranges::count_if(faces_.list().all(), [this](const Face f) { return !FaceList::isValid(f, positions_.size()); }));
 	}
 };
 

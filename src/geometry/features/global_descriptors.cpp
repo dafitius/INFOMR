@@ -10,7 +10,7 @@ namespace mesh::features::global_descriptors
 
 	float surfaceArea(const Mesh& mesh)
 	{
-		auto faces = mesh.faces();
+		auto faces = mesh.faces().list();
 		auto vertices = mesh.positions();
 
 		float sum = 0.0;
@@ -30,7 +30,7 @@ namespace mesh::features::global_descriptors
 
 	float volume(const Mesh& mesh)
 	{
-		auto faces = mesh.faces();
+		auto faces = mesh.faces().list();
 		auto verts = mesh.positions();
 		float sum = 0;
 

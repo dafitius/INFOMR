@@ -6,16 +6,31 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
 #include <optional>
 #include <ranges>
 #include <span>
+#include <unordered_map>
 #include <vector>
 
+
+/// Simple mutable container for n-edge polygons.
 class FaceList
 {
 public:
 	using Index = size_t;
 	using Face = std::span<const Index>;
+	struct Edge
+	{
+		Index a;
+		Index b;
+		bool operator==(const Edge&) const = default;
+		Edge canonize() const
+		{
+			return {.a = std::min(a, b), .b = std::max(a, b)};
+		}
+	};
+
 
 	FaceList() = default;
 
@@ -43,7 +58,7 @@ public:
 	}
 
 	template <std::ranges::input_range R>
-	requires std::convertible_to<std::ranges::range_value_t<R>, Index>
+		requires std::convertible_to<std::ranges::range_value_t<R>, Index>
 	void push_range(R&& range)
 	{
 		for (const auto v : range)
@@ -52,7 +67,6 @@ public:
 		}
 		offsets_.push_back(indices_.size());
 	}
-
 
 	// Adds one vertex index to the face being built, call end_face() when it is complete
 	void push_index(const Index index)
@@ -78,16 +92,18 @@ public:
 
 	[[nodiscard]] std::optional<Face> get(std::size_t i) const noexcept
 	{
-		if (i + 1 >= offsets_.size()) {
+		if (i + 1 >= offsets_.size())
+		{
 			return std::nullopt;
-}
+		}
 
 		const auto start = offsets_[i];
 		const auto end = offsets_[i + 1];
 
-		if (end > indices_.size() || start > end) {
+		if (end > indices_.size() || start > end)
+		{
 			return std::nullopt;
-}
+		}
 		return Face(indices_.begin() + start, indices_.begin() + end);
 	}
 
@@ -107,6 +123,50 @@ public:
 	[[nodiscard]] std::span<const Index> indices() const noexcept
 	{
 		return indices_;
+	}
+
+	void remove(const std::size_t faceIndex)
+	{
+		if (faceIndex >= size())
+		{
+			return;
+		}
+
+		const auto start = offsets_[faceIndex];
+		const auto end = offsets_[faceIndex + 1];
+		const auto removed = end - start;
+
+		indices_.erase(indices_.begin() + start, indices_.begin() + end);
+
+		offsets_.erase(offsets_.begin() + faceIndex + 1);
+		for (std::size_t i = faceIndex + 1; i < offsets_.size(); ++i)
+		{
+			offsets_[i] -= removed;
+		}
+	}
+
+	void replace(
+		const std::size_t faceIndex,
+		const Index from,
+		const Index to
+	)
+	{
+		if(faceIndex >= size())
+		{
+			return;
+		}
+
+		const auto start = offsets_[faceIndex];
+		const auto end = offsets_[faceIndex + 1];
+
+		for (auto i = start; i < end; ++i)
+		{
+			if (indices_[i] == from)
+			{
+				indices_[i] = to;
+				return;
+			}
+		}
 	}
 
 	static bool isValid(const Face& face, const size_t numVertices)
