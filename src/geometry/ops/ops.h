@@ -22,6 +22,7 @@ namespace mesh::ops
 		Mesh fillHoles(const Mesh& mesh);
 		Mesh makeConsistentOrientations(const Mesh& mesh);
 		Mesh makeLoopSubdividedMesh(const Mesh& mesh);
+		Mesh simplifyMesh(const Mesh& mesh, float reductionFactor);
 		Mesh makeManifold(const Mesh& mesh);
 	}
 

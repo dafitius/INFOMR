@@ -3,6 +3,7 @@
 //
 
 #include "../mesh.hpp"
+#include "MeshDecimator.hpp"
 #include "ops.h"
 
 #include <unordered_set>
@@ -12,6 +13,11 @@ namespace mesh::ops::repair
 {
 	Mesh fillHoles(const Mesh& mesh)
 	{
+		if (mesh.topology().isClosed())
+		{
+			return mesh;
+		}
+
 		auto positions = std::vector<Mesh::Position>(mesh.positions().size());
 		positions.assign(mesh.positions().begin(), mesh.positions().end());
 
@@ -205,6 +211,10 @@ namespace mesh::ops::repair
 
 	Mesh makeManifold(const Mesh& mesh)
 	{
+		if (mesh.topology().isClosed())
+		{
+			return mesh;
+		}
 		return cutNonManifoldEdges(mesh).first;
 	}
 
@@ -329,6 +339,11 @@ namespace mesh::ops::repair
 		}
 
 		return mesh.withPositions(std::move(newPos)).withFaces(std::move(faces));
+	}
+
+	Mesh simplifyMesh(const Mesh& mesh, const float reductionFactor)
+	{
+		return MeshDecimator::simplify(mesh, reductionFactor);
 	}
 
 } // namespace mesh::ops::repair

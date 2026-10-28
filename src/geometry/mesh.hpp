@@ -112,6 +112,7 @@ public:
 
 	static std::optional<Mesh> fromObj(const std::filesystem::path& path)
 	{
+		return ObjFile::read(path);
 	}
 
 	void exportObj(const std::filesystem::path& path) const
@@ -154,6 +155,12 @@ public:
 	{
 		const auto& data = edges_.getOrCreate([&] { return createEdges(); });
 		return data.size();
+	}
+
+	[[nodiscard]]
+	size_t numNonManifoldEdges() const
+	{
+		return topology().nonManifoldEdges().size();
 	}
 
 	[[nodiscard]]
@@ -261,6 +268,12 @@ public:
 	Mesh subdivided() const
 	{
 		return mesh::ops::repair::makeLoopSubdividedMesh(*this);
+	}
+
+	[[nodiscard]]
+	Mesh decimated() const
+	{
+		return mesh::ops::repair::simplifyMesh(*this, 0.5);
 	}
 
 	[[nodiscard]]
