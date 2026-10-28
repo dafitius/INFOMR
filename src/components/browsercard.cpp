@@ -43,12 +43,10 @@ void BrowserCard::setupUI()
 	mainLayout->setContentsMargins(12, 12, 12, 12);
 	mainLayout->setSpacing(10);
 
-	std::cout << meshName.toStdString() << "\n";
-	const auto mesh = object->translated(-object->baryCenter())
-						 .filledHoles()
-						.withConsistentOrientations();
-						// .triangulated();
-						// .subdivided();
+	// std::cout << meshName.toStdString() << "\n";
+	const auto mesh = object->translated(-object->baryCenter()).filledHoles().withConsistentOrientations();
+	// .triangulated();
+	// .subdivided();
 	object.emplace(mesh);
 
 	const auto mesh2 = object->rotated(object->principleAxes());

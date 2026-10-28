@@ -8,9 +8,13 @@
 #include "../stats/distributions.hpp"
 #include <QCheckBox>
 #include <QComboBox>
+#include <QFormLayout>
+#include <QFrame>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSpinBox>
 #include <QSplitter>
 #include <QVBoxLayout>
@@ -25,12 +29,18 @@ void Workshop::loadMesh(const Mesh& mesh)
 {
 	const auto object = mesh;
 	viewport->setMesh(object);
+
+	runPipelineButton->setEnabled(true);
 	fixNormalsButton->setEnabled(true);
+	triangulateButton->setEnabled(true);
+	removeNonManifoldButton->setEnabled(true);
 	fillHolesButton->setEnabled(true);
+	subdivideButton->setEnabled(true);
 	normalizeTranslationButton->setEnabled(true);
 	alignAxesButton->setEnabled(true);
 	normalizePoseButton->setEnabled(true);
 	scaleToUnitButton->setEnabled(true);
+
 	recalcStats();
 }
 
@@ -155,128 +165,182 @@ Workshop::~Workshop() = default;
 void Workshop::setupUI()
 {
 	auto* mainLayout = new QVBoxLayout(this);
-	mainLayout->setContentsMargins(16, 16, 16, 16);
+	mainLayout->setContentsMargins(12, 12, 12, 12);
+	mainLayout->setSpacing(10);
 
 	auto* splitter = new QSplitter(Qt::Horizontal, this);
+	splitter->setObjectName("workshopMainSplitter");
 	splitter->setChildrenCollapsible(false);
 	mainLayout->addWidget(splitter);
 
 	auto* viewSplitter = new QSplitter(Qt::Vertical, splitter);
+	viewSplitter->setObjectName("workshopViewSplitter");
 	viewSplitter->setChildrenCollapsible(true);
 
 	viewport = new MeshViewport(viewSplitter);
 	viewport->setObjectName("workshopViewport");
 	viewSplitter->addWidget(viewport);
 	viewSplitter->addWidget(setupDistributionPanel(viewSplitter));
-	viewSplitter->setStretchFactor(0, 3);
+	viewSplitter->setStretchFactor(0, 4);
 	viewSplitter->setStretchFactor(1, 1);
+	viewSplitter->setSizes({650, 210});
 
-	auto* sidebar = new QWidget(splitter);
+	auto* sidebarScroll = new QScrollArea(splitter);
+	sidebarScroll->setObjectName("workshopSidebarScroll");
+	sidebarScroll->setWidgetResizable(true);
+	sidebarScroll->setFrameShape(QFrame::NoFrame);
+	sidebarScroll->setMinimumWidth(280);
+	sidebarScroll->setMaximumWidth(390);
+
+	auto* sidebar = new QWidget(sidebarScroll);
 	sidebar->setObjectName("workshopSidebar");
-	sidebar->setMinimumWidth(260);
-
 	auto* sidebarLayout = new QVBoxLayout(sidebar);
-	sidebarLayout->setContentsMargins(8, 8, 8, 8);
-	sidebarLayout->setSpacing(12);
+	sidebarLayout->setContentsMargins(8, 4, 8, 8);
+	sidebarLayout->setSpacing(10);
 
 	auto* title = new QLabel("Workshop", sidebar);
 	title->setObjectName("pageTitle");
 	sidebarLayout->addWidget(title);
 
-	statsLabel = new QLabel("No mesh loaded", sidebar);
+	// Statistics panel
+	auto* statsGroup = new QGroupBox("Mesh statistics", sidebar);
+	auto* statsLayout = new QVBoxLayout(statsGroup);
+	statsLayout->setContentsMargins(10, 12, 10, 10);
+	statsLayout->setSpacing(8);
+
+	statsLabel = new QLabel("No mesh loaded", statsGroup);
 	statsLabel->setObjectName("meshStats");
-	sidebarLayout->addWidget(statsLabel);
+	statsLabel->setWordWrap(true);
+	statsLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+	statsLayout->addWidget(statsLabel);
 
-	auto* recalcStatsBtn = new QPushButton("Recalc stats", sidebar);
+	auto* recalcStatsBtn = new QPushButton("Recalc stats", statsGroup);
 	recalcStatsBtn->setObjectName("recalcStatsButton");
-	sidebarLayout->addWidget(recalcStatsBtn);
+	statsLayout->addWidget(recalcStatsBtn);
+	sidebarLayout->addWidget(statsGroup);
 
-	auto* shadedBox = new QCheckBox("Shaded", sidebar);
+	// Rendering options
+	auto* renderGroup = new QGroupBox("Viewport display", sidebar);
+	auto* renderLayout = new QGridLayout(renderGroup);
+	renderLayout->setContentsMargins(10, 12, 10, 10);
+	renderLayout->setHorizontalSpacing(12);
+	renderLayout->setVerticalSpacing(6);
+
+	auto* shadedBox = new QCheckBox("Shaded surface", renderGroup);
 	shadedBox->setToolTip("Render the mesh surface");
 	shadedBox->setChecked(viewport->renderSettings().showSurface);
-	sidebarLayout->addWidget(shadedBox);
-
-	auto* edgesBox = new QCheckBox("Edges", sidebar);
+	auto* edgesBox = new QCheckBox("Edges", renderGroup);
 	edgesBox->setToolTip("Render the edges of the mesh faces");
 	edgesBox->setChecked(viewport->renderSettings().showEdges);
-	sidebarLayout->addWidget(edgesBox);
-
-	auto* boundingBox = new QCheckBox("Bounding box", sidebar);
+	auto* boundingBox = new QCheckBox("Bounding box", renderGroup);
 	boundingBox->setToolTip("Show the bounding box of the object");
 	boundingBox->setChecked(viewport->renderSettings().showBoundingBox);
-	sidebarLayout->addWidget(boundingBox);
-
-	auto* normalsBox = new QCheckBox("Show normals", sidebar);
+	auto* normalsBox = new QCheckBox("Vertex normals", renderGroup);
 	normalsBox->setToolTip("Show the vertex normals on the object");
 	normalsBox->setChecked(viewport->renderSettings().showNormals);
-	sidebarLayout->addWidget(normalsBox);
-
-	auto* hullBox = new QCheckBox("Show Hull", sidebar);
+	auto* hullBox = new QCheckBox("Convex hull", renderGroup);
 	hullBox->setToolTip("Render a convex hull around the object");
 	hullBox->setChecked(viewport->renderSettings().showHull);
-	sidebarLayout->addWidget(hullBox);
-
-	auto* gridBox = new QCheckBox("Render Grid", sidebar);
+	auto* gridBox = new QCheckBox("Ground grid", renderGroup);
 	gridBox->setToolTip("Render a grid on the ground plane");
 	gridBox->setChecked(viewport->renderSettings().showGrid);
-	sidebarLayout->addWidget(gridBox);
-
-	auto* axesBox = new QCheckBox("World axes", sidebar);
+	auto* axesBox = new QCheckBox("World axes", renderGroup);
 	axesBox->setToolTip("Show the world coordinate axes");
 	axesBox->setChecked(viewport->renderSettings().showAxes);
-	sidebarLayout->addWidget(axesBox);
-
-	auto* eigenvectorAxesBox = new QCheckBox("Eigenvector axes", sidebar);
+	auto* eigenvectorAxesBox = new QCheckBox("Principal axes", renderGroup);
 	eigenvectorAxesBox->setToolTip("Show the mesh's principal eigenvector axes");
 	eigenvectorAxesBox->setChecked(viewport->renderSettings().showEigenvectorAxes);
-	sidebarLayout->addWidget(eigenvectorAxesBox);
 
-	fixNormalsButton = new QPushButton("Repair normals", sidebar);
+	renderLayout->addWidget(shadedBox, 0, 0);
+	renderLayout->addWidget(edgesBox, 0, 1);
+	renderLayout->addWidget(boundingBox, 1, 0);
+	renderLayout->addWidget(normalsBox, 1, 1);
+	renderLayout->addWidget(hullBox, 2, 0);
+	renderLayout->addWidget(gridBox, 2, 1);
+	renderLayout->addWidget(axesBox, 3, 0);
+	renderLayout->addWidget(eigenvectorAxesBox, 3, 1);
+	sidebarLayout->addWidget(renderGroup);
+
+	// Pipeline operations
+	auto* repairGroup = new QGroupBox("Repair mesh", sidebar);
+	auto* repairLayout = new QVBoxLayout(repairGroup);
+	repairLayout->setContentsMargins(10, 12, 10, 10);
+	repairLayout->setSpacing(6);
+
+	runPipelineButton = new QPushButton("Run pipeline", repairGroup);
+	runPipelineButton->setToolTip("Run the full pipeline on this mesh.");
+	runPipelineButton->setEnabled(false);
+	repairLayout->addWidget(runPipelineButton);
+
+	fixNormalsButton = new QPushButton("Repair normals", repairGroup);
 	fixNormalsButton->setToolTip("Makes all normals face a consistent direction, either outwards or inwards.");
 	fixNormalsButton->setEnabled(false);
-	sidebarLayout->addWidget(fixNormalsButton);
+	repairLayout->addWidget(fixNormalsButton);
 
-	fillHolesButton = new QPushButton("Fill holes", sidebar);
+	triangulateButton = new QPushButton("Triangulate", repairGroup);
+	triangulateButton->setToolTip("Triangulate the mesh. (Does nothing if the mesh consists of only triangles)");
+	triangulateButton->setEnabled(false);
+	repairLayout->addWidget(triangulateButton);
+
+	removeNonManifoldButton = new QPushButton("Remove non-manifold", repairGroup);
+	removeNonManifoldButton->setToolTip("Removes all parts of the mesh that are non-manifold.");
+	removeNonManifoldButton->setEnabled(false);
+	repairLayout->addWidget(removeNonManifoldButton);
+
+	fillHolesButton = new QPushButton("Fill holes", repairGroup);
 	fillHolesButton->setToolTip("Detect and fill holes.");
 	fillHolesButton->setEnabled(false);
-	sidebarLayout->addWidget(fillHolesButton);
+	repairLayout->addWidget(fillHolesButton);
 
-	normalizeTranslationButton = new QPushButton("Normalize translation", sidebar);
+	subdivideButton = new QPushButton("Subdivide", repairGroup);
+	subdivideButton->setToolTip("Subdivides the mesh to a consistent amount of vertices.");
+	subdivideButton->setEnabled(false);
+	repairLayout->addWidget(subdivideButton);
+
+	normalizeTranslationButton = new QPushButton("Normalize translation", repairGroup);
 	normalizeTranslationButton->setToolTip("Move the barycenter to the world center.");
 	normalizeTranslationButton->setEnabled(false);
-	sidebarLayout->addWidget(normalizeTranslationButton);
+	repairLayout->addWidget(normalizeTranslationButton);
 
-	alignAxesButton = new QPushButton("Normalize Orientation", sidebar);
+	alignAxesButton = new QPushButton("Normalize Orientation", repairGroup);
 	alignAxesButton->setToolTip("Rotate the mesh so its eigenvector axes align with the world axes");
 	alignAxesButton->setEnabled(false);
-	sidebarLayout->addWidget(alignAxesButton);
+	repairLayout->addWidget(alignAxesButton);
 
-	normalizePoseButton = new QPushButton("Normalize Pose", sidebar);
+	normalizePoseButton = new QPushButton("Normalize Pose", repairGroup);
 	normalizePoseButton->setToolTip("Flip the mesh based on its moment");
 	normalizePoseButton->setEnabled(false);
-	sidebarLayout->addWidget(normalizePoseButton);
+	repairLayout->addWidget(normalizePoseButton);
 
-	scaleToUnitButton = new QPushButton("Scale to unit", sidebar);
+	scaleToUnitButton = new QPushButton("Scale to unit", repairGroup);
 	scaleToUnitButton->setToolTip("Scales the object, so the x axis is exactly 1 unit (Should only be used after aligning eigenvector)");
 	scaleToUnitButton->setEnabled(false);
-	sidebarLayout->addWidget(scaleToUnitButton);
+	repairLayout->addWidget(scaleToUnitButton);
 
-	auto* resetViewBtn = new QPushButton("Reset view", sidebar);
-	sidebarLayout->addWidget(resetViewBtn);
+	auto* resetViewBtn = new QPushButton("Reset view", repairGroup);
+	repairLayout->addWidget(resetViewBtn);
+
+	auto* exportMeshBtn = new QPushButton("Export mesh", repairGroup);
+	repairLayout->addWidget(exportMeshBtn);
+
+	sidebarLayout->addWidget(repairGroup);
 
 	auto* controlsLabel =
 		new QLabel("Left drag: rotate\nRight/middle drag or Shift + left drag: pan\nScroll: zoom\nDouble click: reset view", sidebar);
 	controlsLabel->setObjectName("pageSubtitle");
 	controlsLabel->setWordWrap(true);
 	sidebarLayout->addWidget(controlsLabel);
-
 	sidebarLayout->addStretch();
 
+	sidebarScroll->setWidget(sidebar);
+	splitter->addWidget(viewSplitter);
+	splitter->addWidget(sidebarScroll);
+	splitter->setStretchFactor(0, 4);
+	splitter->setStretchFactor(1, 0);
+	splitter->setSizes({1000, 330});
+
 	connect(gridBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showGrid, checked); });
-
-
 	connect(shadedBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showSurface, checked); });
-
 	connect(edgesBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showEdges, checked); });
 
 	connect(
@@ -284,26 +348,26 @@ void Workshop::setupUI()
 		[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showBoundingBox, checked); });
 
 	connect(hullBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showHull, checked); });
-
-
 	connect(normalsBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showNormals, checked); });
-
 	connect(axesBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showAxes, checked); });
 
 	connect(
 		eigenvectorAxesBox, &QCheckBox::toggled, this,
 		[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showEigenvectorAxes, checked); });
 
+	connect(runPipelineButton, &QPushButton::clicked, viewport, &MeshViewport::runFullPipeline);
+
 	connect(fixNormalsButton, &QPushButton::clicked, viewport, &MeshViewport::orientNormals);
+	connect(triangulateButton, &QPushButton::clicked, viewport, &MeshViewport::triangulate);
+	connect(removeNonManifoldButton, &QPushButton::clicked, viewport, &MeshViewport::removeNonManifold);
 	connect(fillHolesButton, &QPushButton::clicked, viewport, &MeshViewport::fillHoles);
+	connect(subdivideButton, &QPushButton::clicked, viewport, &MeshViewport::subdivide);
 	connect(normalizeTranslationButton, &QPushButton::clicked, viewport, &MeshViewport::normalizeTranslation);
 	connect(alignAxesButton, &QPushButton::clicked, viewport, &MeshViewport::normalizeRotation);
 	connect(normalizePoseButton, &QPushButton::clicked, viewport, &MeshViewport::normalizePose);
 	connect(scaleToUnitButton, &QPushButton::clicked, viewport, &MeshViewport::scaleToUnit);
+
 	connect(resetViewBtn, &QPushButton::clicked, viewport, &MeshViewport::resetView);
 	connect(recalcStatsBtn, &QPushButton::clicked, this, &Workshop::recalcStats);
-
-	splitter->setStretchFactor(0, 2);
-	splitter->setStretchFactor(1, 1);
-	splitter->setSizes({800, 300});
+	connect(exportMeshBtn, &QPushButton::clicked, viewport, &MeshViewport::exportMesh);
 }

@@ -39,8 +39,12 @@ private:
 	HistogramView* distributionView;
 	QLabel* distributionSummary;
 	std::optional<Histogram> distributionHistogram;
+	QPushButton* runPipelineButton;
 	QPushButton* fixNormalsButton;
+	QPushButton* triangulateButton;
+	QPushButton* removeNonManifoldButton;
 	QPushButton* fillHolesButton;
+	QPushButton* subdivideButton;
 	QPushButton* normalizeTranslationButton;
 	QPushButton* alignAxesButton;
 	QPushButton* normalizePoseButton;

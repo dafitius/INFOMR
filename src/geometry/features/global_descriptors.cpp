@@ -103,9 +103,6 @@ namespace mesh::features::global_descriptors
 		const auto hullMesh = convexHull->toMesh();
 		const auto hullVolume = volume(hullMesh);
 
-		std::cout << "Object vertices: " << mesh.positions().size() << ", hull vertices: " << hullMesh.positions().size()
-				  << ", object volume: " << vol << ", hull volume: " << hullVolume << '\n';
-
 		return hullVolume == 0.0F ? 0.0F : vol / hullVolume;
 	}
 

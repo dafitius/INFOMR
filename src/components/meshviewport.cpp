@@ -42,14 +42,14 @@ void MeshViewport::runFullPipeline()
 	if (!mesh_)
 		return;
 
-	mesh_.emplace(mesh_->triangulated()
-					  ->withConsistentOrientations()
-					  ->removeNonManifold()
-					  ->withConsistentOrientations()
-					  ->filledHoles()
-					  ->subdivided()
-					  ->translated(-mesh_->baryCenter())
-					  ->rotated(glm::inverse(mesh_->principleAxes())));
+	mesh_.emplace(mesh_->withConsistentOrientations()
+					  .triangulated()
+					  .removeNonManifold()
+					  .withConsistentOrientations()
+					  .filledHoles()
+					  .subdivided()
+					  .translated(-mesh_->baryCenter())
+					  .rotated(glm::inverse(mesh_->principleAxes())));
 
 	if (mesh_->moment().x < 0)
 		mesh_.emplace(mesh_->rotated(glm::quat{0, 0, 0, 1}));
@@ -57,10 +57,10 @@ void MeshViewport::runFullPipeline()
 	auto bounds = mesh_->bounds();
 	mesh_.emplace(mesh_->scaled(glm::vec3{1 / (bounds.max.x - bounds.min.x)}));
 
-	resetView();
-
 	uploadPending_ = true;
 	update();
+
+	resetView();
 }
 
 void MeshViewport::exportMesh()
@@ -70,22 +70,22 @@ void MeshViewport::exportMesh()
 	mesh_.value().exportObj("/tmp/testing.obj");
 }
 
-void MeshViewport::triangulate()
-{
-	if (!mesh_)
-		return;
-
-	mesh_.emplace(mesh_->triangulated());
-	uploadPending_ = true;
-	update();
-}
-
 void MeshViewport::orientNormals()
 {
 	if (!mesh_)
 		return;
 
 	mesh_.emplace(mesh_->withConsistentOrientations());
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::triangulate()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->triangulated());
 	uploadPending_ = true;
 	update();
 }

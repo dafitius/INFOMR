@@ -45,13 +45,18 @@ public:
 	}
 
 public slots:
+	void runFullPipeline();
 	void resetView();
 	void orientNormals();
+	void triangulate();
+	void removeNonManifold();
 	void fillHoles();
+	void subdivide();
 	void normalizeTranslation();
 	void normalizeRotation();
 	void normalizePose();
 	void scaleToUnit();
+	void exportMesh();
 
 protected:
 	void initializeGL() override;
