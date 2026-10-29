@@ -97,12 +97,7 @@ void BrowsePage::setupClassList()
 		classComboBox->addItem(name, name);
 	}
 
-	connect(
-		classComboBox, &QComboBox::currentIndexChanged, this,
-		[this]
-		{
-			loadSelectedClass();
-		});
+	connect(classComboBox, &QComboBox::currentIndexChanged, this, [this] { loadSelectedClass(); });
 }
 
 void BrowsePage::loadSelectedClass()
@@ -111,9 +106,10 @@ void BrowsePage::loadSelectedClass()
 
 	const QString className = classComboBox->currentData().toString();
 
-	if (className.isEmpty()) {
+	if (className.isEmpty())
+	{
 		return;
-}
+	}
 
 	for (const auto& meshPath : database->iterClassShapePaths(className.toStdString()))
 	{
