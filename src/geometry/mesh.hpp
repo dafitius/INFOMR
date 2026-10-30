@@ -4,6 +4,7 @@
 #include "../io/obj_file.h"
 #include "../lazy.hpp"
 #include "face_list.hpp"
+#include "features/features.h"
 #include "ops/ops.h"
 #include "pca.hpp"
 #include "submesh.h"
@@ -110,6 +111,14 @@ private:
 	mutable Lazy<size_t> skipped_faces_;
 	mutable Lazy<half_edge::HalfEdgeSet> topology_;
 	mutable Lazy<SubMesh> hull_;
+
+	mutable Lazy<float> surfaceArea_;
+	mutable Lazy<float> volume_;
+	mutable Lazy<float> compactness_;
+	mutable Lazy<float> rectangularity_;
+	mutable Lazy<float> diameter_;
+	mutable Lazy<float> convexity_;
+	mutable Lazy<float> eccentricity_;
 
 public:
 	Mesh() = default;
@@ -360,6 +369,42 @@ public:
 	[[nodiscard]] const half_edge::HalfEdgeSet& topology() const
 	{
 		return topology_.getOrCreate([&] { return half_edge::HalfEdgeSet::build(faces_.list(), positions_.size()); });
+	}
+
+	// Scalar features
+	[[nodiscard]] float surfaceArea() const
+	{
+		return surfaceArea_.getOrCreate([&] { return mesh::features::global_descriptors::surfaceArea(*this); });
+	}
+
+	[[nodiscard]] float volume() const
+	{
+		return volume_.getOrCreate([&] { return mesh::features::global_descriptors::volume(*this); });
+	}
+
+	[[nodiscard]] float compactness() const
+	{
+		return compactness_.getOrCreate([&] { return mesh::features::global_descriptors::compactness(*this); });
+	}
+
+	[[nodiscard]] float diameter() const
+	{
+		return diameter_.getOrCreate([&] { return mesh::features::global_descriptors::diameter(*this); });
+	}
+
+	[[nodiscard]] float rectangularity() const
+	{
+		return rectangularity_.getOrCreate([&] { return mesh::features::global_descriptors::rectangularity(*this); });
+	}
+
+	[[nodiscard]] float convexity() const
+	{
+		return convexity_.getOrCreate([&] { return mesh::features::global_descriptors::convexity(*this); });
+	}
+
+	[[nodiscard]] float eccentricity() const
+	{
+		return eccentricity_.getOrCreate([&] { return mesh::features::global_descriptors::eccentricity(*this); });
 	}
 
 private:

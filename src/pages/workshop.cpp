@@ -58,17 +58,17 @@ void Workshop::recalcStats()
 
 	const auto& mesh = meshOpt.value();
 	auto stats = QString(
-					 "Vertices: %1 | Faces: %2 |\n Surface area: %3 | Volume: %4 |\n Compactness: %5 | Rectangularity: %6 |\n Convexity: %7 | "
-					 "Eccentricity: %8 |\n Diameter: %9")
+					 "Vertices: %1 | Faces: %2 | Surface area: %3 | Volume: %4 | Compactness: %5 | Rectangularity: %6 | Convexity: %7 | "
+					 "Eccentricity: %8 | Diameter: %9")
 					 .arg(mesh.numVertices())
 					 .arg(mesh.numFaces())
-					 .arg(mesh::features::global_descriptors::surfaceArea(mesh))
-					 .arg(mesh::features::global_descriptors::volume(mesh))
-					 .arg(mesh::features::global_descriptors::compactness(mesh))
-					 .arg(mesh::features::global_descriptors::rectangularity(mesh))
-					 .arg(mesh::features::global_descriptors::convexity(mesh))
-					 .arg(mesh::features::global_descriptors::eccentricity(mesh))
-					 .arg(mesh::features::global_descriptors::diameter(mesh));
+					 .arg(mesh.surfaceArea())
+					 .arg(mesh.volume())
+					 .arg(mesh.compactness())
+					 .arg(mesh.rectangularity())
+					 .arg(mesh.convexity())
+					 .arg(mesh.eccentricity())
+					 .arg(mesh.diameter());
 
 	if (mesh.numSkippedFaces() > 0)
 	{

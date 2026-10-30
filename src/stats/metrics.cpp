@@ -231,26 +231,13 @@ namespace stats
 				[](const Mesh& m) { return static_cast<double>(m.numSkippedFaces()); }},
 
 			// Global descriptors
-			Metric{
-				"surface_area", "Surface area of the object",
-				[](const Mesh& m) { return static_cast<double>(mesh::features::global_descriptors::surfaceArea(m)); }},
-			Metric{
-				"volume", "Volume of the object", [](const Mesh& m) { return static_cast<double>(mesh::features::global_descriptors::volume(m)); }},
-			Metric{
-				"compactness", "Compactness of the object, measured through sphericity",
-				[](const Mesh& m) { return static_cast<double>(mesh::features::global_descriptors::compactness(m)); }},
-			Metric{
-				"rectangularity", "3D rectangularity of the object",
-				[](const Mesh& m) { return static_cast<double>(mesh::features::global_descriptors::rectangularity(m)); }},
-			Metric{
-				"diameter", "Diameter of the object",
-				[](const Mesh& m) { return static_cast<double>(mesh::features::global_descriptors::diameter(m)); }},
-			Metric{
-				"convexity", "Convexity of the object",
-				[](const Mesh& m) { return static_cast<double>(mesh::features::global_descriptors::convexity(m)); }},
-			Metric{
-				"eccentricity", "Eccentricity of the object",
-				[](const Mesh& m) { return static_cast<double>(mesh::features::global_descriptors::eccentricity(m)); }},
+			Metric{"surface_area", "Surface area of the object", [](const Mesh& m) { return static_cast<double>(m.surfaceArea()); }},
+			Metric{"volume", "Volume of the object", [](const Mesh& m) { return static_cast<double>(m.volume()); }},
+			Metric{"compactness", "Compactness measured through sphericity", [](const Mesh& m) { return static_cast<double>(m.compactness()); }},
+			Metric{"rectangularity", "3D rectangularity of the object", [](const Mesh& m) { return static_cast<double>(m.rectangularity()); }},
+			Metric{"diameter", "Diameter of the object", [](const Mesh& m) { return static_cast<double>(m.diameter()); }},
+			Metric{"convexity", "Convexity of the object", [](const Mesh& m) { return static_cast<double>(m.convexity()); }},
+			Metric{"eccentricity", "Eccentricity of the object", [](const Mesh& m) { return static_cast<double>(m.eccentricity()); }},
 		};
 		return all;
 	}

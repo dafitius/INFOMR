@@ -1,3 +1,4 @@
+#include "../mesh.hpp"
 #include "features.h"
 #include <algorithm>
 #include <random>
