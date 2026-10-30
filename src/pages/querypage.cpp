@@ -226,7 +226,7 @@ void QueryPage::displayResults(const std::vector<QueryResult>& results)
 
 	// Display the query model first
 	const QString queryName = QString::fromStdString(currentQueryMesh.filename().string());
-	auto* queryCard = createModelCard(queryName, currentQueryMesh, "Query model", true);
+	auto* queryCard = createModelCard(queryName, currentQueryMesh, "Query model");
 
 	containerLayout->addWidget(queryCard, 0, 0);
 	resultCards.push_back(queryCard);
@@ -237,7 +237,7 @@ void QueryPage::displayResults(const std::vector<QueryResult>& results)
 		const QString name = QString::fromStdString(result.name);
 		const QString subtitle = QString("Distance: %1").arg(result.distance, 0, 'f', 5);
 
-		auto* card = createModelCard(name, result.meshPath, subtitle, false);
+		auto* card = createModelCard(name, result.meshPath, subtitle);
 
 		const int index = static_cast<int>(i) + 1;
 		const int row = index / 2;
