@@ -264,7 +264,7 @@ QWidget* QueryPage::createModelCard(const QString& name, const std::filesystem::
 	layout->addWidget(title);
 
 	auto* preview = new BrowserCard(name, path, card);
-
+	preview->setPreviewActive(true);
 	layout->addWidget(preview, 1);
 
 	auto* info = new QLabel(subtitle, card);
