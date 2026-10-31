@@ -6,7 +6,6 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFrame>
-#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -20,8 +19,6 @@
 #include <QVBoxLayout>
 #include <QVector>
 #include <filesystem>
-#include <iostream>
-#include <qquickwindow.h>
 #include <utility>
 
 QueryPage::QueryPage(QWidget* parent)
@@ -38,8 +35,6 @@ QueryPage::~QueryPage() {}
 
 void QueryPage::setupUI()
 {
-	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
-
 	auto* mainLayout = new QVBoxLayout(this);
 	mainLayout->setContentsMargins(16, 16, 16, 16);
 
@@ -112,12 +107,9 @@ void QueryPage::setupUI()
 	scrollArea->setFrameShape(QFrame::NoFrame);
 
 	containerWidget = new QWidget(scrollArea);
-	containerLayout = new QGridLayout(containerWidget);
+	containerLayout = new QVBoxLayout(containerWidget);
 	containerLayout->setContentsMargins(0, 0, 0, 0);
-	containerLayout->setHorizontalSpacing(14);
-	containerLayout->setVerticalSpacing(14);
-	containerLayout->setColumnStretch(0, 1);
-	containerLayout->setColumnStretch(1, 1);
+	containerLayout->setSpacing(14);
 	containerLayout->setAlignment(Qt::AlignTop);
 
 	scrollArea->setWidget(containerWidget);
@@ -222,14 +214,29 @@ void QueryPage::startSearch()
 
 void QueryPage::displayResults(const std::vector<QueryResult>& results)
 {
-	clearResultCards();
+	++runCount;
+	auto* runWidget = new QWidget(containerWidget);
+	auto* runLayout = new QVBoxLayout(runWidget);
+	runLayout->setContentsMargins(0, 0, 0, 0);
+	runLayout->setSpacing(8);
 
-	// Display the query model first
 	const QString queryName = QString::fromStdString(currentQueryMesh.filename().string());
-	auto* queryCard = createModelCard(queryName, currentQueryMesh, "Query model");
+	auto* runTitle = new QLabel(QString("Run %1 - %2").arg(runCount).arg(queryName), runWidget);
+	runTitle->setObjectName("pageTitle");
+	runLayout->addWidget(runTitle);
 
-	containerLayout->addWidget(queryCard, 0, 0);
-	resultCards.push_back(queryCard);
+	auto* resultsScrollArea = new QScrollArea(runWidget);
+	resultsScrollArea->setWidgetResizable(true);
+	resultsScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+	resultsScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	resultsScrollArea->setFrameShape(QFrame::NoFrame);
+
+	auto* resultsRow = new QWidget(resultsScrollArea);
+	auto* resultsLayout = new QHBoxLayout(resultsRow);
+	resultsLayout->setContentsMargins(0, 0, 0, 0);
+	resultsLayout->setSpacing(14);
+
+	resultsLayout->addWidget(createModelCard(queryName, currentQueryMesh, "Query model"));
 
 	for (std::size_t i = 0; i < results.size(); ++i)
 	{
@@ -237,51 +244,19 @@ void QueryPage::displayResults(const std::vector<QueryResult>& results)
 		const QString name = QString::fromStdString(result.name);
 		const QString subtitle = QString("Distance: %1").arg(result.distance, 0, 'f', 5);
 
-		auto* card = createModelCard(name, result.meshPath, subtitle);
-
-		const int index = static_cast<int>(i) + 1;
-		const int row = index / 2;
-		const int column = index % 2;
-
-		containerLayout->addWidget(card, row, column);
-		resultCards.push_back(card);
-	}
-}
-
-QWidget* QueryPage::createModelCard(const QString& name, const std::filesystem::path path, const QString& subtitle)
-{
-	auto* card = new QFrame(containerWidget);
-	card->setObjectName("modelCard");
-	card->setFrameShape(QFrame::StyledPanel);
-
-	auto* layout = new QVBoxLayout(card);
-	layout->setContentsMargins(10, 10, 10, 10);
-	layout->setSpacing(8);
-
-	auto* title = new QLabel(name, card);
-	title->setWordWrap(true);
-	title->setObjectName("cardTitle");
-	layout->addWidget(title);
-
-	auto* preview = new BrowserCard(name, path, card);
-	preview->setPreviewActive(true);
-	layout->addWidget(preview, 1);
-
-	auto* info = new QLabel(subtitle, card);
-	info->setWordWrap(true);
-	info->setObjectName("cardSubtitle");
-	layout->addWidget(info);
-
-	return card;
-}
-
-void QueryPage::clearResultCards()
-{
-	for (auto* card : resultCards)
-	{
-		containerLayout->removeWidget(card);
-		delete card;
+		if (result.normalizedMesh)
+			resultsLayout->addWidget(new ResultCard(name, *result.normalizedMesh, subtitle));
+		else
+			resultsLayout->addWidget(createModelCard(name, result.meshPath, subtitle));
 	}
 
-	resultCards.clear();
+	resultsLayout->addStretch();
+	resultsScrollArea->setWidget(resultsRow);
+	runLayout->addWidget(resultsScrollArea);
+	containerLayout->addWidget(runWidget);
+}
+
+ResultCard* QueryPage::createModelCard(const QString& name, const std::filesystem::path& path, const QString& subtitle)
+{
+	return new ResultCard(name, path, subtitle);
 }

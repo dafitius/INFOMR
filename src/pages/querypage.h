@@ -1,16 +1,16 @@
 #ifndef QUERYPAGE_H
 #define QUERYPAGE_H
 
-#include "../components/browsercard.h"
+#include "../components/resultcard.h"
 #include "../querying/query.h"
 
 #include <QComboBox>
 #include <QDoubleSpinBox>
-#include <QGridLayout>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QStringList>
 #include <QVector>
+#include <QVBoxLayout>
 #include <QWidget>
 #include <filesystem>
 #include <vector>
@@ -31,8 +31,7 @@ signals:
 private:
 	void setupUI();
 
-	void clearResultCards();
-	QWidget* createModelCard(const QString& name, const std::filesystem::path path, const QString& subtitle);
+	ResultCard* createModelCard(const QString& name, const std::filesystem::path& path, const QString& subtitle);
 	void startSearch();
 
 	std::filesystem::path getSelectedMeshPath() const;
@@ -55,9 +54,8 @@ private:
 
 	QScrollArea* scrollArea = nullptr;
 	QWidget* containerWidget = nullptr;
-	QGridLayout* containerLayout = nullptr;
-
-	QVector<QWidget*> resultCards;
+	QVBoxLayout* containerLayout = nullptr;
+	int runCount = 0;
 };
 
 #endif // QUERYPAGE_H

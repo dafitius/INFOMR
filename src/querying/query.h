@@ -3,19 +3,27 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
+
+class Mesh;
 
 struct QueryResult
 {
 	std::string name;
 	std::filesystem::path meshPath;
 	double distance = 0.0;
+	std::shared_ptr<const Mesh> normalizedMesh;
 
-	QueryResult(const std::string name, const std::filesystem::path& meshPath, const double distance)
+	QueryResult(
+		const std::string name, const std::filesystem::path& meshPath, const double distance,
+		std::shared_ptr<const Mesh> normalizedMesh = {})
 		: name(name)
 		, meshPath(meshPath)
 		, distance(distance)
+		, normalizedMesh(std::move(normalizedMesh))
 	{
 	}
 };

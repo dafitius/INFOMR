@@ -25,6 +25,18 @@ namespace
 		std::vector<std::vector<double>> distributions;
 	};
 
+	struct ShapeData
+	{
+		Mesh mesh;
+		ShapeDescriptor descriptor;
+	};
+
+	struct Candidate
+	{
+		std::filesystem::path path;
+		ShapeData shape;
+	};
+
 	Mesh normalize(const Mesh& mesh)
 	{
 		auto step1 = mesh.withConsistentOrientations()
@@ -44,13 +56,13 @@ namespace
 		return step3;
 	}
 
-	std::optional<ShapeDescriptor> getDescriptor(const std::filesystem::path& path)
+	std::optional<ShapeData> getShapeData(const std::filesystem::path& path)
 	{
 		auto loaded = Mesh::fromObj(path);
 		if (!loaded)
 			return std::nullopt;
 
-		const auto mesh = normalize(*loaded);
+		auto mesh = normalize(*loaded);
 		ShapeDescriptor descriptor{
 			.global =
 				{mesh.volume(), mesh.surfaceArea(), mesh.compactness(), mesh.rectangularity(), mesh.diameter(), mesh.convexity(),
@@ -67,7 +79,44 @@ namespace
 		if (!std::ranges::all_of(descriptor.global, [](const double value) { return std::isfinite(value); }))
 			return std::nullopt;
 
-		return descriptor;
+		return ShapeData{std::move(mesh), std::move(descriptor)};
+	}
+
+	void normalizeGlobalDescriptors(const std::vector<ShapeDescriptor*>& descriptors)
+	{
+		if (descriptors.empty())
+			return;
+
+		for (std::size_t feature = 0; feature < globalDescriptorCount; ++feature)
+		{
+			double mean = 0.0;
+			for (const auto* descriptor : descriptors)
+				mean += descriptor->global[feature];
+			mean /= static_cast<double>(descriptors.size());
+
+			double variance = 0.0;
+			for (const auto* descriptor : descriptors)
+			{
+				const double difference = descriptor->global[feature] - mean;
+				variance += difference * difference;
+			}
+			variance /= static_cast<double>(descriptors.size());
+
+			if (variance == 0.0)
+			{
+				for (auto* descriptor : descriptors)
+					descriptor->global[feature] = 0.0;
+				continue;
+			}
+
+			const double standardDeviation = std::sqrt(variance);
+			double maxAbsoluteZScore = 0.0;
+			for (const auto* descriptor : descriptors)
+				maxAbsoluteZScore = std::max(maxAbsoluteZScore, std::abs((descriptor->global[feature] - mean) / standardDeviation));
+
+			for (auto* descriptor : descriptors)
+				descriptor->global[feature] = (descriptor->global[feature] - mean) / (standardDeviation * maxAbsoluteZScore);
+		}
 	}
 
 	double weightAt(const std::vector<double>& weights, const std::size_t index)
@@ -132,8 +181,8 @@ std::vector<QueryResult> Query::search(std::size_t topK)
 	if (topK == 0)
 		return {};
 
-	const auto queryDescriptor = getDescriptor(queryMesh);
-	if (!queryDescriptor)
+	auto queryShape = getShapeData(queryMesh);
+	if (!queryShape)
 	{
 		std::cerr << "Failed to calculate descriptors for query mesh: " << queryMesh.string() << std::endl;
 		return {};
@@ -160,7 +209,7 @@ std::vector<QueryResult> Query::search(std::size_t topK)
 	if (error)
 		error.clear();
 
-	std::vector<std::pair<double, QueryResult>> ranked;
+	std::vector<Candidate> candidates;
 	std::filesystem::recursive_directory_iterator it(root, error);
 	const std::filesystem::recursive_directory_iterator end;
 	if (error)
@@ -180,12 +229,9 @@ std::vector<QueryResult> Query::search(std::size_t topK)
 			if (error || normalizedCandidatePath != normalizedQueryPath)
 			{
 				error.clear();
-				if (const auto candidateDescriptor = getDescriptor(path))
+				if (auto candidateShape = getShapeData(path))
 				{
-					if (const auto distance = descriptorDistance(*queryDescriptor, *candidateDescriptor, weights))
-					{
-						ranked.emplace_back(*distance, QueryResult{path.filename().string(), path, *distance});
-					}
+					candidates.push_back({path, std::move(*candidateShape)});
 				}
 			}
 		}
@@ -203,20 +249,39 @@ std::vector<QueryResult> Query::search(std::size_t topK)
 		}
 	}
 
+	std::vector<ShapeDescriptor*> descriptors;
+	descriptors.reserve(candidates.size() + 1);
+	descriptors.push_back(&queryShape->descriptor);
+	for (auto& candidate : candidates)
+		descriptors.push_back(&candidate.shape.descriptor);
+	normalizeGlobalDescriptors(descriptors);
+
+	std::vector<std::pair<double, std::size_t>> ranked;
+	for (std::size_t i = 0; i < candidates.size(); ++i)
+	{
+		const auto& candidate = candidates[i];
+		if (const auto distance = descriptorDistance(queryShape->descriptor, candidate.shape.descriptor, weights))
+			ranked.emplace_back(*distance, i);
+	}
+
 	std::sort(
 		ranked.begin(), ranked.end(),
-		[](const auto& a, const auto& b)
+		[&candidates](const auto& a, const auto& b)
 		{
 			if (a.first != b.first)
 				return a.first < b.first;
-			return a.second.meshPath < b.second.meshPath;
+			return candidates[a.second].path < candidates[b.second].path;
 		});
 
 	std::vector<QueryResult> results;
 	results.reserve(std::min(topK, ranked.size()));
 
 	for (std::size_t i = 0; i < std::min(topK, ranked.size()); ++i)
-		results.push_back(std::move(ranked[i].second));
+	{
+		const auto [distance, candidateIndex] = ranked[i];
+		const auto& candidate = candidates[candidateIndex];
+		results.emplace_back(candidate.path.filename().string(), candidate.path, distance, std::make_shared<Mesh>(candidate.shape.mesh));
+	}
 
 	std::chrono::steady_clock::time_point endTime = std::chrono::steady_clock::now();
 	std::cout << "Calculation done in " << std::chrono::duration_cast<std::chrono::seconds>(endTime - begin).count() << "[seconds]" << std::endl;
