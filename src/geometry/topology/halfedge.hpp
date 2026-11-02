@@ -166,8 +166,9 @@ namespace half_edge
 			std::unordered_map<EdgeKey, std::vector<HalfedgeRef>, UndirectedEdgeKeyHash> edgeMap;
 			edgeMap.reserve(faces.indices().size());
 
-			for (const auto& [f, face] : faces.all() | std::views::enumerate)
+			for (const auto& [faceIndex, face] : faces.all() | std::views::enumerate)
 			{
+				const auto f = static_cast<std::size_t>(faceIndex);
 				const auto faceStart = topo.halfedges_.size();
 				topo.face_halfedge_[f] = faceStart;
 
