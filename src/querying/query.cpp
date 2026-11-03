@@ -143,40 +143,53 @@ namespace
 		if (query.distributions.size() != candidate.distributions.size())
 			return std::nullopt;
 
-		double weightedSquaredDistance = 0.0;
-		double totalWeight = 0.0;
+		double globalSquaredDistance = 0.0;
+		double globalWeight = 0.0;
 
 		for (std::size_t i = 0; i < globalDescriptorCount; ++i)
 		{
 			const double weight = weightAt(weights, i);
 			const double difference = query.global[i] - candidate.global[i];
-			weightedSquaredDistance += weight * difference * difference;
-			totalWeight += weight;
+			globalSquaredDistance += weight * difference * difference;
+			globalWeight += weight;
 		}
+
+		auto result = 0.0;
+		auto resultCount = 0;
+
+		if (globalWeight != 0.0)
+		{
+			result += std::sqrt(globalSquaredDistance / globalWeight);
+			resultCount++;
+		}
+
+		double distributionDistance = 0.0;
+		double distributionWeight = 0.0;
 
 		for (std::size_t i = 0; i < query.distributions.size(); ++i)
 		{
 			const auto& queryHistogram = query.distributions[i];
 			const auto& candidateHistogram = candidate.distributions[i];
-			if (queryHistogram.size() != candidateHistogram.size())
-				return std::nullopt;
-
-			double squaredDistance = 0.0;
-			for (std::size_t bin = 0; bin < queryHistogram.size(); ++bin)
-			{
-				const double difference = queryHistogram[bin] - candidateHistogram[bin];
-				squaredDistance += difference * difference;
-			}
-
 			const double weight = weightAt(weights, globalDescriptorCount + i);
-			weightedSquaredDistance += weight * squaredDistance / static_cast<double>(queryHistogram.size());
-			totalWeight += weight;
+			const auto dist = stats::earthMoversDistance(queryHistogram, candidateHistogram);
+
+			if (dist.has_value())
+			{
+				distributionDistance += weight * dist.value();
+				distributionWeight += weight;
+			}
 		}
 
-		if (totalWeight == 0.0)
+		if (distributionWeight != 0.0)
+		{
+			result += distributionDistance / distributionWeight;
+			resultCount++;
+		}
+
+		if (resultCount == 0)
 			return std::nullopt;
 
-		return std::sqrt(weightedSquaredDistance / totalWeight);
+		return result / resultCount;
 	}
 } // namespace
 
