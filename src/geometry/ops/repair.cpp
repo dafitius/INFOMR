@@ -6,6 +6,8 @@
 #include "MeshDecimator.hpp"
 #include "ops.h"
 
+#include <cmath>
+#include <numbers>
 #include <unordered_set>
 #include <vector>
 
