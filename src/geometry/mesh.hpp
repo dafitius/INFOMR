@@ -111,6 +111,7 @@ private:
 	mutable Lazy<size_t> skipped_faces_;
 	mutable Lazy<half_edge::HalfEdgeSet> topology_;
 	mutable Lazy<SubMesh> hull_;
+	mutable Lazy<std::vector<double>> cumulative_face_areas_;
 
 	mutable Lazy<float> surfaceArea_;
 	mutable Lazy<float> volume_;
@@ -415,6 +416,26 @@ public:
 	[[nodiscard]] const half_edge::HalfEdgeSet& topology() const
 	{
 		return topology_.getOrCreate([&] { return half_edge::HalfEdgeSet::build(faces_.list(), positions_.size()); });
+	}
+
+	/// returns vector of total surface area of a face, faces larger than 3 vertices are fan-triangulated and summed.
+	const std::vector<double>& cumulativeFaceAreas() const
+	{
+		return cumulative_face_areas_.getOrCreate([&] {
+			std::vector<double> result;
+			result.reserve(faces_.list().size());
+			double total = 0.0;
+			for (const auto& face : faces_.list().all())
+			{
+				for (std::size_t k = 1; k + 1 < face.size(); ++k)
+				{
+					const glm::vec3& a = positions_[face[0]];
+					total += 0.5 * glm::length(glm::cross(positions_[face[k]] - a, positions_[face[k + 1]] - a));
+				}
+				result.push_back(total);
+			}
+			return result;
+		});
 	}
 
 	// Scalar features
