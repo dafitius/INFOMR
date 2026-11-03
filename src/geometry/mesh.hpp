@@ -360,7 +360,7 @@ public:
 	[[nodiscard]]
 	Mesh subdivided() const
 	{
-		return mesh::ops::repair::makeLoopSubdividedMesh(*this);
+		return mesh::ops::repair::makeLoopSubdividedMesh(*this, true);
 	}
 
 	[[nodiscard]]

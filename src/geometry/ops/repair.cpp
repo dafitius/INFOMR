@@ -220,7 +220,7 @@ namespace mesh::ops::repair
 		return cutNonManifoldEdges(mesh).first;
 	}
 
-	Mesh makeLoopSubdividedMesh(const Mesh& mesh)
+	Mesh makeLoopSubdividedMesh(const Mesh& mesh, const bool smoothing = true)
 	{
 		// adapted from https://github.com/icemiliang/loop_subdivision/blob/6546efc2936a9e573f0c4133869680ef815dc14c/src/LOOP.cpp#L26
 		auto loopAlpha = [](const std::size_t n)
@@ -267,7 +267,7 @@ namespace mesh::ops::repair
 			const glm::vec3 b = pos[hes[he.prev].vertex];
 
 			glm::vec3 p{};
-			if (he.opposite)
+			if (smoothing && he.opposite)
 			{
 				const glm::vec3 c = pos[hes[he.next].vertex];
 				const glm::vec3 d = pos[hes[hes[*he.opposite].next].vertex];
@@ -287,25 +287,28 @@ namespace mesh::ops::repair
 			newPos.push_back(p);
 		}
 
-		// Reposition original vertices.
-		for (std::size_t v = 0; v < numVertices; ++v)
+		if (smoothing)
 		{
-			const auto ring = topo.orderedVertexNeighbors(v);
-			if (ring.empty())
+			// Reposition original vertices.
+			for (std::size_t v = 0; v < numVertices; ++v)
 			{
-				continue;
+				const auto ring = topo.orderedVertexNeighbors(v);
+				if (ring.empty())
+				{
+					continue;
+				}
+
+				const std::size_t n = ring.size();
+				const float beta = loopAlpha(n);
+
+				glm::vec3 sum{0.0F};
+				for (const auto nb : ring)
+				{
+					sum += pos[nb];
+				}
+
+				newPos[v] = (1.0F - (static_cast<float>(n) * beta)) * pos[v] + beta * sum;
 			}
-
-			const std::size_t n = ring.size();
-			const float beta = loopAlpha(n);
-
-			glm::vec3 sum{0.0F};
-			for (const auto nb : ring)
-			{
-				sum += pos[nb];
-			}
-
-			newPos[v] = (1.0F - (static_cast<float>(n) * beta)) * pos[v] + beta * sum;
 		}
 
 		// Split the triangles in 4
