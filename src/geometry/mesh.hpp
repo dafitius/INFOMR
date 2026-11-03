@@ -323,15 +323,49 @@ public:
 	}
 
 	[[nodiscard]]
+	Mesh remesh(size_t targetVertexCount) const
+	{
+		unsigned long long allowed_deviation = 100;
+		std::optional<Mesh> newMesh;
+		newMesh.emplace(copy(*this));
+		if (newMesh->numVertices() < targetVertexCount + allowed_deviation)
+		{
+			while (newMesh->numVertices() < targetVertexCount)
+			{
+				if (newMesh->numVertices() <= 0)
+				{
+					std::cerr << "Mesh with zero vertices, aborting" << std::endl;
+					return copy(*this);
+				}
+
+				// std::cout << "Subdividing from " << newMesh->numVertices() << " to ";
+				newMesh.emplace(newMesh->subdivided());
+				// std::cout << newMesh->numVertices() << std::endl;
+			}
+		}
+		auto verts = newMesh->numVertices();
+		float ratio = 1.0 - (static_cast<float>(targetVertexCount) / verts);
+		auto vertexCountDifference = verts > targetVertexCount ? verts - targetVertexCount : targetVertexCount - verts;
+		if (ratio < 1 && ratio > 0 && vertexCountDifference > allowed_deviation)
+		{
+			// std::cout << "Simplifying with ratio " << ratio << " from " << newMesh->numVertices() << " vertices." << std::endl;
+			// newMesh.emplace(newMesh->decimated(ratio));
+		}
+
+		// std::cout << "Done, mesh has " << newMesh->numVertices() << " vertices" << std::endl;
+		return newMesh.value();
+	}
+
+	[[nodiscard]]
 	Mesh subdivided() const
 	{
 		return mesh::ops::repair::makeLoopSubdividedMesh(*this);
 	}
 
 	[[nodiscard]]
-	Mesh decimated() const
+	Mesh decimated(float ratio) const
 	{
-		return mesh::ops::repair::simplifyMesh(*this, 0.5);
+		return mesh::ops::repair::simplifyMesh(*this, ratio);
 	}
 
 	[[nodiscard]]

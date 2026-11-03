@@ -18,6 +18,7 @@ namespace
 {
 	constexpr std::size_t globalDescriptorCount = 7;
 	constexpr std::size_t histogramBinCount = 32;
+	constexpr std::size_t targetVertexCount = 10000;
 
 	struct ShapeDescriptor
 	{
@@ -44,7 +45,7 @@ namespace
 						 .removeNonManifold()
 						 .withConsistentOrientations()
 						 .filledHoles()
-						 //  .subdivided()
+						 .remesh(targetVertexCount)
 						 .translated(-mesh.baryCenter())
 						 .rotated(glm::inverse(mesh.principleAxes()));
 
@@ -60,7 +61,10 @@ namespace
 	{
 		auto loaded = Mesh::fromObj(path);
 		if (!loaded)
+		{
+			std::cerr << "Could not load mesh" << std::endl;
 			return std::nullopt;
+		}
 
 		auto mesh = normalize(*loaded);
 		ShapeDescriptor descriptor{
@@ -77,7 +81,14 @@ namespace
 		}
 
 		if (!std::ranges::all_of(descriptor.global, [](const double value) { return std::isfinite(value); }))
+		{
+			std::cerr << "A global descriptor is non-finite:" << std::endl;
+			constexpr std::array<const char*, globalDescriptorCount> descriptorNames{"volume",	 "surface area", "compactness", "rectangularity",
+																					 "diameter", "convexity",	 "eccentricity"};
+			for (std::size_t i = 0; i < descriptor.global.size(); ++i)
+				std::cerr << "  " << descriptorNames[i] << ": " << descriptor.global[i] << std::endl;
 			return std::nullopt;
+		}
 
 		return ShapeData{std::move(mesh), std::move(descriptor)};
 	}
