@@ -26,16 +26,6 @@ MeshViewport::~MeshViewport()
 
 void MeshViewport::setMesh(const Mesh& mesh)
 {
-	mesh_.emplace(mesh.translated(-mesh.baryCenter())
-		.triangulated()
-		.withConsistentOrientations()
-		.removeNonManifold()
-		.withConsistentOrientations()
-		.filledHoles()
-		.subdivided()
-		);
-	mesh_.value().exportObj("/tmp/testing.obj");
-	camera_.frame(mesh_->bounds());
 	mesh_.emplace(mesh);
 
 	uploadPending_ = true;
