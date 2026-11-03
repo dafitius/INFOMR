@@ -35,7 +35,7 @@ void Workshop::loadMesh(const Mesh& mesh)
 	triangulateButton->setEnabled(true);
 	removeNonManifoldButton->setEnabled(true);
 	fillHolesButton->setEnabled(true);
-	subdivideButton->setEnabled(true);
+	remeshButton->setEnabled(true);
 	normalizeTranslationButton->setEnabled(true);
 	alignAxesButton->setEnabled(true);
 	normalizePoseButton->setEnabled(true);
@@ -292,10 +292,10 @@ void Workshop::setupUI()
 	fillHolesButton->setEnabled(false);
 	repairLayout->addWidget(fillHolesButton);
 
-	subdivideButton = new QPushButton("Subdivide", repairGroup);
-	subdivideButton->setToolTip("Subdivides the mesh to a consistent amount of vertices.");
-	subdivideButton->setEnabled(false);
-	repairLayout->addWidget(subdivideButton);
+	remeshButton = new QPushButton("Remesh", repairGroup);
+	remeshButton->setToolTip("Chooses automatically wether to simplify or subdivide the mesh to reach a consistent amount of vertices (10,000).");
+	remeshButton->setEnabled(false);
+	repairLayout->addWidget(remeshButton);
 
 	normalizeTranslationButton = new QPushButton("Normalize translation", repairGroup);
 	normalizeTranslationButton->setToolTip("Move the barycenter to the world center.");
@@ -361,7 +361,7 @@ void Workshop::setupUI()
 	connect(triangulateButton, &QPushButton::clicked, viewport, &MeshViewport::triangulate);
 	connect(removeNonManifoldButton, &QPushButton::clicked, viewport, &MeshViewport::removeNonManifold);
 	connect(fillHolesButton, &QPushButton::clicked, viewport, &MeshViewport::fillHoles);
-	connect(subdivideButton, &QPushButton::clicked, viewport, &MeshViewport::subdivide);
+	connect(remeshButton, &QPushButton::clicked, viewport, &MeshViewport::remesh);
 	connect(normalizeTranslationButton, &QPushButton::clicked, viewport, &MeshViewport::normalizeTranslation);
 	connect(alignAxesButton, &QPushButton::clicked, viewport, &MeshViewport::normalizeRotation);
 	connect(normalizePoseButton, &QPushButton::clicked, viewport, &MeshViewport::normalizePose);

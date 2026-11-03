@@ -324,7 +324,7 @@ public:
 	}
 
 	[[nodiscard]]
-	Mesh remesh(size_t targetVertexCount) const
+	Mesh remeshed(size_t targetVertexCount) const
 	{
 		unsigned long long allowed_deviation = 100;
 		std::optional<Mesh> newMesh;
@@ -421,21 +421,23 @@ public:
 	/// returns vector of total surface area of a face, faces larger than 3 vertices are fan-triangulated and summed.
 	const std::vector<double>& cumulativeFaceAreas() const
 	{
-		return cumulative_face_areas_.getOrCreate([&] {
-			std::vector<double> result;
-			result.reserve(faces_.list().size());
-			double total = 0.0;
-			for (const auto& face : faces_.list().all())
+		return cumulative_face_areas_.getOrCreate(
+			[&]
 			{
-				for (std::size_t k = 1; k + 1 < face.size(); ++k)
+				std::vector<double> result;
+				result.reserve(faces_.list().size());
+				double total = 0.0;
+				for (const auto& face : faces_.list().all())
 				{
-					const glm::vec3& a = positions_[face[0]];
-					total += 0.5 * glm::length(glm::cross(positions_[face[k]] - a, positions_[face[k + 1]] - a));
+					for (std::size_t k = 1; k + 1 < face.size(); ++k)
+					{
+						const glm::vec3& a = positions_[face[0]];
+						total += 0.5 * glm::length(glm::cross(positions_[face[k]] - a, positions_[face[k + 1]] - a));
+					}
+					result.push_back(total);
 				}
-				result.push_back(total);
-			}
-			return result;
-		});
+				return result;
+			});
 	}
 
 	// Scalar features

@@ -11,6 +11,7 @@ namespace
 	constexpr float orbitDegreesPerPixel = 0.4F;
 	constexpr float zoomFactorPerWheelStep = 0.9F;
 	constexpr float degreesPerWheelStep = 15.0F;
+	constexpr float targetVertexCount = 10000;
 } // namespace
 
 MeshViewport::MeshViewport(QWidget* parent)
@@ -49,7 +50,7 @@ void MeshViewport::runFullPipeline()
 					  .removeNonManifold()
 					  .withConsistentOrientations()
 					  .filledHoles()
-					  .subdivided()
+					  .remeshed(targetVertexCount)
 					  .translated(-mesh_->baryCenter())
 					  .rotated(glm::inverse(mesh_->principleAxes())));
 
@@ -112,12 +113,12 @@ void MeshViewport::fillHoles()
 	update();
 }
 
-void MeshViewport::subdivide()
+void MeshViewport::remesh()
 {
 	if (!mesh_)
 		return;
 
-	mesh_.emplace(mesh_->subdivided());
+	mesh_.emplace(mesh_->remeshed(targetVertexCount));
 	uploadPending_ = true;
 	update();
 }

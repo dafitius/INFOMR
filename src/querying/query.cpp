@@ -45,7 +45,7 @@ namespace
 						 .removeNonManifold()
 						 .withConsistentOrientations()
 						 .filledHoles()
-						 .remesh(targetVertexCount)
+						 .remeshed(targetVertexCount)
 						 .translated(-mesh.baryCenter())
 						 .rotated(glm::inverse(mesh.principleAxes()));
 
