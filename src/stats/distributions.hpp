@@ -47,6 +47,13 @@ namespace stats
 	/// Samples outside the range are counted in the first or last bin, non-finite samples are ignored.
 	/// @return numBins values, all 0 if there are no finite samples
 	[[nodiscard]] std::vector<double> binHistogram(std::span<const float> samples, BinRange range, size_t numBins);
+
+	/// @brief Earth Mover's Distance between two histograms over the same equally sized bins. the minimal amount of mass times the
+	/// distance it has to move to turn one into the other. A shift of the same shape by one bin costs little, unlike bin by bin distances.
+	/// Both histograms are normalized first, so it also accepts raw counts.
+	/// @return [0, 1] regardless of the number of bins or their range: 0 for identical shapes, 1 for all mass at opposite ends.
+	/// nullopt if the histograms differ in size or one of them is empty.
+	[[nodiscard]] std::optional<double> earthMoversDistance(std::span<const double> first, std::span<const double> second);
 } // namespace stats
 
 #endif // MULTIMEDIARETRIEVAL_DISTRIBUTIONS_HPP

@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstddef>
 #include <numbers>
+#include <numeric>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -79,5 +80,33 @@ namespace stats
 			}
 		}
 		return histogram;
+	}
+
+	std::optional<double> earthMoversDistance(const std::span<const double> first, const std::span<const double> second)
+	{
+		if (first.size() != second.size())
+		{
+			return std::nullopt;
+		}
+
+		const auto firstMass = std::accumulate(first.begin(), first.end(), 0.0);
+		const auto secondMass = std::accumulate(second.begin(), second.end(), 0.0);
+		if (firstMass <= 0.0 || secondMass <= 0.0)
+		{
+			return std::nullopt;
+		}
+		if (first.size() < 2)
+		{
+			return 0.0;
+		}
+
+		double cumulativeDifference = 0.0;
+		double movedMass = 0.0;
+		for (size_t bin = 0; bin + 1 < first.size(); ++bin)
+		{
+			cumulativeDifference += (first[bin] / firstMass) - (second[bin] / secondMass);
+			movedMass += std::abs(cumulativeDifference);
+		}
+		return movedMass / static_cast<double>(first.size() - 1);
 	}
 } // namespace stats
