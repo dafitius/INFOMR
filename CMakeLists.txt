@@ -90,6 +90,25 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         qhullcpp qhullstatic_r
 )
 
+file(GLOB_RECURSE database_generator_src
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/geometry/*.cpp"
+)
+
+add_executable(generate_database
+        tools/generate_database.cpp
+        ${database_generator_src}
+        src/io/obj_file.cpp
+)
+
+target_include_directories(generate_database PRIVATE "${qhull_SOURCE_DIR}/src")
+
+target_link_libraries(generate_database PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        glm::glm
+        qhullcpp qhullstatic_r
+)
+
 if(WIN32)
     get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
     get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
@@ -112,5 +131,11 @@ endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         SHAPE_DB_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/ShapeDatabase_INFOMR"
+        CACHED_DB_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/CachedShapeDatabase"
         TEST_SHAPE_DB_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/TestShapeDatabase"
+)
+
+target_compile_definitions(generate_database PRIVATE
+        SHAPE_DB_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/ShapeDatabase_INFOMR"
+        CACHED_DB_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/CachedShapeDatabase"
 )

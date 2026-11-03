@@ -29,7 +29,7 @@ namespace mesh
 			Operation{"triangulate", "Triangulate the mesh", [](const Mesh& mesh) { return mesh.triangulated(); }},
 			Operation{"remove_non-manifold", "Removes all faces that are non-manifold", [](const Mesh& mesh) { return mesh.removeNonManifold(); }},
 			Operation{"fill_holes", "Close every boundary loop with a triangle fan", [](const Mesh& mesh) { return mesh.filledHoles(); }},
-			Operation{"subdivide", "Subdivide the mesh", [](const Mesh& mesh) { return mesh.subdivided(); }},
+			Operation{"remesh", "Remesh to 10000 vertices", [](const Mesh& mesh) { return mesh.remeshed(10000); }},
 			Operation{
 				"center", "Translate the shape so its barycenter is at the origin",
 				[](const Mesh& mesh) { return mesh.translated(-mesh.baryCenter()); }},

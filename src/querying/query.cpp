@@ -57,7 +57,7 @@ namespace
 		return step3;
 	}
 
-	std::optional<ShapeData> getShapeData(const std::filesystem::path& path)
+	std::optional<ShapeData> getShapeData(const std::filesystem::path& path, const bool alreadyNormalized = false)
 	{
 		auto loaded = Mesh::fromObj(path);
 		if (!loaded)
@@ -66,7 +66,7 @@ namespace
 			return std::nullopt;
 		}
 
-		auto mesh = normalize(*loaded);
+		auto mesh = alreadyNormalized ? std::move(*loaded) : normalize(*loaded);
 		ShapeDescriptor descriptor{
 			.global =
 				{mesh.volume(), mesh.surfaceArea(), mesh.compactness(), mesh.rectangularity(), mesh.diameter(), mesh.convexity(),
@@ -206,6 +206,10 @@ std::vector<QueryResult> Query::search(std::size_t topK)
 	return {};
 #endif
 
+#ifdef CACHED_DB_ROOT
+	const std::filesystem::path cacheRoot{CACHED_DB_ROOT};
+#endif
+
 	std::error_code error;
 	if (!std::filesystem::is_directory(root, error))
 	{
@@ -235,14 +239,37 @@ std::vector<QueryResult> Query::search(std::size_t topK)
 
 		if (it->is_regular_file(error) && !error && path.extension() == ".obj")
 		{
+			auto meshPath = path;
+			bool alreadyNormalized = false;
+#ifdef CACHED_DB_ROOT
+			const auto relativePath = path.lexically_relative(root);
+			if (!relativePath.empty())
+			{
+				const auto cachedPath = cacheRoot / relativePath;
+				error.clear();
+				if (std::filesystem::is_regular_file(cachedPath, error))
+				{
+					meshPath = cachedPath;
+					alreadyNormalized = true;
+				}
+				else if (error)
+				{
+					std::cerr << "Failed to inspect cached mesh: " << cachedPath.string() << " (" << error.message() << ")\n";
+					error.clear();
+				}
+			}
+#endif
+
 			error.clear();
 			const auto normalizedCandidatePath = std::filesystem::weakly_canonical(path, error);
-			if (error || normalizedCandidatePath != normalizedQueryPath)
+			error.clear();
+			const auto normalizedMeshPath = std::filesystem::weakly_canonical(meshPath, error);
+			if (error || (normalizedCandidatePath != normalizedQueryPath && normalizedMeshPath != normalizedQueryPath))
 			{
 				error.clear();
-				if (auto candidateShape = getShapeData(path))
+				if (auto candidateShape = getShapeData(meshPath, alreadyNormalized))
 				{
-					candidates.push_back({path, std::move(*candidateShape)});
+					candidates.push_back({meshPath, std::move(*candidateShape)});
 				}
 			}
 		}
