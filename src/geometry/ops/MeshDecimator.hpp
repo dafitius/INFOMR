@@ -21,6 +21,8 @@
 
 namespace mesh::ops::repair
 {
+	///Uses greedy surface simplification with qem as described in:
+	//https://doi.org/10.1145/258734.258849
 	class MeshDecimator final
 	{
 	public:
@@ -230,9 +232,9 @@ namespace mesh::ops::repair
 			Index a, b, c;
 			bool alive = true;
 
-			std::array<Index, 3> parts() const
+			std::array<std::reference_wrapper<Index>, 3> parts()
 			{
-				return { this->a, this->b, this->c};
+				return {std::ref(a), std::ref(b), std::ref(c)};
 			}
 		};
 
@@ -277,6 +279,7 @@ namespace mesh::ops::repair
 		std::vector<Triangle> triangles_;
 		std::vector<Quadric> quadrics_;
 		std::vector<std::unordered_set<Index>> neighbors_;
+		std::vector<std::vector<Index>> vertexTriangles_;
 		std::vector<std::size_t> versions_;
 		std::vector<bool> alive_;
 		CandidateQueue candidates_;
@@ -330,6 +333,7 @@ namespace mesh::ops::repair
 
 			quadrics_.resize(count);
 			neighbors_.resize(count);
+			vertexTriangles_.resize(count);
 			versions_.resize(count, 0);
 			alive_.resize(count, true);
 
@@ -354,7 +358,12 @@ namespace mesh::ops::repair
 					continue;
 				}
 
+				const Index ti = triangles_.size();
 				triangles_.push_back({.a = a, .b = b, .c = c, .alive = true});
+				vertexTriangles_[a].push_back(ti);
+				vertexTriangles_[b].push_back(ti);
+				vertexTriangles_[c].push_back(ti);
+
 
 				const Quadric quad = Quadric::fromFace(positions_[a], positions_[b], positions_[c]);
 
@@ -363,7 +372,26 @@ namespace mesh::ops::repair
 				quadrics_[c].add(quad);
 			}
 
-			rebuildNeighbors();
+
+			//Build neighbours
+			for (auto& neighbors : neighbors_) {
+				neighbors.clear();
+			}
+
+			for (const auto& t : triangles_)
+			{
+				if (!t.alive) {
+					continue;
+				}
+
+				neighbors_[t.a].insert(t.b);
+				neighbors_[t.a].insert(t.c);
+				neighbors_[t.b].insert(t.a);
+				neighbors_[t.b].insert(t.c);
+				neighbors_[t.c].insert(t.a);
+				neighbors_[t.c].insert(t.b);
+			}
+
 			addBoundaryConstraints();
 
 			for (Index a = 0; a < neighbors_.size(); ++a)
@@ -465,33 +493,28 @@ namespace mesh::ops::repair
 
 			const auto point = [&](const Index v) -> Position { return (v == a || v == b) ? candidate.position : positions_[v]; };
 
-			return std::ranges::any_of(
-				triangles_,
-				[&](const auto& t)
+			const auto wouldFlip = [&](const Index ti)
+			{
+				const Triangle& t = triangles_[ti];
+				if (!t.alive)
 				{
-					if (!t.alive)
-					{
-						return false;
-					}
+					return false;
+				}
 
-					const bool containsA = t.a == a || t.b == a || t.c == a;
-					const bool containsB = t.a == b || t.b == b || t.c == b;
+				const bool containsA = t.a == a || t.b == a || t.c == a;
+				const bool containsB = t.a == b || t.b == b || t.c == b;
 
-					if (!containsA && !containsB)
-					{
-						return false;
-					}
+				if (containsA == containsB)
+				{
+					return false;
+				}
 
-					// A face containing both endpoints disappears
-					if (containsA && containsB)
-					{
-						return false;
-					}
+				const Position oldNormal = glm::cross(positions_[t.b] - positions_[t.a], positions_[t.c] - positions_[t.a]);
+				const Position newNormal = glm::cross(point(t.b) - point(t.a), point(t.c) - point(t.a));
+				return glm::length(newNormal) <= epsilon || glm::dot(oldNormal, newNormal) <= 0.0;
+			};
 
-					const Position oldNormal = glm::cross(positions_[t.b] - positions_[t.a], positions_[t.c] - positions_[t.a]);
-					const Position newNormal = glm::cross(point(t.b) - point(t.a), point(t.c) - point(t.a));
-					return glm::length(newNormal) <= epsilon || glm::dot(oldNormal, newNormal) <= 0.0;
-				});
+			return std::ranges::any_of(vertexTriangles_[a], wouldFlip) || std::ranges::any_of(vertexTriangles_[b], wouldFlip);
 		}
 
 		void applyCollapse(const Candidate& candidate)
@@ -507,9 +530,10 @@ namespace mesh::ops::repair
 			alive_[b] = false;
 			--aliveVertices_;
 
-			for (auto& triangle : triangles_ | std::views::filter(&Triangle::alive))
+			for (const auto& ti : vertexTriangles_[b])
 			{
-				for (auto& vertex : triangle.parts())
+				auto& triangle = triangles_[ti];
+				for (Index& vertex : triangle.parts())
 				{
 					if (vertex == b) {
 						vertex = a;
@@ -522,35 +546,32 @@ namespace mesh::ops::repair
 				{
 					triangle.alive = false;
 				}
+				else
+				{
+					vertexTriangles_[a].push_back(ti);
+				}
 			}
 
-			rebuildNeighbors();
+			vertexTriangles_[b].clear();
+			std::erase_if(vertexTriangles_[a], [&](const Index ti) { return !triangles_[ti].alive; });
+
+			//patch neighbours
+			for (const Index n : neighbors_[b])
+			{
+				neighbors_[n].erase(b);
+				if (n != a)
+				{
+					neighbors_[n].insert(a);
+					neighbors_[a].insert(n);
+				}
+			}
+			neighbors_[a].erase(b);
+			neighbors_[b].clear();
 
 			// Only candidates touching a have changed costs or topology.
 			for (const Index neighbor : neighbors_[a])
 			{
 				enqueueCollapse(a, neighbor);
-			}
-		}
-
-		void rebuildNeighbors()
-		{
-			for (auto& neighbors : neighbors_) {
-				neighbors.clear();
-}
-
-			for (const auto& t : triangles_)
-			{
-				if (!t.alive) {
-					continue;
-}
-
-				neighbors_[t.a].insert(t.b);
-				neighbors_[t.a].insert(t.c);
-				neighbors_[t.b].insert(t.a);
-				neighbors_[t.b].insert(t.c);
-				neighbors_[t.c].insert(t.a);
-				neighbors_[t.c].insert(t.b);
 			}
 		}
 
