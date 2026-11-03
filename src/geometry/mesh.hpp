@@ -206,6 +206,12 @@ public:
 	}
 
 	[[nodiscard]]
+	size_t numNonManifoldEdges() const
+	{
+		return topology().nonManifoldEdges().size();
+	}
+
+	[[nodiscard]]
 	std::span<const Position> positions() const
 	{
 		return positions_;
@@ -320,6 +326,12 @@ public:
 	Mesh subdivided() const
 	{
 		return mesh::ops::repair::makeLoopSubdividedMesh(*this);
+	}
+
+	[[nodiscard]]
+	Mesh decimated() const
+	{
+		return mesh::ops::repair::simplifyMesh(*this, 0.5);
 	}
 
 	[[nodiscard]]

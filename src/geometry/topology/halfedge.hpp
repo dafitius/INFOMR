@@ -144,7 +144,7 @@ namespace half_edge
 
 			const auto start = *vertex_halfedge_[v];
 			auto current = start;
-			for (std::size_t i = 0; i < halfedges_.size(); ++i)
+			for (auto _ : std::views::iota(0u, halfedges_.size()))
 			{
 				neighbors.push_back(next(current).vertex);
 				current = opposite(current).prev;
