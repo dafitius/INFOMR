@@ -1,3 +1,4 @@
+#include "../mesh.hpp"
 #include "features.h"
 #include <algorithm>
 #include <random>
@@ -19,14 +20,81 @@ namespace
 		std::vector<glm::vec3> result;
 		result.reserve(std::min(count, vertices.size()));
 
-		// TODO: The shape is sampled completely randomly, and not uniformly.
-		// From the technical tips: "The shape property distributions are quite sensitive to a good spread of the sample points over a shape's
-		// surface"
 		std::sample(vertices.begin(), vertices.end(), std::back_inserter(result), count, randomEngine());
 		std::shuffle(result.begin(), result.end(), randomEngine());
 
 		return result;
 	}
+
+	/// Samples points as described by ACM Transactions on Graphics Volume 21, Issue 4: Shape distributions
+	template <std::size_t N = MAX_SAMPLES>
+	auto samplePoints(const Mesh& mesh)
+	{
+		const auto& cumulative = mesh.cumulativeFaceAreas();
+		const auto& positions = mesh.positions();
+		const auto& faces = mesh.faces().list();
+		auto& rng = randomEngine();
+
+		std::uniform_real_distribution areaPick(0.0, cumulative.back());
+		std::uniform_real_distribution unit(0.0f, 1.0f);
+
+		const auto triangleArea = [](const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+		{ return 0.5 * glm::length(glm::cross(b - a, c - a)); };
+
+		const auto sample = [&]
+		{
+			// "we select a face with probability proportional to its area."
+			const double r = areaPick(rng);
+			const auto faceIndex = std::min<std::size_t>(std::ranges::upper_bound(cumulative, r) - cumulative.begin(), cumulative.size() - 1);
+			const auto& face = faces[faceIndex];
+
+			double remaining = r - ((faceIndex != 0u) ? cumulative[faceIndex - 1] : 0.0);
+			std::size_t k = 1;
+			for (; k + 2 < face.size(); ++k)
+			{
+				const double area = triangleArea(positions[face[0]], positions[face[k]], positions[face[k + 1]]);
+				if (remaining < area)
+				{
+					break;
+				}
+				remaining -= area;
+			}
+
+			// P = (1 - sqrt(r1)) A + sqrt(r1)(1 - r2) B + sqrt(r1) r2 C
+			const float sqrtR1 = std::sqrt(unit(rng)); // √r1 sets the percentage from vertex A to the opposing edge, while ...
+			const float r2 = unit(rng);				   // ... r2 represents the percentage along that edge.
+			return (1.0f - sqrtR1) * positions[face[0]] + sqrtR1 * (1.0f - r2) * positions[face[k]] + sqrtR1 * r2 * positions[face[k + 1]];
+		};
+
+		if constexpr (N == 1)
+		{
+			return sample();
+		}
+		else
+		{
+			std::array<glm::vec3, N> result;
+			for (auto& p : result)
+				p = sample();
+			return result;
+		}
+	}
+
+	template <std::size_t M = 1, std::size_t N = MAX_SAMPLES>
+	auto samplePointSets(const Mesh& mesh)
+	{
+		if constexpr (N == 1)
+		{
+			return samplePoints<N>(mesh);
+		}
+		else
+		{
+			std::array<std::array<glm::vec3, N>, M> result;
+			for (auto& p : result)
+				p = samplePoints<N>(mesh);
+			return result;
+		}
+	}
+
 } // namespace
 
 namespace mesh::features::property_descriptors
@@ -40,9 +108,7 @@ namespace mesh::features::property_descriptors
 		if (verts.size() < 3)
 			return {};
 
-		const auto a = sampleVertices(verts);
-		const auto b = sampleVertices(verts);
-		const auto c = sampleVertices(verts);
+		const auto [a, b, c] = samplePointSets<3>(mesh);
 
 		const std::size_t count = std::min({a.size(), b.size(), c.size()});
 
@@ -78,7 +144,7 @@ namespace mesh::features::property_descriptors
 		if (verts.empty())
 			return {};
 
-		const auto samples = sampleVertices(verts);
+		const auto samples = samplePoints(mesh);
 
 		std::vector<float> result;
 		result.reserve(samples.size());
@@ -98,8 +164,7 @@ namespace mesh::features::property_descriptors
 		if (verts.size() < 2)
 			return {};
 
-		const auto a = sampleVertices(verts);
-		const auto b = sampleVertices(verts);
+		const auto [a, b] = samplePointSets<2>(mesh);
 
 		const std::size_t count = std::min(a.size(), b.size());
 
@@ -121,9 +186,7 @@ namespace mesh::features::property_descriptors
 		if (verts.size() < 3)
 			return {};
 
-		const auto a = sampleVertices(verts);
-		const auto b = sampleVertices(verts);
-		const auto c = sampleVertices(verts);
+		const auto [a, b, c] = samplePointSets<3>(mesh);
 
 		const std::size_t count = std::min({a.size(), b.size(), c.size()});
 
@@ -151,10 +214,7 @@ namespace mesh::features::property_descriptors
 		if (verts.size() < 4)
 			return {};
 
-		const auto a = sampleVertices(verts);
-		const auto b = sampleVertices(verts);
-		const auto c = sampleVertices(verts);
-		const auto d = sampleVertices(verts);
+		const auto [a, b, c, d] = samplePointSets<4>(mesh);
 
 		const std::size_t count = std::min({a.size(), b.size(), c.size(), d.size()});
 

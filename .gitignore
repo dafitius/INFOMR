@@ -4,6 +4,9 @@
 /build-*/
 /out/
 
+# Cache database
+/resources/CachedShapeDatabase/*
+
 # CMake files
 CMakeCache.txt
 CMakeFiles/

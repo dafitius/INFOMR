@@ -51,7 +51,7 @@ public slots:
 	void triangulate();
 	void removeNonManifold();
 	void fillHoles();
-	void subdivide();
+	void remesh();
 	void normalizeTranslation();
 	void normalizeRotation();
 	void normalizePose();

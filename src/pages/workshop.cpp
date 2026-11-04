@@ -35,7 +35,7 @@ void Workshop::loadMesh(const Mesh& mesh)
 	triangulateButton->setEnabled(true);
 	removeNonManifoldButton->setEnabled(true);
 	fillHolesButton->setEnabled(true);
-	subdivideButton->setEnabled(true);
+	remeshButton->setEnabled(true);
 	normalizeTranslationButton->setEnabled(true);
 	alignAxesButton->setEnabled(true);
 	normalizePoseButton->setEnabled(true);
@@ -58,17 +58,17 @@ void Workshop::recalcStats()
 
 	const auto& mesh = meshOpt.value();
 	auto stats = QString(
-					 "Vertices: %1 | Faces: %2 |\n Surface area: %3 | Volume: %4 |\n Compactness: %5 | Rectangularity: %6 |\n Convexity: %7 | "
-					 "Eccentricity: %8 |\n Diameter: %9")
+					 "Vertices: %1 | Faces: %2 | Surface area: %3 | Volume: %4 | Compactness: %5 | Rectangularity: %6 | Convexity: %7 | "
+					 "Eccentricity: %8 | Diameter: %9")
 					 .arg(mesh.numVertices())
 					 .arg(mesh.numFaces())
-					 .arg(mesh::features::global_descriptors::surfaceArea(mesh))
-					 .arg(mesh::features::global_descriptors::volume(mesh))
-					 .arg(mesh::features::global_descriptors::compactness(mesh))
-					 .arg(mesh::features::global_descriptors::rectangularity(mesh))
-					 .arg(mesh::features::global_descriptors::convexity(mesh))
-					 .arg(mesh::features::global_descriptors::eccentricity(mesh))
-					 .arg(mesh::features::global_descriptors::diameter(mesh));
+					 .arg(mesh.surfaceArea())
+					 .arg(mesh.volume())
+					 .arg(mesh.compactness())
+					 .arg(mesh.rectangularity())
+					 .arg(mesh.convexity())
+					 .arg(mesh.eccentricity())
+					 .arg(mesh.diameter());
 
 	if (mesh.numSkippedFaces() > 0)
 	{
@@ -292,10 +292,10 @@ void Workshop::setupUI()
 	fillHolesButton->setEnabled(false);
 	repairLayout->addWidget(fillHolesButton);
 
-	subdivideButton = new QPushButton("Subdivide", repairGroup);
-	subdivideButton->setToolTip("Subdivides the mesh to a consistent amount of vertices.");
-	subdivideButton->setEnabled(false);
-	repairLayout->addWidget(subdivideButton);
+	remeshButton = new QPushButton("Remesh", repairGroup);
+	remeshButton->setToolTip("Chooses automatically wether to simplify or subdivide the mesh to reach a consistent amount of vertices (10,000).");
+	remeshButton->setEnabled(false);
+	repairLayout->addWidget(remeshButton);
 
 	normalizeTranslationButton = new QPushButton("Normalize translation", repairGroup);
 	normalizeTranslationButton->setToolTip("Move the barycenter to the world center.");
@@ -361,7 +361,7 @@ void Workshop::setupUI()
 	connect(triangulateButton, &QPushButton::clicked, viewport, &MeshViewport::triangulate);
 	connect(removeNonManifoldButton, &QPushButton::clicked, viewport, &MeshViewport::removeNonManifold);
 	connect(fillHolesButton, &QPushButton::clicked, viewport, &MeshViewport::fillHoles);
-	connect(subdivideButton, &QPushButton::clicked, viewport, &MeshViewport::subdivide);
+	connect(remeshButton, &QPushButton::clicked, viewport, &MeshViewport::remesh);
 	connect(normalizeTranslationButton, &QPushButton::clicked, viewport, &MeshViewport::normalizeTranslation);
 	connect(alignAxesButton, &QPushButton::clicked, viewport, &MeshViewport::normalizeRotation);
 	connect(normalizePoseButton, &QPushButton::clicked, viewport, &MeshViewport::normalizePose);

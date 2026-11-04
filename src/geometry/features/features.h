@@ -1,9 +1,10 @@
 #ifndef MULTIMEDIARETRIEVAL_FEATURES_H
 #define MULTIMEDIARETRIEVAL_FEATURES_H
 
-#include "../mesh.hpp"
 #include <glm/glm.hpp>
 #include <vector>
+
+class Mesh;
 
 namespace mesh::features
 {

@@ -18,4 +18,4 @@ namespace mesh::ops::util
 		double const zMean = std::accumulate(zIter.begin(), zIter.end(), 0.0) / static_cast<double>(points.size());
 		return {xMean, yMean, zMean};
 	};
-}
+} // namespace mesh::ops::util

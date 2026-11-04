@@ -58,10 +58,22 @@ void BrowserCard::setupUI()
 	// 	object.emplace(mesh3);
 	// }
 
-	auto* preview = new MeshPreview(object->vertexPositionBuffer(), object->triangleIndices(), this);
-	preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-	preview->setMinimumHeight(180);
-	mainLayout->addWidget(preview, 1);
+	// auto* preview = new MeshPreview(object->vertexPositionBuffer(), object->triangleIndices(), this);
+	// preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	// preview->setMinimumHeight(180);
+	// mainLayout->addWidget(preview, 1);
+
+	previewHost_ = new QWidget(this);
+	previewHost_->setMinimumHeight(180);
+	previewLayout_ = new QVBoxLayout(previewHost_);
+	previewLayout_->setContentsMargins(0, 0, 0, 0);
+
+	activatePreviewButton_ = new QPushButton("Click to load preview", previewHost_);
+	activatePreviewButton_->setMinimumHeight(180);
+	previewLayout_->addWidget(activatePreviewButton_);
+	mainLayout->addWidget(previewHost_, 1);
+
+	connect(activatePreviewButton_, &QPushButton::clicked, this, [this] { emit previewActivationRequested(this); });
 
 	auto* nameLabel = new QLabel(meshName, this);
 	nameLabel->setStyleSheet("font-weight: bold; font-size: 14px;");
@@ -76,4 +88,30 @@ void BrowserCard::setupUI()
 	mainLayout->addWidget(inspectBtn);
 
 	connect(inspectBtn, &QPushButton::clicked, this, [this] { emit meshClicked(meshName); });
+}
+
+void BrowserCard::setPreviewActive(bool active)
+{
+	if (active && !preview_)
+	{
+		delete activatePreviewButton_;
+		activatePreviewButton_ = nullptr;
+		preview_ = new MeshPreview(object->vertexPositionBuffer(), object->triangleIndices(), previewHost_);
+		preview_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+		preview_->setMinimumHeight(180);
+		previewLayout_->addWidget(preview_);
+	}
+	else if (!active && preview_)
+	{
+		previewLayout_->removeWidget(preview_);
+
+		delete preview_;
+		preview_ = nullptr;
+
+		activatePreviewButton_ = new QPushButton("Click to load preview", previewHost_);
+		activatePreviewButton_->setMinimumHeight(180);
+		previewLayout_->addWidget(activatePreviewButton_);
+
+		connect(activatePreviewButton_, &QPushButton::clicked, this, [this] { emit previewActivationRequested(this); });
+	}
 }

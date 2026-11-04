@@ -8,7 +8,9 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSplitter>
+#include <algorithm>
 #include <qquickwindow.h>
+#include <vector>
 
 BrowsePage::BrowsePage(std::shared_ptr<ShapeDb> database, QWidget* parent)
 	: QWidget(parent)
@@ -52,6 +54,10 @@ void BrowsePage::setupUI()
 	classComboBox->setPlaceholderText("Select class...");
 	sidebarLayout->addWidget(classComboBox);
 
+	loadAllPreviewsBox = new QCheckBox("Autoload previews", sidebar);
+	loadAllPreviewsBox->setToolTip("Autmoatically load all previews (can delay or crash the loading)");
+	sidebarLayout->addWidget(loadAllPreviewsBox);
+
 	sidebarLayout->addStretch();
 
 	// Content
@@ -90,19 +96,20 @@ void BrowsePage::setupClassList()
 	// Empty item means that no class is selected initially.
 	// classComboBox->addItem("Select class...", QVariant());
 
+	std::vector<std::string> classNames;
 	for (const auto& className : database->iterClassNames())
 	{
-		const QString name = QString::fromStdString(className);
+		classNames.push_back(className);
+	}
+	std::sort(classNames.begin(), classNames.end());
 
+	for (const auto& className : classNames)
+	{
+		const QString name = QString::fromStdString(className);
 		classComboBox->addItem(name, name);
 	}
 
-	connect(
-		classComboBox, &QComboBox::currentIndexChanged, this,
-		[this]
-		{
-			loadSelectedClass();
-		});
+	connect(classComboBox, &QComboBox::currentIndexChanged, this, [this] { loadSelectedClass(); });
 }
 
 void BrowsePage::loadSelectedClass()
@@ -111,15 +118,21 @@ void BrowsePage::loadSelectedClass()
 
 	const QString className = classComboBox->currentData().toString();
 
-	if (className.isEmpty()) {
+	if (className.isEmpty())
+	{
 		return;
-}
+	}
 
 	for (const auto& meshPath : database->iterClassShapePaths(className.toStdString()))
 	{
 		const QFileInfo fileInfo(meshPath);
 
 		addMeshCard({.name = className + "/" + fileInfo.fileName(), .source = meshPath});
+	}
+
+	if (loadAllPreviewsBox->checkState() == Qt::CheckState::Checked)
+	{
+		activateAllMeshPreviews();
 	}
 }
 
@@ -146,11 +159,24 @@ void BrowsePage::addMeshCard(const MeshData& mesh)
 	meshCards.push_back(card);
 
 	connect(card, &BrowserCard::meshClicked, this, &BrowsePage::onMeshCardClicked);
-
 	connect(card, &BrowserCard::meshClicked, this, [this, mesh](const QString&) { emit meshSelected(mesh.source); });
+	connect(card, &BrowserCard::previewActivationRequested, this, &BrowsePage::activateMeshPreview);
 }
 
 void BrowsePage::onMeshCardClicked(const QString& meshName)
 {
 	qDebug() << "Clicked mesh:" << meshName;
+}
+
+void BrowsePage::activateMeshPreview(BrowserCard* selectedCard)
+{
+	selectedCard->setPreviewActive(true);
+}
+
+void BrowsePage::activateAllMeshPreviews()
+{
+	for (auto* card : meshCards)
+	{
+		card->setPreviewActive(true);
+	}
 }

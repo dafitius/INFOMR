@@ -1,6 +1,7 @@
 #ifndef BROWSEPAGE_H
 #define BROWSEPAGE_H
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QGridLayout>
 #include <QScrollArea>
@@ -33,6 +34,8 @@ private:
 	void addMeshCard(const MeshData& mesh);
 	void loadSelectedClass();
 	void clearMeshCards();
+	void activateMeshPreview(BrowserCard* selectedCard);
+	void activateAllMeshPreviews();
 
 	std::shared_ptr<ShapeDb> database;
 
@@ -41,6 +44,7 @@ private:
 	QGridLayout* containerLayout;
 
 	QComboBox* classComboBox;
+	QCheckBox* loadAllPreviewsBox;
 
 	std::vector<BrowserCard*> meshCards;
 

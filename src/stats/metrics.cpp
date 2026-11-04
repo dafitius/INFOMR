@@ -5,6 +5,7 @@
 #include "metrics.hpp"
 
 #include "../geometry/face_list.hpp"
+#include "../geometry/features/features.h"
 #include "../geometry/mesh.hpp"
 #include "../geometry/topology/halfedge.hpp"
 
@@ -228,6 +229,15 @@ namespace stats
 			Metric{
 				"skipped_faces", "Faces with too few or out of range vertex indices",
 				[](const Mesh& m) { return static_cast<double>(m.numSkippedFaces()); }},
+
+			// Global descriptors
+			Metric{"surface_area", "Surface area of the object", [](const Mesh& m) { return static_cast<double>(m.surfaceArea()); }},
+			Metric{"volume", "Volume of the object", [](const Mesh& m) { return static_cast<double>(m.volume()); }},
+			Metric{"compactness", "Compactness measured through sphericity", [](const Mesh& m) { return static_cast<double>(m.compactness()); }},
+			Metric{"rectangularity", "3D rectangularity of the object", [](const Mesh& m) { return static_cast<double>(m.rectangularity()); }},
+			Metric{"diameter", "Diameter of the object", [](const Mesh& m) { return static_cast<double>(m.diameter()); }},
+			Metric{"convexity", "Convexity of the object", [](const Mesh& m) { return static_cast<double>(m.convexity()); }},
+			Metric{"eccentricity", "Eccentricity of the object", [](const Mesh& m) { return static_cast<double>(m.eccentricity()); }},
 		};
 		return all;
 	}

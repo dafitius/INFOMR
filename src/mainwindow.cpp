@@ -2,13 +2,15 @@
 
 #include "geometry/mesh.hpp"
 #include "pages/browsepage.h"
+#include "pages/querypage.h"
 #include "pages/statistics.h"
 #include "pages/workshop.h"
 #include <QVBoxLayout>
 #include <QWidget>
 
 MainWindow::MainWindow(std::shared_ptr<ShapeDb> database, QWidget* parent)
-	: QMainWindow(parent), database_(database)
+	: QMainWindow(parent)
+	, database_(database)
 {
 	setupUI();
 }
@@ -17,7 +19,6 @@ MainWindow::~MainWindow() {}
 
 void MainWindow::setupUI()
 {
-
 	auto* centralWidget = new QWidget(this);
 	auto* layout = new QVBoxLayout(centralWidget);
 	layout->setContentsMargins(0, 0, 0, 0);
@@ -36,9 +37,11 @@ void MainWindow::setupUI()
 	auto* stats = new Statistics(database_, this);
 	tabWidget->addTab(stats, tr("Statistics"));
 
+	// Query tab
+	auto* query = new QueryPage(this);
+	tabWidget->addTab(query, "Query");
+
 	connect(stats, &Statistics::openModel, this, [this](const std::filesystem::path& source) { openModel(source); });
-
-
 	connect(browsePage, &BrowsePage::meshSelected, this, [this](const std::filesystem::path& source) { openModel(source); });
 
 	layout->addWidget(tabWidget);

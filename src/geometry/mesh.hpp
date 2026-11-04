@@ -4,6 +4,7 @@
 #include "../io/obj_file.h"
 #include "../lazy.hpp"
 #include "face_list.hpp"
+#include "features/features.h"
 #include "ops/ops.h"
 #include "pca.hpp"
 #include "submesh.h"
@@ -110,6 +111,15 @@ private:
 	mutable Lazy<size_t> skipped_faces_;
 	mutable Lazy<half_edge::HalfEdgeSet> topology_;
 	mutable Lazy<SubMesh> hull_;
+	mutable Lazy<std::vector<double>> cumulative_face_areas_;
+
+	mutable Lazy<float> surfaceArea_;
+	mutable Lazy<float> volume_;
+	mutable Lazy<float> compactness_;
+	mutable Lazy<float> rectangularity_;
+	mutable Lazy<float> diameter_;
+	mutable Lazy<float> convexity_;
+	mutable Lazy<float> eccentricity_;
 
 public:
 	Mesh() = default;
@@ -194,6 +204,12 @@ public:
 	{
 		const auto& data = edges_.getOrCreate([&] { return createEdges(); });
 		return data.size();
+	}
+
+	[[nodiscard]]
+	size_t numNonManifoldEdges() const
+	{
+		return topology().nonManifoldEdges().size();
 	}
 
 	[[nodiscard]]
@@ -308,9 +324,49 @@ public:
 	}
 
 	[[nodiscard]]
+	Mesh remeshed(size_t targetVertexCount) const
+	{
+		unsigned long long allowed_deviation = 100;
+		std::optional<Mesh> newMesh;
+		newMesh.emplace(copy(*this));
+		if (newMesh->numVertices() < targetVertexCount + allowed_deviation)
+		{
+			while (newMesh->numVertices() < targetVertexCount)
+			{
+				if (newMesh->numVertices() <= 0)
+				{
+					std::cerr << "Mesh with zero vertices, aborting" << std::endl;
+					return copy(*this);
+				}
+
+				// std::cout << "Subdividing from " << newMesh->numVertices() << " to ";
+				newMesh.emplace(newMesh->subdivided());
+				// std::cout << newMesh->numVertices() << std::endl;
+			}
+		}
+		auto verts = newMesh->numVertices();
+		float ratio = 1.0 - (static_cast<float>(targetVertexCount) / verts);
+		auto vertexCountDifference = verts > targetVertexCount ? verts - targetVertexCount : targetVertexCount - verts;
+		if (ratio < 1 && ratio > 0 && vertexCountDifference > allowed_deviation)
+		{
+			// std::cout << "Simplifying with ratio " << ratio << " from " << newMesh->numVertices() << " vertices." << std::endl;
+			// newMesh.emplace(newMesh->decimated(ratio));
+		}
+
+		// std::cout << "Done, mesh has " << newMesh->numVertices() << " vertices" << std::endl;
+		return newMesh.value();
+	}
+
+	[[nodiscard]]
 	Mesh subdivided() const
 	{
-		return mesh::ops::repair::makeLoopSubdividedMesh(*this);
+		return mesh::ops::repair::makeLoopSubdividedMesh(*this, true);
+	}
+
+	[[nodiscard]]
+	Mesh decimated(float ratio) const
+	{
+		return mesh::ops::repair::simplifyMesh(*this, ratio);
 	}
 
 	[[nodiscard]]
@@ -360,6 +416,64 @@ public:
 	[[nodiscard]] const half_edge::HalfEdgeSet& topology() const
 	{
 		return topology_.getOrCreate([&] { return half_edge::HalfEdgeSet::build(faces_.list(), positions_.size()); });
+	}
+
+	/// returns vector of total surface area of a face, faces larger than 3 vertices are fan-triangulated and summed.
+	const std::vector<double>& cumulativeFaceAreas() const
+	{
+		return cumulative_face_areas_.getOrCreate(
+			[&]
+			{
+				std::vector<double> result;
+				result.reserve(faces_.list().size());
+				double total = 0.0;
+				for (const auto& face : faces_.list().all())
+				{
+					for (std::size_t k = 1; k + 1 < face.size(); ++k)
+					{
+						const glm::vec3& a = positions_[face[0]];
+						total += 0.5 * glm::length(glm::cross(positions_[face[k]] - a, positions_[face[k + 1]] - a));
+					}
+					result.push_back(total);
+				}
+				return result;
+			});
+	}
+
+	// Scalar features
+	[[nodiscard]] float surfaceArea() const
+	{
+		return surfaceArea_.getOrCreate([&] { return mesh::features::global_descriptors::surfaceArea(*this); });
+	}
+
+	[[nodiscard]] float volume() const
+	{
+		return volume_.getOrCreate([&] { return mesh::features::global_descriptors::volume(*this); });
+	}
+
+	[[nodiscard]] float compactness() const
+	{
+		return compactness_.getOrCreate([&] { return mesh::features::global_descriptors::compactness(*this); });
+	}
+
+	[[nodiscard]] float diameter() const
+	{
+		return diameter_.getOrCreate([&] { return mesh::features::global_descriptors::diameter(*this); });
+	}
+
+	[[nodiscard]] float rectangularity() const
+	{
+		return rectangularity_.getOrCreate([&] { return mesh::features::global_descriptors::rectangularity(*this); });
+	}
+
+	[[nodiscard]] float convexity() const
+	{
+		return convexity_.getOrCreate([&] { return mesh::features::global_descriptors::convexity(*this); });
+	}
+
+	[[nodiscard]] float eccentricity() const
+	{
+		return eccentricity_.getOrCreate([&] { return mesh::features::global_descriptors::eccentricity(*this); });
 	}
 
 private:

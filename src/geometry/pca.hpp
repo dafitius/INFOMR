@@ -179,12 +179,14 @@ namespace mesh::pca
 
 		if (std::isnan(glm::determinant(axes)))
 		{
+			std::cerr << "Something went wrong while calculating eigenvectors" << std::endl;
 			std::cout << "eigenvalue[0] = " << eigenvalues_[0] << '\n';
 			std::cout << "eigenvalue[1] = " << eigenvalues_[1] << '\n';
 			std::cout << "eigenvalue[2] = " << eigenvalues_[2] << '\n';
 			std::cout << "length2[e0] = " << length2(e0) << '\n';
 			std::cout << "length2[e1] = " << length2(e1) << '\n';
 			std::cout << "length2[e2] = " << length2(e2) << '\n';
+			return glm::quat{0, 0, 0, 1};
 		}
 		return glm::normalize(glm::quat_cast(axes));
 	}

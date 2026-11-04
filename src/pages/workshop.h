@@ -44,7 +44,7 @@ private:
 	QPushButton* triangulateButton;
 	QPushButton* removeNonManifoldButton;
 	QPushButton* fillHolesButton;
-	QPushButton* subdivideButton;
+	QPushButton* remeshButton;
 	QPushButton* normalizeTranslationButton;
 	QPushButton* alignAxesButton;
 	QPushButton* normalizePoseButton;

@@ -53,6 +53,8 @@ namespace mesh::features::global_descriptors
 	{
 		auto vol = volume(mesh);
 		auto area = surfaceArea(mesh);
+		if (vol == 0 || area == 0)
+			return 0;
 		auto a = pow(std::numbers::pi, (float)1 / 3);
 		auto b = pow(6 * vol, (float)2 / 3);
 		auto c = (a * b) / area;
