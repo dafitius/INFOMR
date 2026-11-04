@@ -72,7 +72,7 @@ namespace
 		}
 		else
 		{
-			std::array<glm::vec3, N> result;
+			std::vector<glm::vec3> result(N);
 			for (auto& p : result)
 				p = sample();
 			return result;
@@ -88,7 +88,7 @@ namespace
 		}
 		else
 		{
-			std::array<std::array<glm::vec3, N>, M> result;
+			std::array<std::vector<glm::vec3>, M> result;
 			for (auto& p : result)
 				p = samplePoints<N>(mesh);
 			return result;

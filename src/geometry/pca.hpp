@@ -15,11 +15,12 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <functional>
 #include <iostream>
 
 namespace mesh::pca
 {
-	/// @brief Assumes model is centered already
+	/// @brief Covariance around the mean of the positions, so the model does not need to be centered first
 	/// @return
 	[[nodiscard]] inline glm::mat3 covariance(const std::span<const glm::vec3>& positions)
 	{
@@ -29,8 +30,17 @@ namespace mesh::pca
 		{
 			return cov;
 		}
+
+		glm::dvec3 sum(0.0);
 		for (const auto& p : positions)
 		{
+			sum += glm::dvec3(p);
+		}
+		const auto mean = glm::vec3(sum / static_cast<double>(positions.size()));
+
+		for (const auto& position : positions)
+		{
+			const auto p = position - mean;
 			cov[0][0] += p.x * p.x;
 			cov[0][1] += p.x * p.y;
 			cov[0][2] += p.x * p.z;
@@ -62,17 +72,20 @@ namespace mesh::pca
 		const float e = covariance[2][1];
 		const float f = covariance[2][2];
 
+		constexpr auto eps = std::numeric_limits<float>::epsilon();
 		auto p1 = (b * b) + (c * c) + (e * e);
-		if (p1 <= std::numeric_limits<float>::epsilon() && p1 >= -std::numeric_limits<float>::epsilon())
+		if (p1 <= eps * ((a * a) + (d * d) + (f * f)))
 		{
-			return {a, d, f};
+			std::array<float, 3> diagonal{a, d, f};
+			std::ranges::sort(diagonal, std::greater{});
+			return diagonal;
 		}
 
 		auto q = (a + d + f) / 3.0f;
 		auto p2 = (a - q) * (a - q) + (d - q) * (d - q) + (f - q) * (f - q) + 2 * p1;
 		p2 = std::max(0.0f, p2);
 		auto p = std::sqrt(p2 / 6.0f);
-		if (p <= std::numeric_limits<float>::epsilon())
+		if (p <= eps * std::abs(q))
 		{
 			return {q, q, q};
 		}
@@ -122,20 +135,18 @@ namespace mesh::pca
 		glm::vec3 const r3(c[0][2], c[1][2], c[2][2] - lambda);
 
 		glm::vec3 v = glm::cross(r1, r2);
-
-		constexpr auto eps = std::numeric_limits<float>::epsilon();
-		if (glm::length2(v) <= eps)
+		for (const auto& candidate : {glm::cross(r1, r3), glm::cross(r2, r3)})
 		{
-			v = glm::cross(r1, r3);
-
-			if (glm::length2(v) <= eps)
+			if (glm::length2(candidate) > glm::length2(v))
 			{
-				v = glm::cross(r2, r3);
+				v = candidate;
 			}
 		}
 
+		constexpr auto eps = std::numeric_limits<float>::epsilon();
+		const float rowScale = std::max({glm::length2(r1), glm::length2(r2), glm::length2(r3)});
 		const float len2 = glm::length2(v);
-		if (len2 <= eps)
+		if (len2 <= eps * rowScale * rowScale)
 		{
 			return {1.0f, 0.0f, 0.0f}; // fallback
 		}
@@ -186,7 +197,7 @@ namespace mesh::pca
 			std::cout << "length2[e0] = " << length2(e0) << '\n';
 			std::cout << "length2[e1] = " << length2(e1) << '\n';
 			std::cout << "length2[e2] = " << length2(e2) << '\n';
-			return glm::quat{0, 0, 0, 1};
+			return glm::quat{1, 0, 0, 0};
 		}
 		return glm::normalize(glm::quat_cast(axes));
 	}
