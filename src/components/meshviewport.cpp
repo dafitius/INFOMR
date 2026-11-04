@@ -1,5 +1,7 @@
 #include "meshviewport.h"
 
+#include "../geometry/pipeline.hpp"
+
 #include <QOpenGLContext>
 #include <QWheelEvent>
 
@@ -45,20 +47,7 @@ void MeshViewport::runFullPipeline()
 	if (!mesh_)
 		return;
 
-	mesh_.emplace(mesh_->withConsistentOrientations()
-					  .triangulated()
-					  .removeNonManifold()
-					  .withConsistentOrientations()
-					  .filledHoles()
-					  .remeshed(targetVertexCount)
-					  .translated(-mesh_->baryCenter())
-					  .rotated(glm::inverse(mesh_->principleAxes())));
-
-	if (mesh_->moment().x < 0)
-		mesh_.emplace(mesh_->rotated(glm::quat{0, 0, 0, 1}));
-
-	auto bounds = mesh_->bounds();
-	mesh_.emplace(mesh_->scaled(glm::vec3{1 / (bounds.max.x - bounds.min.x)}));
+	mesh_.emplace(mesh::normalized(*mesh_));
 
 	uploadPending_ = true;
 	update();

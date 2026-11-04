@@ -1,6 +1,7 @@
 #include "query.h"
 
 #include "../geometry/mesh.hpp"
+#include "../geometry/pipeline.hpp"
 #include "../stats/distributions.hpp"
 
 #include <algorithm>
@@ -18,7 +19,6 @@ namespace
 {
 	constexpr std::size_t globalDescriptorCount = 7;
 	constexpr std::size_t histogramBinCount = 32;
-	constexpr std::size_t targetVertexCount = 10000;
 
 	struct ShapeDescriptor
 	{
@@ -38,25 +38,6 @@ namespace
 		ShapeData shape;
 	};
 
-	Mesh normalize(const Mesh& mesh)
-	{
-		auto step1 = mesh.withConsistentOrientations()
-						 .triangulated()
-						 .removeNonManifold()
-						 .withConsistentOrientations()
-						 .filledHoles()
-						 .remeshed(targetVertexCount)
-						 .translated(-mesh.baryCenter())
-						 .rotated(glm::inverse(mesh.principleAxes()));
-
-
-		auto step2 = step1.moment().x < 0 ? step1.rotated(glm::quat{0, 0, 0, 1}) : Mesh::copy(step1);
-
-		auto bounds = step2.bounds();
-		auto step3 = step2.scaled(glm::vec3{1 / (bounds.max.x - bounds.min.x)});
-		return step3;
-	}
-
 	std::optional<ShapeData> getShapeData(const std::filesystem::path& path, const bool alreadyNormalized = false)
 	{
 		auto loaded = Mesh::fromObj(path);
@@ -66,7 +47,7 @@ namespace
 			return std::nullopt;
 		}
 
-		auto mesh = alreadyNormalized ? std::move(*loaded) : normalize(*loaded);
+		auto mesh = alreadyNormalized ? std::move(*loaded) : mesh::normalized(*loaded);
 		ShapeDescriptor descriptor{
 			.global =
 				{mesh.volume(), mesh.surfaceArea(), mesh.compactness(), mesh.rectangularity(), mesh.diameter(), mesh.convexity(),

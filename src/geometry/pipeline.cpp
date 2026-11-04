@@ -108,4 +108,10 @@ namespace mesh
 		}
 		return std::move(*current);
 	}
+
+	Mesh normalized(const Mesh& mesh)
+	{
+		static const auto pipeline = Pipeline::parse(normalizationLabel).value();
+		return pipeline.apply(mesh);
+	}
 } // namespace mesh

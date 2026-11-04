@@ -68,6 +68,12 @@ namespace mesh
 	private:
 		std::vector<Operation> steps_;
 	};
+
+	/// @brief The full normalization, the same steps as entering this label on the statistics page
+	static constexpr std::string_view normalizationLabel =
+		"orient_faces > triangulate > remove_non-manifold > orient_faces > fill_holes > remesh > center > align_axes > flip object > scale_to_unit";
+
+	[[nodiscard]] Mesh normalized(const Mesh& mesh);
 } // namespace mesh
 
 #endif // MULTIMEDIARETRIEVAL_PIPELINE_HPP
