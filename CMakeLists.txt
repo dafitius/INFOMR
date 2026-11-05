@@ -98,6 +98,8 @@ add_executable(generate_database
         tools/generate_database.cpp
         ${database_generator_src}
         src/io/obj_file.cpp
+        src/querying/feature_vector.cpp
+        src/stats/distributions.cpp
 )
 
 target_include_directories(generate_database PRIVATE "${qhull_SOURCE_DIR}/src")
