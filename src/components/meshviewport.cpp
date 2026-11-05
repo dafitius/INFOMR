@@ -137,12 +137,9 @@ void MeshViewport::normalizePose()
 	if (!mesh_)
 		return;
 
-	if (mesh_->moment().x < 0)
-	{
-		mesh_.emplace(mesh_->rotated(glm::quat{0, 0, 0, 1}));
-		uploadPending_ = true;
-		update();
-	}
+	mesh_.emplace(mesh::findOperation("flip object")->apply(*mesh_));
+	uploadPending_ = true;
+	update();
 }
 
 void MeshViewport::scaleToUnit()
@@ -150,10 +147,7 @@ void MeshViewport::scaleToUnit()
 	if (!mesh_)
 		return;
 
-	auto bounds = mesh_->bounds();
-	// X axis should be the largest axis after aligning with eigen vectors
-	auto scale = 1 / (bounds.max.x - bounds.min.x);
-	mesh_.emplace(mesh_->scaled(glm::vec3{scale}));
+	mesh_.emplace(mesh::findOperation("scale_to_unit")->apply(*mesh_));
 	uploadPending_ = true;
 	update();
 }

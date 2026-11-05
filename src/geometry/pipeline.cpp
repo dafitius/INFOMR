@@ -18,6 +18,36 @@
 #include <glm/ext/quaternion_common.hpp>
 #include <glm/ext/vector_float3.hpp>
 
+namespace
+{
+	Mesh flipByMoment(const Mesh& mesh)
+	{
+		const auto moment = mesh.moment();
+		const glm::vec3 signs{moment.x < 0 ? -1.0F : 1.0F, moment.y < 0 ? -1.0F : 1.0F, moment.z < 0 ? -1.0F : 1.0F};
+
+		std::vector<Mesh::Position> positions(mesh.positions().begin(), mesh.positions().end());
+		for (auto& position : positions)
+		{
+			position *= signs;
+		}
+		std::vector<Mesh::Normal> normals(mesh.normals().begin(), mesh.normals().end());
+		for (auto& normal : normals)
+		{
+			normal *= signs;
+		}
+
+		auto faces = mesh.faces().list();
+		if (signs.x * signs.y * signs.z < 0)
+		{
+			for (FaceList::Index f = 0; f < faces.size(); ++f)
+			{
+				faces.reverseFace(f);
+			}
+		}
+		return Mesh{std::move(positions), std::move(normals), faces};
+	}
+} // namespace
+
 namespace mesh
 {
 	std::span<const Operation> operations()
@@ -36,9 +66,7 @@ namespace mesh
 			Operation{
 				"align_axes", "Rotate the shape so its principal axes align with the world axes (center first)",
 				[](const Mesh& mesh) { return mesh.rotated(glm::inverse(mesh.principleAxes())); }},
-			Operation{
-				"flip object", "Flip the mesh based on its moment",
-				[](const Mesh& mesh) { return mesh.moment().x < 0 ? mesh.rotated(glm::quat{0, 0, 0, 1}) : Mesh::copy(mesh); }},
+			Operation{"flip object", "Flip the mesh based on its moment", flipByMoment},
 			Operation{
 				"scale_to_unit", "Scale the shape uniformly so its largest bounding box side is 1",
 				[](const Mesh& mesh)
