@@ -2,6 +2,8 @@
 #define MULTIMEDIARETRIEVAL_FEATURES_H
 
 #include <glm/glm.hpp>
+
+#include <cstdint>
 #include <vector>
 
 class Mesh;
@@ -24,6 +26,8 @@ namespace mesh::features
 
 	namespace property_descriptors
 	{
+		void seedSampling(std::uint32_t seed);
+
 		std::vector<float> A3(const Mesh& mesh);
 		std::vector<float> D1(const Mesh& mesh);
 		std::vector<float> D2(const Mesh& mesh);

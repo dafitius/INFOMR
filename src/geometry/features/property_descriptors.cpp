@@ -99,6 +99,11 @@ namespace
 
 namespace mesh::features::property_descriptors
 {
+	void seedSampling(const std::uint32_t seed)
+	{
+		randomEngine().seed(seed);
+	}
+
 	/// @brief A3: angle between 3 random vertices
 	/// @param mesh
 	/// @return

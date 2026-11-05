@@ -3,6 +3,7 @@
 #include "../geometry/mesh.hpp"
 #include "../geometry/pipeline.hpp"
 #include "../stats/distributions.hpp"
+#include "feature_vector.hpp"
 
 #include <algorithm>
 #include <array>
@@ -17,14 +18,8 @@
 
 namespace
 {
-	constexpr std::size_t globalDescriptorCount = 7;
-	constexpr std::size_t histogramBinCount = 32;
-
-	struct ShapeDescriptor
-	{
-		std::array<double, globalDescriptorCount> global;
-		std::vector<std::vector<double>> distributions;
-	};
+	using querying::globalFeatureCount;
+	using ShapeDescriptor = querying::FeatureVector;
 
 	struct ShapeData
 	{
@@ -48,26 +43,13 @@ namespace
 		}
 
 		auto mesh = alreadyNormalized ? std::move(*loaded) : mesh::normalized(*loaded);
-		ShapeDescriptor descriptor{
-			.global =
-				{mesh.volume(), mesh.surfaceArea(), mesh.compactness(), mesh.rectangularity(), mesh.diameter(), mesh.convexity(),
-				 mesh.eccentricity()},
-			.distributions = {},
-		};
-
-		for (const auto& distribution : stats::distributions())
-		{
-			const auto samples = distribution.sample(mesh);
-			descriptor.distributions.push_back(stats::binHistogram(samples, distribution.range, histogramBinCount));
-		}
+		auto descriptor = querying::extractFeatures(mesh, querying::shapeSeed(path.filename().string()));
 
 		if (!std::ranges::all_of(descriptor.global, [](const double value) { return std::isfinite(value); }))
 		{
 			std::cerr << "A global descriptor is non-finite:" << std::endl;
-			constexpr std::array<const char*, globalDescriptorCount> descriptorNames{"volume",	 "surface area", "compactness", "rectangularity",
-																					 "diameter", "convexity",	 "eccentricity"};
 			for (std::size_t i = 0; i < descriptor.global.size(); ++i)
-				std::cerr << "  " << descriptorNames[i] << ": " << descriptor.global[i] << std::endl;
+				std::cerr << "  " << querying::globalFeatureNames[i] << ": " << descriptor.global[i] << std::endl;
 			return std::nullopt;
 		}
 
@@ -79,7 +61,7 @@ namespace
 		if (descriptors.empty())
 			return;
 
-		for (std::size_t feature = 0; feature < globalDescriptorCount; ++feature)
+		for (std::size_t feature = 0; feature < globalFeatureCount; ++feature)
 		{
 			double mean = 0.0;
 			for (const auto* descriptor : descriptors)
@@ -121,13 +103,13 @@ namespace
 
 	std::optional<double> descriptorDistance(const ShapeDescriptor& query, const ShapeDescriptor& candidate, const std::vector<double>& weights)
 	{
-		if (query.distributions.size() != candidate.distributions.size())
+		if (query.histograms.size() != candidate.histograms.size())
 			return std::nullopt;
 
 		double globalSquaredDistance = 0.0;
 		double globalWeight = 0.0;
 
-		for (std::size_t i = 0; i < globalDescriptorCount; ++i)
+		for (std::size_t i = 0; i < globalFeatureCount; ++i)
 		{
 			const double weight = weightAt(weights, i);
 			const double difference = query.global[i] - candidate.global[i];
@@ -147,11 +129,11 @@ namespace
 		double distributionDistance = 0.0;
 		double distributionWeight = 0.0;
 
-		for (std::size_t i = 0; i < query.distributions.size(); ++i)
+		for (std::size_t i = 0; i < query.histograms.size(); ++i)
 		{
-			const auto& queryHistogram = query.distributions[i];
-			const auto& candidateHistogram = candidate.distributions[i];
-			const double weight = weightAt(weights, globalDescriptorCount + i);
+			const auto& queryHistogram = query.histograms[i];
+			const auto& candidateHistogram = candidate.histograms[i];
+			const double weight = weightAt(weights, globalFeatureCount + i);
 			const auto dist = stats::earthMoversDistance(queryHistogram, candidateHistogram);
 
 			if (dist.has_value())
