@@ -21,19 +21,7 @@ namespace
 	using querying::globalFeatureCount;
 	using ShapeDescriptor = querying::FeatureVector;
 
-	struct ShapeData
-	{
-		Mesh mesh;
-		ShapeDescriptor descriptor;
-	};
-
-	struct Candidate
-	{
-		std::filesystem::path path;
-		ShapeData shape;
-	};
-
-	std::optional<ShapeData> getShapeData(const std::filesystem::path& path, const bool alreadyNormalized = false)
+	std::optional<ShapeDescriptor> computeQueryFeatures(const std::filesystem::path& path)
 	{
 		auto loaded = Mesh::fromObj(path);
 		if (!loaded)
@@ -42,7 +30,7 @@ namespace
 			return std::nullopt;
 		}
 
-		auto mesh = alreadyNormalized ? std::move(*loaded) : mesh::normalized(*loaded);
+		const auto mesh = mesh::normalized(*loaded);
 		auto descriptor = querying::extractFeatures(mesh, querying::shapeSeed(path.filename().string()));
 
 		if (!std::ranges::all_of(descriptor.global, [](const double value) { return std::isfinite(value); }))
@@ -53,43 +41,63 @@ namespace
 			return std::nullopt;
 		}
 
-		return ShapeData{std::move(mesh), std::move(descriptor)};
+		return descriptor;
 	}
 
-	void normalizeGlobalDescriptors(const std::vector<ShapeDescriptor*>& descriptors)
+	std::optional<std::size_t> findDatabaseShape(const std::vector<querying::StoredShape>& database, const std::filesystem::path& queryPath)
 	{
-		if (descriptors.empty())
+		std::error_code error;
+		const auto databaseRoot = std::filesystem::weakly_canonical(queryPath, error).parent_path().parent_path();
+		if (error ||
+			(databaseRoot != std::filesystem::weakly_canonical(SHAPE_DB_ROOT, error) &&
+			 databaseRoot != std::filesystem::weakly_canonical(CACHED_DB_ROOT, error)))
+			return std::nullopt;
+
+		const auto className = queryPath.parent_path().filename().string();
+		const auto fileName = queryPath.filename().string();
+		const auto found = std::ranges::find_if(
+			database, [&](const querying::StoredShape& shape) { return shape.className == className && shape.fileName == fileName; });
+		if (found == database.end())
+			return std::nullopt;
+		return static_cast<std::size_t>(found - database.begin());
+	}
+
+	void standardizeGlobalDescriptors(std::vector<querying::StoredShape>& database, ShapeDescriptor& query)
+	{
+		if (database.empty())
 			return;
 
 		for (std::size_t feature = 0; feature < globalFeatureCount; ++feature)
 		{
 			double mean = 0.0;
-			for (const auto* descriptor : descriptors)
-				mean += descriptor->global[feature];
-			mean /= static_cast<double>(descriptors.size());
+			for (const auto& shape : database)
+				mean += shape.features.global[feature];
+			mean /= static_cast<double>(database.size());
 
 			double variance = 0.0;
-			for (const auto* descriptor : descriptors)
+			for (const auto& shape : database)
 			{
-				const double difference = descriptor->global[feature] - mean;
+				const double difference = shape.features.global[feature] - mean;
 				variance += difference * difference;
 			}
-			variance /= static_cast<double>(descriptors.size());
+			variance /= static_cast<double>(database.size());
 
 			if (variance == 0.0)
 			{
-				for (auto* descriptor : descriptors)
-					descriptor->global[feature] = 0.0;
+				for (auto& shape : database)
+					shape.features.global[feature] = 0.0;
+				query.global[feature] = 0.0;
 				continue;
 			}
 
 			const double standardDeviation = std::sqrt(variance);
 			double maxAbsoluteZScore = 0.0;
-			for (const auto* descriptor : descriptors)
-				maxAbsoluteZScore = std::max(maxAbsoluteZScore, std::abs((descriptor->global[feature] - mean) / standardDeviation));
+			for (const auto& shape : database)
+				maxAbsoluteZScore = std::max(maxAbsoluteZScore, std::abs((shape.features.global[feature] - mean) / standardDeviation));
 
-			for (auto* descriptor : descriptors)
-				descriptor->global[feature] = (descriptor->global[feature] - mean) / (standardDeviation * maxAbsoluteZScore);
+			for (auto& shape : database)
+				shape.features.global[feature] = (shape.features.global[feature] - mean) / (standardDeviation * maxAbsoluteZScore);
+			query.global[feature] = (query.global[feature] - mean) / (standardDeviation * maxAbsoluteZScore);
 		}
 	}
 
@@ -168,137 +176,52 @@ std::vector<QueryResult> Query::search(std::size_t topK)
 	if (topK == 0)
 		return {};
 
-	auto queryShape = getShapeData(queryMesh);
-	if (!queryShape)
+	const std::filesystem::path shapeRoot{SHAPE_DB_ROOT};
+	const std::filesystem::path cacheRoot{CACHED_DB_ROOT};
+
+	auto database = querying::loadFeatures(cacheRoot / "features.csv");
+	if (!database)
+		return {};
+
+	const auto queryIndex = findDatabaseShape(*database, queryMesh);
+	std::optional<ShapeDescriptor> queryDescriptor =
+		queryIndex ? std::optional{(*database)[*queryIndex].features} : computeQueryFeatures(queryMesh);
+	if (!queryDescriptor)
 	{
 		std::cerr << "Failed to calculate descriptors for query mesh: " << queryMesh.string() << std::endl;
 		return {};
 	}
 
-#ifdef SHAPE_DB_ROOT
-	const std::filesystem::path root{SHAPE_DB_ROOT};
-#else
-	std::cerr << "Shape database root is not configured." << std::endl;
-	return {};
-#endif
-
-#ifdef CACHED_DB_ROOT
-	const std::filesystem::path cacheRoot{CACHED_DB_ROOT};
-#endif
-
-	std::error_code error;
-	if (!std::filesystem::is_directory(root, error))
-	{
-		std::cerr << "Shape database directory is unavailable: " << root.string();
-		if (error)
-			std::cerr << " (" << error.message() << ')';
-		std::cerr << '\n';
-		return {};
-	}
-
-	const auto normalizedQueryPath = std::filesystem::weakly_canonical(queryMesh, error);
-	if (error)
-		error.clear();
-
-	std::vector<Candidate> candidates;
-	std::filesystem::recursive_directory_iterator it(root, error);
-	const std::filesystem::recursive_directory_iterator end;
-	if (error)
-	{
-		std::cerr << "Failed to scan shape database directory: " << root.string() << " (" << error.message() << ")\n";
-		return {};
-	}
-
-	while (it != end)
-	{
-		const auto path = it->path();
-
-		if (it->is_regular_file(error) && !error && path.extension() == ".obj")
-		{
-			auto meshPath = path;
-			bool alreadyNormalized = false;
-#ifdef CACHED_DB_ROOT
-			const auto relativePath = path.lexically_relative(root);
-			if (!relativePath.empty())
-			{
-				const auto cachedPath = cacheRoot / relativePath;
-				error.clear();
-				if (std::filesystem::is_regular_file(cachedPath, error))
-				{
-					meshPath = cachedPath;
-					alreadyNormalized = true;
-				}
-				else if (error)
-				{
-					std::cerr << "Failed to inspect cached mesh: " << cachedPath.string() << " (" << error.message() << ")\n";
-					error.clear();
-				}
-			}
-#endif
-
-			error.clear();
-			const auto normalizedCandidatePath = std::filesystem::weakly_canonical(path, error);
-			error.clear();
-			const auto normalizedMeshPath = std::filesystem::weakly_canonical(meshPath, error);
-			if (error || (normalizedCandidatePath != normalizedQueryPath && normalizedMeshPath != normalizedQueryPath))
-			{
-				error.clear();
-				if (auto candidateShape = getShapeData(meshPath, alreadyNormalized))
-				{
-					candidates.push_back({meshPath, std::move(*candidateShape)});
-				}
-			}
-		}
-		else if (error)
-		{
-			std::cerr << "Failed to inspect shape database entry: " << path.string() << " (" << error.message() << ")\n";
-			error.clear();
-		}
-
-		it.increment(error);
-		if (error)
-		{
-			std::cerr << "Failed while scanning shape database: " << error.message() << '\n';
-			return {};
-		}
-	}
-
-	std::vector<ShapeDescriptor*> descriptors;
-	descriptors.reserve(candidates.size() + 1);
-	descriptors.push_back(&queryShape->descriptor);
-	for (auto& candidate : candidates)
-		descriptors.push_back(&candidate.shape.descriptor);
-	normalizeGlobalDescriptors(descriptors);
+	standardizeGlobalDescriptors(*database, *queryDescriptor);
 
 	std::vector<std::pair<double, std::size_t>> ranked;
-	for (std::size_t i = 0; i < candidates.size(); ++i)
+	for (std::size_t i = 0; i < database->size(); ++i)
 	{
-		const auto& candidate = candidates[i];
-		if (const auto distance = descriptorDistance(queryShape->descriptor, candidate.shape.descriptor, weights))
+		if (i == queryIndex)
+			continue;
+		if (const auto distance = descriptorDistance(*queryDescriptor, (*database)[i].features, weights))
 			ranked.emplace_back(*distance, i);
 	}
 
-	std::sort(
-		ranked.begin(), ranked.end(),
-		[&candidates](const auto& a, const auto& b)
-		{
-			if (a.first != b.first)
-				return a.first < b.first;
-			return candidates[a.second].path < candidates[b.second].path;
-		});
+	std::ranges::stable_sort(ranked, {}, &std::pair<double, std::size_t>::first);
 
 	std::vector<QueryResult> results;
 	results.reserve(std::min(topK, ranked.size()));
 
 	for (std::size_t i = 0; i < std::min(topK, ranked.size()); ++i)
 	{
-		const auto [distance, candidateIndex] = ranked[i];
-		const auto& candidate = candidates[candidateIndex];
-		results.emplace_back(candidate.path.filename().string(), candidate.path, distance, std::make_shared<Mesh>(candidate.shape.mesh));
+		const auto [distance, shapeIndex] = ranked[i];
+		const auto& shape = (*database)[shapeIndex];
+
+		const auto cachedPath = cacheRoot / shape.className / shape.fileName;
+		if (auto mesh = Mesh::fromObj(cachedPath))
+			results.emplace_back(shape.fileName, cachedPath, distance, std::make_shared<Mesh>(std::move(*mesh)));
+		else
+			results.emplace_back(shape.fileName, shapeRoot / shape.className / shape.fileName, distance);
 	}
 
 	std::chrono::steady_clock::time_point endTime = std::chrono::steady_clock::now();
-	std::cout << "Calculation done in " << std::chrono::duration_cast<std::chrono::seconds>(endTime - begin).count() << "[seconds]" << std::endl;
+	std::cout << "Calculation done in " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - begin).count() << " ms" << std::endl;
 
 	return results;
 }

@@ -8,6 +8,9 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -39,6 +42,18 @@ namespace querying
 
 	/// @brief Computes all features of an already normalized mesh. The same mesh and seed always give the same result.
 	[[nodiscard]] FeatureVector extractFeatures(const Mesh& mesh, std::uint32_t seed);
+
+	/// @brief The stored features of one database shape, a row of features.csv
+	struct StoredShape
+	{
+		std::string className;
+		std::string fileName;
+		FeatureVector features;
+	};
+
+	/// @brief Reads the features.csv written by generate_database.
+	/// @return nullopt if the file cannot be read or does not match the current feature layout (then regenerate it)
+	[[nodiscard]] std::optional<std::vector<StoredShape>> loadFeatures(const std::filesystem::path& path);
 } // namespace querying
 
 #endif // MULTIMEDIARETRIEVAL_FEATURE_VECTOR_HPP
