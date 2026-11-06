@@ -42,6 +42,14 @@ FetchContent_Declare(
         GIT_REPOSITORY  https://github.com/qhull/qhull
         GIT_TAG         d1c2fc0caa5f644f3a0f220290d4a868c68ed4f6 #refs/tags/v8.1-alpha6
 )
+FetchContent_Declare(
+        nanoflann
+        GIT_REPOSITORY  https://github.com/jlblancoc/nanoflann.git
+        GIT_TAG         9a653cb243db6a09c94f833b28732b62f033e2b5 #refs/tags/v1.7.1
+        SOURCE_SUBDIR   header_only
+)
+FetchContent_MakeAvailable(nanoflann)
+
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(BUILD_STATIC_LIBS ON  CACHE BOOL "" FORCE)
 set(CMAKE_AUTOMOC OFF)
@@ -76,7 +84,7 @@ set(VCPKG_APPLOCAL_DEPS OFF)
 
 qt_add_executable(${PROJECT_NAME} ${main_src} resources/resources.qrc)
 
-target_include_directories(${PROJECT_NAME} PRIVATE "${qhull_SOURCE_DIR}/src")
+target_include_directories(${PROJECT_NAME} PRIVATE "${qhull_SOURCE_DIR}/src" "${nanoflann_SOURCE_DIR}/include")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Core

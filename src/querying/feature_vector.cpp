@@ -7,7 +7,9 @@
 #include "../geometry/mesh.hpp"
 #include "../stats/distributions.hpp"
 
+#include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <ranges>
@@ -42,6 +44,14 @@ namespace querying
 			features.histograms.push_back(stats::binHistogram(samples, distribution.range, histogramBinCount));
 		}
 		return features;
+	}
+
+	double featureWeight(const std::vector<double>& weights, const std::size_t index)
+	{
+		if (index >= weights.size())
+			return 1.0;
+
+		return std::isfinite(weights[index]) ? std::max(0.0, weights[index]) : 0.0;
 	}
 
 	std::optional<std::vector<StoredShape>> loadFeatures(const std::filesystem::path& path)

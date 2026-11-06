@@ -3,6 +3,7 @@
 #include "../geometry/mesh.hpp"
 #include "../geometry/pipeline.hpp"
 #include "../stats/distributions.hpp"
+#include "feature_tree.hpp"
 #include "feature_vector.hpp"
 
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <string>
@@ -62,51 +64,83 @@ namespace
 		return static_cast<std::size_t>(found - database.begin());
 	}
 
-	void standardizeGlobalDescriptors(std::vector<querying::StoredShape>& database, ShapeDescriptor& query)
+	struct Database
 	{
-		if (database.empty())
-			return;
+		std::vector<querying::StoredShape> shapes;
+		std::array<double, globalFeatureCount> mean{};
+		std::array<double, globalFeatureCount> scale{};
+
+		void standardize(ShapeDescriptor& descriptor) const
+		{
+			for (std::size_t feature = 0; feature < globalFeatureCount; ++feature)
+				descriptor.global[feature] = scale[feature] == 0.0 ? 0.0 : (descriptor.global[feature] - mean[feature]) / scale[feature];
+		}
+	};
+
+	Database createDatabase(std::vector<querying::StoredShape> shapes)
+	{
+		Database database{.shapes = std::move(shapes), .mean = {}, .scale = {}};
+		if (database.shapes.empty())
+			return database;
 
 		for (std::size_t feature = 0; feature < globalFeatureCount; ++feature)
 		{
 			double mean = 0.0;
-			for (const auto& shape : database)
+			for (const auto& shape : database.shapes)
 				mean += shape.features.global[feature];
-			mean /= static_cast<double>(database.size());
+			mean /= static_cast<double>(database.shapes.size());
 
 			double variance = 0.0;
-			for (const auto& shape : database)
+			for (const auto& shape : database.shapes)
 			{
 				const double difference = shape.features.global[feature] - mean;
 				variance += difference * difference;
 			}
-			variance /= static_cast<double>(database.size());
+			variance /= static_cast<double>(database.shapes.size());
 
+			database.mean[feature] = mean;
 			if (variance == 0.0)
-			{
-				for (auto& shape : database)
-					shape.features.global[feature] = 0.0;
-				query.global[feature] = 0.0;
 				continue;
-			}
 
 			const double standardDeviation = std::sqrt(variance);
 			double maxAbsoluteZScore = 0.0;
-			for (const auto& shape : database)
+			for (const auto& shape : database.shapes)
 				maxAbsoluteZScore = std::max(maxAbsoluteZScore, std::abs((shape.features.global[feature] - mean) / standardDeviation));
-
-			for (auto& shape : database)
-				shape.features.global[feature] = (shape.features.global[feature] - mean) / (standardDeviation * maxAbsoluteZScore);
-			query.global[feature] = (query.global[feature] - mean) / (standardDeviation * maxAbsoluteZScore);
+			database.scale[feature] = standardDeviation * maxAbsoluteZScore;
 		}
+
+		for (auto& shape : database.shapes)
+			database.standardize(shape.features);
+		return database;
+	}
+
+	const Database* database()
+	{
+		static std::optional<Database> cached;
+		if (!cached)
+		{
+			if (auto shapes = querying::loadFeatures(std::filesystem::path(CACHED_DB_ROOT) / "features.csv"))
+				cached = createDatabase(std::move(*shapes));
+		}
+		return cached ? &*cached : nullptr;
+	}
+
+	const querying::FeatureTree& featureTree(const Database& database, const std::vector<double>& weights, const querying::TreeMetric metric)
+	{
+		static std::unique_ptr<querying::FeatureTree> tree;
+		if (!tree || tree->metric() != metric || tree->weights() != weights)
+		{
+			const auto begin = std::chrono::steady_clock::now();
+			tree = std::make_unique<querying::FeatureTree>(database.shapes, weights, metric);
+			std::cout << "Built the KD-tree in "
+					  << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count() << " ms" << std::endl;
+		}
+		return *tree;
 	}
 
 	double weightAt(const std::vector<double>& weights, const std::size_t index)
 	{
-		if (index >= weights.size())
-			return 1.0;
-
-		return std::isfinite(weights[index]) ? std::max(0.0, weights[index]) : 0.0;
+		return querying::featureWeight(weights, index);
 	}
 
 	std::optional<double> descriptorDistance(const ShapeDescriptor& query, const ShapeDescriptor& candidate, const std::vector<double>& weights)
@@ -164,46 +198,62 @@ namespace
 	}
 } // namespace
 
-Query::Query(std::filesystem::path queryMesh, std::vector<double> weights)
+Query::Query(std::filesystem::path queryMesh, std::vector<double> weights, const DistanceMode mode)
 	: queryMesh(std::move(queryMesh))
 	, weights(std::move(weights))
+	, mode(mode)
 {
 }
 
 std::vector<QueryResult> Query::search(std::size_t topK)
 {
-	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 	if (topK == 0)
 		return {};
 
 	const std::filesystem::path shapeRoot{SHAPE_DB_ROOT};
 	const std::filesystem::path cacheRoot{CACHED_DB_ROOT};
 
-	auto database = querying::loadFeatures(cacheRoot / "features.csv");
-	if (!database)
+	const auto* db = database();
+	if (!db)
 		return {};
 
-	const auto queryIndex = findDatabaseShape(*database, queryMesh);
-	std::optional<ShapeDescriptor> queryDescriptor =
-		queryIndex ? std::optional{(*database)[*queryIndex].features} : computeQueryFeatures(queryMesh);
+	const auto queryIndex = findDatabaseShape(db->shapes, queryMesh);
+	std::optional<ShapeDescriptor> queryDescriptor = queryIndex ? std::optional{db->shapes[*queryIndex].features} : computeQueryFeatures(queryMesh);
 	if (!queryDescriptor)
 	{
 		std::cerr << "Failed to calculate descriptors for query mesh: " << queryMesh.string() << std::endl;
 		return {};
 	}
-
-	standardizeGlobalDescriptors(*database, *queryDescriptor);
+	if (!queryIndex)
+		db->standardize(*queryDescriptor);
 
 	std::vector<std::pair<double, std::size_t>> ranked;
-	for (std::size_t i = 0; i < database->size(); ++i)
+	if (mode == DistanceMode::Mix)
 	{
-		if (i == queryIndex)
-			continue;
-		if (const auto distance = descriptorDistance(*queryDescriptor, (*database)[i].features, weights))
-			ranked.emplace_back(*distance, i);
+		const auto begin = std::chrono::steady_clock::now();
+		for (std::size_t i = 0; i < db->shapes.size(); ++i)
+		{
+			if (i == queryIndex)
+				continue;
+			if (const auto distance = descriptorDistance(*queryDescriptor, db->shapes[i].features, weights))
+				ranked.emplace_back(*distance, i);
+		}
+		std::ranges::stable_sort(ranked, {}, &std::pair<double, std::size_t>::first);
+		std::cout << "Brute force search done in " << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count()
+				  << " ms" << std::endl;
 	}
+	else
+	{
+		const auto& tree = featureTree(*db, weights, mode == DistanceMode::L1 ? querying::TreeMetric::L1 : querying::TreeMetric::L2);
+		const auto begin = std::chrono::steady_clock::now();
 
-	std::ranges::stable_sort(ranked, {}, &std::pair<double, std::size_t>::first);
+		ranked = tree.nearest(*queryDescriptor, topK + 1);
+		const auto self = std::ranges::find(ranked, queryIndex, &std::pair<double, std::size_t>::second);
+		if (self != ranked.end())
+			ranked.erase(self);
+		std::cout << "KD-tree search done in " << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count()
+				  << " ms" << std::endl;
+	}
 
 	std::vector<QueryResult> results;
 	results.reserve(std::min(topK, ranked.size()));
@@ -211,17 +261,14 @@ std::vector<QueryResult> Query::search(std::size_t topK)
 	for (std::size_t i = 0; i < std::min(topK, ranked.size()); ++i)
 	{
 		const auto [distance, shapeIndex] = ranked[i];
-		const auto& shape = (*database)[shapeIndex];
+		const auto& shape = db->shapes[shapeIndex];
 
 		const auto cachedPath = cacheRoot / shape.className / shape.fileName;
 		if (auto mesh = Mesh::fromObj(cachedPath))
-			results.emplace_back(shape.fileName, cachedPath, distance, std::make_shared<Mesh>(std::move(*mesh)));
+			results.emplace_back(shape.fileName, shape.className, cachedPath, distance, std::make_shared<Mesh>(std::move(*mesh)));
 		else
-			results.emplace_back(shape.fileName, shapeRoot / shape.className / shape.fileName, distance);
+			results.emplace_back(shape.fileName, shape.className, shapeRoot / shape.className / shape.fileName, distance);
 	}
-
-	std::chrono::steady_clock::time_point endTime = std::chrono::steady_clock::now();
-	std::cout << "Calculation done in " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - begin).count() << " ms" << std::endl;
 
 	return results;
 }

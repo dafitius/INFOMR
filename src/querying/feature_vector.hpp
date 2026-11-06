@@ -43,6 +43,8 @@ namespace querying
 	/// @brief Computes all features of an already normalized mesh. The same mesh and seed always give the same result.
 	[[nodiscard]] FeatureVector extractFeatures(const Mesh& mesh, std::uint32_t seed);
 
+	[[nodiscard]] double featureWeight(const std::vector<double>& weights, std::size_t index);
+
 	/// @brief The stored features of one database shape, a row of features.csv
 	struct StoredShape
 	{

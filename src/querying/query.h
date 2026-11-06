@@ -10,17 +10,26 @@
 
 class Mesh;
 
+enum class DistanceMode
+{
+	Mix,
+	L1,
+	L2
+};
+
 struct QueryResult
 {
 	std::string name;
+	std::string className;
 	std::filesystem::path meshPath;
 	double distance = 0.0;
 	std::shared_ptr<const Mesh> normalizedMesh;
 
 	QueryResult(
-		const std::string name, const std::filesystem::path& meshPath, const double distance,
+		const std::string name, const std::string className, const std::filesystem::path& meshPath, const double distance,
 		std::shared_ptr<const Mesh> normalizedMesh = {})
 		: name(name)
+		, className(className)
 		, meshPath(meshPath)
 		, distance(distance)
 		, normalizedMesh(std::move(normalizedMesh))
@@ -31,7 +40,7 @@ struct QueryResult
 class Query
 {
 public:
-	Query(std::filesystem::path queryMesh, std::vector<double> weights);
+	Query(std::filesystem::path queryMesh, std::vector<double> weights, DistanceMode mode = DistanceMode::Mix);
 
 	~Query() = default;
 
@@ -40,6 +49,7 @@ public:
 private:
 	std::filesystem::path queryMesh;
 	std::vector<double> weights;
+	DistanceMode mode;
 };
 
 #endif // QUERY_H
