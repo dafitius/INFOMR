@@ -163,6 +163,12 @@ public:
 			entries_ | std::views::values | std::views::transform([](const auto& shapes) { return shapes.size(); }), std::size_t{0}, std::plus{});
 	}
 
+	size_t numShapes(std::string className) const
+	{
+		const auto iter = entries_.find(className);
+		return iter == entries_.end() ? 0 : iter->second.size();
+	}
+
 	size_t numClasses() const
 	{
 		return this->entries_.size();
