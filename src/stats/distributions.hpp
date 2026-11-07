@@ -6,8 +6,13 @@
 #define MULTIMEDIARETRIEVAL_DISTRIBUTIONS_HPP
 
 #include "../geometry/mesh.hpp"
+#include "../geometry/pipeline.hpp"
+#include "../io/shape_db.hpp"
 
+#include <atomic>
 #include <cstddef>
+#include <filesystem>
+#include <functional>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -40,6 +45,17 @@ namespace stats
 		std::vector<float> (*sample)(const Mesh&);
 	};
 
+	struct HistogramCsvResult
+	{
+		size_t shapesWritten = 0;
+		size_t histogramCount = 0;
+		size_t rowsWritten = 0;
+		std::vector<std::filesystem::path> failed;
+		bool written = false;
+	};
+
+	using HistogramProgressCallback = std::function<void(size_t done, size_t total)>;
+
 	[[nodiscard]] std::span<const Distribution> distributions();
 	[[nodiscard]] std::optional<Distribution> findDistribution(std::string_view name);
 
@@ -47,6 +63,11 @@ namespace stats
 	/// Samples outside the range are counted in the first or last bin, non-finite samples are ignored.
 	/// @return numBins values, all 0 if there are no finite samples
 	[[nodiscard]] std::vector<double> binHistogram(std::span<const float> samples, BinRange range, size_t numBins);
+
+	/// @brief Exports a binned A3/D1-D4 histogram for each shape to a long-form CSV.
+	[[nodiscard]] HistogramCsvResult writePerShapeHistogramsCsv(
+		const ShapeDb& database, std::span<const ShapeRef> shapes, const mesh::Pipeline& pipeline, const std::filesystem::path& path, size_t numBins,
+		const std::atomic<bool>* cancel = nullptr, const HistogramProgressCallback& onProgress = {});
 
 	/// @brief Earth Mover's Distance between two histograms over the same equally sized bins. the minimal amount of mass times the
 	/// distance it has to move to turn one into the other. A shift of the same shape by one bin costs little, unlike bin by bin distances.

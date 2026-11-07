@@ -4,6 +4,7 @@
 #include "../geometry/pipeline.hpp"
 #include "../io/shape_db.hpp"
 #include "../stats/compute.hpp"
+#include "../stats/distributions.hpp"
 #include "../stats/metrics.hpp"
 #include "../stats/stats_table.hpp"
 
@@ -31,6 +32,7 @@
 #include <QWidget>
 #include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <cstddef>
 #include <filesystem>
 #include <format>
@@ -64,6 +66,30 @@ namespace
 			.arg(summary.mean, 0, 'g', 6)
 			.arg(summary.median, 0, 'g', 6)
 			.arg(summary.stddev, 0, 'g', 6);
+	}
+
+	std::optional<mesh::Pipeline> pipelineFromRunLabel(std::string label)
+	{
+		if (auto pipeline = mesh::Pipeline::parse(label))
+		{
+			return pipeline;
+		}
+
+		if (label.empty() || label.back() != ')')
+		{
+			return std::nullopt;
+		}
+		const auto suffix = label.rfind(" (");
+		if (suffix == std::string::npos || suffix + 2 == label.size() - 1)
+		{
+			return std::nullopt;
+		}
+		const auto number = std::string_view(label).substr(suffix + 2, label.size() - suffix - 3);
+		if (!std::ranges::all_of(number, [](const unsigned char character) { return std::isdigit(character) != 0; }))
+		{
+			return std::nullopt;
+		}
+		return mesh::Pipeline::parse(std::string_view(label).substr(0, suffix));
 	}
 } // namespace
 
@@ -125,6 +151,14 @@ void Statistics::setupUI()
 	m_exportButton = new QPushButton(tr("Export CSV"), this);
 	m_exportButton->setToolTip(tr("Export the selected run"));
 	m_exportButton->setEnabled(false);
+	m_descriptorExportButton = new QPushButton(tr("Export descriptor histograms"), this);
+	m_descriptorExportButton->setToolTip(tr("Export a binned A3/D1-D4 histogram for each shape in the selected run and class filter"));
+	m_descriptorExportButton->setEnabled(false);
+	m_descriptorBins = new QSpinBox(this);
+	m_descriptorBins->setRange(1, 1000);
+	m_descriptorBins->setValue(100);
+	m_descriptorBins->setPrefix(tr("Bins: "));
+	m_descriptorBins->setToolTip(tr("Number of bins in each per-shape descriptor histogram"));
 	m_progress = new QProgressBar(this);
 	m_progress->setVisible(false);
 	m_statusLabel = new QLabel(this);
@@ -136,6 +170,8 @@ void Statistics::setupUI()
 	top->addSpacing(12);
 	top->addWidget(m_loadButton);
 	top->addWidget(m_exportButton);
+	top->addWidget(m_descriptorBins);
+	top->addWidget(m_descriptorExportButton);
 	top->addSpacing(12);
 	top->addWidget(m_progress, 1);
 	top->addWidget(m_statusLabel);
@@ -236,12 +272,14 @@ void Statistics::setupUI()
 	connect(m_computeButton, &QPushButton::clicked, this, &Statistics::compute);
 	connect(m_loadButton, &QPushButton::clicked, this, &Statistics::loadCsv);
 	connect(m_exportButton, &QPushButton::clicked, this, &Statistics::exportCsv);
+	connect(m_descriptorExportButton, &QPushButton::clicked, this, &Statistics::exportDescriptorHistograms);
 	connect(m_removeRunButton, &QPushButton::clicked, this, &Statistics::removeRun);
 	connect(
 		m_runList, &QListWidget::currentRowChanged, this,
 		[this](int)
 		{
 			m_exportButton->setEnabled(m_worker == nullptr && selectedRun() != nullptr);
+			m_descriptorExportButton->setEnabled(m_worker == nullptr && selectedRun() != nullptr);
 			m_removeRunButton->setEnabled(selectedRun() != nullptr);
 			updateColumnList();
 		});
@@ -264,6 +302,8 @@ void Statistics::setBusy(const bool busy)
 	m_computeButton->setEnabled(!busy);
 	m_loadButton->setEnabled(!busy);
 	m_exportButton->setEnabled(!busy && selectedRun() != nullptr);
+	m_descriptorExportButton->setEnabled(!busy && selectedRun() != nullptr);
+	m_descriptorBins->setEnabled(!busy);
 	m_progress->setVisible(busy);
 }
 
@@ -374,6 +414,90 @@ void Statistics::exportCsv()
 	m_statusLabel->setText(
 		written ? tr("Exported %1 shapes to %2").arg(run->rows().size()).arg(QFileInfo(path).fileName())
 				: tr("Could not write %1").arg(QFileInfo(path).fileName()));
+}
+
+void Statistics::exportDescriptorHistograms()
+{
+	if (m_worker != nullptr)
+	{
+		return;
+	}
+
+	const auto* run = selectedRun();
+	if (run == nullptr)
+	{
+		return;
+	}
+	auto pipeline = pipelineFromRunLabel(run->label());
+	if (!pipeline)
+	{
+		m_statusLabel->setText(tr("Cannot export descriptor histograms: the selected run has no recognized pipeline label"));
+		return;
+	}
+
+	auto shapes = run->shapes();
+	const auto classFilter = m_classFilter->currentData().toString().toStdString();
+	if (!classFilter.empty())
+	{
+		std::erase_if(shapes, [&](const ShapeRef& shape) { return shape.className != classFilter; });
+	}
+
+	const QString csvPath = QFileDialog::getSaveFileName(
+		this, tr("Export per-shape descriptor histograms"), "shape_descriptor_histograms.csv", tr("CSV files (*.csv)"));
+	if (csvPath.isEmpty())
+	{
+		return;
+	}
+
+	const auto outputPath = toPath(csvPath);
+	const auto bins = static_cast<size_t>(m_descriptorBins->value());
+	setBusy(true);
+	m_progress->setRange(0, static_cast<int>(shapes.size()));
+	m_progress->setValue(0);
+	m_statusLabel->setText(tr("Computing descriptor histograms for %1 shapes...").arg(shapes.size()));
+	m_cancel->store(false);
+
+	m_worker = QThread::create(
+		[this, database = m_database, cancel = m_cancel, shapes = std::move(shapes), pipeline = std::move(*pipeline), outputPath, bins,
+		 progress = m_progress, fileName = QFileInfo(csvPath).fileName()]
+		{
+			auto onProgress = [progress](const size_t done, size_t)
+			{
+				QMetaObject::invokeMethod(
+					progress, [progress, done] { progress->setValue(std::max(progress->value(), static_cast<int>(done))); }, Qt::QueuedConnection);
+			};
+			auto result = std::make_shared<stats::HistogramCsvResult>(
+				stats::writePerShapeHistogramsCsv(*database, shapes, pipeline, outputPath, bins, cancel.get(), onProgress));
+
+			QMetaObject::invokeMethod(
+				this,
+				[this, result, fileName]
+				{
+					for (const auto& path : result->failed)
+					{
+						qWarning() << "Failed to compute descriptor histograms for:" << QString::fromStdString(path.string());
+					}
+					m_statusLabel->setText(
+						result->written
+							? tr("Exported %1 descriptor histograms for %2 shapes to %3 (%4 shapes failed)")
+								  .arg(result->histogramCount)
+								  .arg(result->shapesWritten)
+								  .arg(fileName)
+								  .arg(result->failed.size())
+							: tr("Could not write %1").arg(fileName));
+				},
+				Qt::QueuedConnection);
+		});
+	m_worker->setParent(this);
+	connect(
+		m_worker, &QThread::finished, this,
+		[this]
+		{
+			m_worker->deleteLater();
+			m_worker = nullptr;
+			setBusy(false);
+		});
+	m_worker->start();
 }
 
 void Statistics::addRun(stats::StatsTable table)

@@ -10,6 +10,11 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <exception>
+#include <filesystem>
+#include <format>
+#include <fstream>
+#include <iostream>
 #include <numbers>
 #include <numeric>
 #include <optional>
@@ -25,6 +30,20 @@ namespace stats
 		constexpr double maxD2 = 1.2;
 		constexpr double maxD3 = 0.65;
 		constexpr double maxD4 = 0.35;
+
+		void writeCsvField(std::ostream& output, const std::string_view value)
+		{
+			output << '"';
+			for (const char character : value)
+			{
+				if (character == '"')
+				{
+					output << '"';
+				}
+				output << character;
+			}
+			output << '"';
+		}
 	} // namespace
 
 	std::span<const Distribution> distributions()
@@ -80,6 +99,125 @@ namespace stats
 			}
 		}
 		return histogram;
+	}
+
+	HistogramCsvResult writePerShapeHistogramsCsv(
+		const ShapeDb& database, const std::span<const ShapeRef> shapes, const mesh::Pipeline& pipeline, const std::filesystem::path& path,
+		const size_t numBins, const std::atomic<bool>* cancel, const HistogramProgressCallback& onProgress)
+	{
+		HistogramCsvResult result;
+		if (numBins == 0)
+		{
+			std::cerr << "Unable to export histograms with zero bins\n";
+			return result;
+		}
+
+		std::ofstream output(path);
+		if (!output.is_open())
+		{
+			std::cerr << "Unable to write file: " << path.string() << '\n';
+			return result;
+		}
+
+		output << "# pipeline: " << pipeline.label() << '\n';
+		output << "class,file,descriptor,bin,range_min,range_max,frequency,sample_count\n";
+
+		const auto allDistributions = distributions();
+		for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex)
+		{
+			if (cancel != nullptr && cancel->load(std::memory_order_relaxed))
+			{
+				return result;
+			}
+
+			const auto& shape = shapes[shapeIndex];
+			const auto shapePath = database.resourcePath(shape.className, shape.fileName);
+			bool shapeWritten = false;
+			if (shapePath.extension() == ".obj")
+			{
+				try
+				{
+					if (auto loaded = Mesh::fromObj(shapePath))
+					{
+						const auto transformed = pipeline.apply(*loaded);
+						const auto& cumulativeAreas = transformed.cumulativeFaceAreas();
+						if (!cumulativeAreas.empty() && std::isfinite(cumulativeAreas.back()) && cumulativeAreas.back() > 0.0)
+						{
+							std::vector<std::vector<double>> histograms;
+							std::vector<std::size_t> sampleCounts;
+							histograms.reserve(allDistributions.size());
+							sampleCounts.reserve(allDistributions.size());
+							for (const auto& distribution : allDistributions)
+							{
+								const auto samples = distribution.sample(transformed);
+								histograms.push_back(binHistogram(samples, distribution.range, numBins));
+								sampleCounts.push_back(
+									static_cast<std::size_t>(std::ranges::count_if(samples, [](const float sample) { return std::isfinite(sample); })));
+							}
+
+							for (std::size_t distributionIndex = 0; distributionIndex < allDistributions.size(); ++distributionIndex)
+							{
+								const auto& distribution = allDistributions[distributionIndex];
+								const auto& histogram = histograms[distributionIndex];
+								const double binWidth = distribution.range.width() / static_cast<double>(numBins);
+								for (size_t bin = 0; bin < histogram.size(); ++bin)
+								{
+									writeCsvField(output, shape.className);
+									output << ',';
+									writeCsvField(output, shape.fileName);
+									output << ',' << distribution.name << ',' << bin << ','
+										   << std::format("{}", distribution.range.min + static_cast<double>(bin) * binWidth) << ','
+										   << std::format("{}", distribution.range.min + static_cast<double>(bin + 1) * binWidth) << ','
+										   << std::format("{}", histogram[bin]) << ',' << sampleCounts[distributionIndex] << '\n';
+									++result.rowsWritten;
+								}
+
+								if (!output.good())
+								{
+									std::cerr << "Unable to write file: " << path.string() << '\n';
+									return result;
+								}
+							}
+							result.histogramCount += allDistributions.size();
+							++result.shapesWritten;
+							shapeWritten = true;
+						}
+						else
+						{
+							std::cerr << "Cannot sample mesh without positive surface area: " << shapePath.string() << '\n';
+						}
+					}
+					else
+					{
+						std::cerr << "Failed to load mesh: " << shapePath.string() << '\n';
+					}
+				}
+				catch (const std::exception& error)
+				{
+					std::cerr << "Failed to process " << shapePath.string() << ": " << error.what() << '\n';
+				}
+			}
+			else
+			{
+				std::cerr << "Unsupported mesh format: " << shapePath.string() << '\n';
+			}
+
+			if (!shapeWritten)
+			{
+				result.failed.push_back(shapePath);
+			}
+			if (onProgress)
+			{
+				onProgress(shapeIndex + 1, shapes.size());
+			}
+		}
+
+		result.written = output.good();
+		if (!result.written)
+		{
+			std::cerr << "Unable to write file: " << path.string() << '\n';
+		}
+		return result;
 	}
 
 	std::optional<double> earthMoversDistance(const std::span<const double> first, const std::span<const double> second)
