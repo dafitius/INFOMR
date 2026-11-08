@@ -40,6 +40,7 @@ private:
 	void displayResults(const std::vector<QueryResult>& results);
 
 	QSpinBox* topKInput = nullptr;
+	QComboBox* distanceModeInput = nullptr;
 	QVector<QDoubleSpinBox*> weightInputs;
 	std::filesystem::path currentQueryMesh;
 

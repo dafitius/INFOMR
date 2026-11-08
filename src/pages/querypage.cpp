@@ -84,6 +84,15 @@ void QueryPage::setupUI()
 	topKInput->setValue(10);
 	sidebarLayout->addWidget(topKInput);
 
+	auto* distanceLabel = new QLabel("Distance", sidebar);
+	sidebarLayout->addWidget(distanceLabel);
+
+	distanceModeInput = new QComboBox(sidebar);
+	distanceModeInput->addItem("Euclidean + EMD (brute force)", static_cast<int>(DistanceMode::Mix));
+	distanceModeInput->addItem("L1 (KD-tree)", static_cast<int>(DistanceMode::L1));
+	distanceModeInput->addItem("L2 (KD-tree)", static_cast<int>(DistanceMode::L2));
+	sidebarLayout->addWidget(distanceModeInput);
+
 	// Search button
 	sidebarLayout->addStretch();
 
@@ -206,7 +215,8 @@ void QueryPage::startSearch()
 	currentQueryMesh = meshPath;
 	const auto weights = getWeights();
 	const auto topK = static_cast<std::size_t>(topKInput->value());
-	Query query(meshPath, weights);
+	const auto mode = static_cast<DistanceMode>(distanceModeInput->currentData().toInt());
+	Query query(meshPath, weights, mode);
 	const auto results = query.search(topK);
 
 	displayResults(results);
@@ -242,7 +252,8 @@ void QueryPage::displayResults(const std::vector<QueryResult>& results)
 	{
 		const auto& result = results[i];
 		const QString name = QString::fromStdString(result.name);
-		const QString subtitle = QString("Distance: %1").arg(result.distance, 0, 'f', 5);
+		const QString subtitle =
+			QString("%1 · Distance: %2").arg(QString::fromStdString(result.className)).arg(result.distance, 0, 'f', 5);
 
 		if (result.normalizedMesh)
 			resultsLayout->addWidget(new ResultCard(name, *result.normalizedMesh, subtitle));
