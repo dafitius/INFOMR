@@ -50,8 +50,9 @@ namespace
 	{
 		std::error_code error;
 		const auto databaseRoot = std::filesystem::weakly_canonical(queryPath, error).parent_path().parent_path();
-		if (error || (databaseRoot != std::filesystem::weakly_canonical(SHAPE_DB_ROOT, error) &&
-					  databaseRoot != std::filesystem::weakly_canonical(CACHED_DB_ROOT, error)))
+		if (error ||
+			(databaseRoot != std::filesystem::weakly_canonical(SHAPE_DB_ROOT, error) &&
+			 databaseRoot != std::filesystem::weakly_canonical(CACHED_DB_ROOT, error)))
 			return std::nullopt;
 
 		const auto className = queryPath.parent_path().filename().string();
@@ -159,13 +160,13 @@ namespace
 			globalWeight += weight;
 		}
 
-		double result = 0.0;
-		double resultWeight = 0.0;
+		auto result = 0.0;
+		auto resultCount = 0;
 
 		if (globalWeight != 0.0)
 		{
-			result += std::sqrt(globalSquaredDistance / globalWeight) * globalWeight;
-			resultWeight += globalWeight;
+			result += std::sqrt(globalSquaredDistance / globalWeight);
+			resultCount++;
 		}
 
 		double distributionDistance = 0.0;
@@ -187,14 +188,14 @@ namespace
 
 		if (distributionWeight != 0.0)
 		{
-			result += distributionDistance;
-			resultWeight += distributionWeight;
+			result += distributionDistance / distributionWeight;
+			resultCount++;
 		}
 
-		if (resultWeight == 0.0)
+		if (resultCount == 0)
 			return std::nullopt;
 
-		return result / resultWeight;
+		return result / resultCount;
 	}
 
 	double binDistance(const ShapeDescriptor& query, const ShapeDescriptor& candidate, const std::vector<double>& weights, const bool l1)
@@ -242,12 +243,9 @@ Query::Query(std::filesystem::path queryMesh, std::vector<double> weights, const
 	, weights(std::move(weights))
 	, mode(mode)
 {
-	for (double& weight : this->weights)
-		if (!std::isfinite(weight) || weight < 0.0)
-			weight = 0.0;
 }
 
-std::vector<QueryResult> Query::search(std::size_t topK, const bool loadMeshes)
+std::vector<QueryResult> Query::search(std::size_t topK)
 {
 	if (topK == 0)
 		return {};
@@ -297,8 +295,8 @@ std::vector<QueryResult> Query::search(std::size_t topK, const bool loadMeshes)
 		const auto self = std::ranges::find(ranked, queryIndex, &std::pair<double, std::size_t>::second);
 		if (self != ranked.end())
 			ranked.erase(self);
-		std::cout << "KD-tree search done in " << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count() << " ms"
-				  << std::endl;
+		std::cout << "KD-tree search done in " << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count()
+				  << " ms" << std::endl;
 	}
 
 	std::vector<QueryResult> results;
@@ -308,12 +306,6 @@ std::vector<QueryResult> Query::search(std::size_t topK, const bool loadMeshes)
 	{
 		const auto [distance, shapeIndex] = ranked[i];
 		const auto& shape = db->shapes[shapeIndex];
-
-		if (!loadMeshes)
-		{
-			results.emplace_back(shape.fileName, shape.className, shapeRoot / shape.className / shape.fileName, distance);
-			continue;
-		}
 
 		const auto cachedPath = cacheRoot / shape.className / shape.fileName;
 		if (auto mesh = Mesh::fromObj(cachedPath))
