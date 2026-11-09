@@ -349,11 +349,12 @@ public:
 		auto vertexCountDifference = verts > targetVertexCount ? verts - targetVertexCount : targetVertexCount - verts;
 		if (ratio < 1 && ratio > 0 && vertexCountDifference > allowed_deviation)
 		{
-			// std::cout << "Simplifying with ratio " << ratio << " from " << newMesh->numVertices() << " vertices." << std::endl;
-			// newMesh.emplace(newMesh->decimated(ratio));
+			auto simplified = newMesh->decimated(ratio);
+			if (simplified.numVertices() > 0 && simplified.numFaces() > 0)
+    			newMesh.emplace(simplified);
 		}
 
-		// std::cout << "Done, mesh has " << newMesh->numVertices() << " vertices" << std::endl;
+		std::cout << "Done, mesh has " << newMesh->numVertices() << " vertices" << std::endl;
 		return newMesh.value();
 	}
 
