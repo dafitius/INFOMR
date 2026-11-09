@@ -245,7 +245,7 @@ Query::Query(std::filesystem::path queryMesh, std::vector<double> weights, const
 {
 }
 
-std::vector<QueryResult> Query::search(std::size_t topK)
+std::vector<QueryResult> Query::search(std::size_t topK, const bool loadMeshes)
 {
 	if (topK == 0)
 		return {};
@@ -306,6 +306,12 @@ std::vector<QueryResult> Query::search(std::size_t topK)
 	{
 		const auto [distance, shapeIndex] = ranked[i];
 		const auto& shape = db->shapes[shapeIndex];
+
+		if (!loadMeshes)
+		{
+			results.emplace_back(shape.fileName, shape.className, shapeRoot / shape.className / shape.fileName, distance);
+			continue;
+		}
 
 		const auto cachedPath = cacheRoot / shape.className / shape.fileName;
 		if (auto mesh = Mesh::fromObj(cachedPath))
