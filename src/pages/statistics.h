@@ -42,6 +42,7 @@ public slots:
 	void compute();
 	void loadCsv();
 	void exportCsv();
+	void exportDescriptorHistograms();
 
 private:
 	enum class CompareMode : std::uint8_t
@@ -89,6 +90,8 @@ private:
 	QPushButton* m_computeButton = nullptr;
 	QPushButton* m_loadButton = nullptr;
 	QPushButton* m_exportButton = nullptr;
+	QPushButton* m_descriptorExportButton = nullptr;
+	QSpinBox* m_descriptorBins = nullptr;
 	QCheckBox* m_limitCheck = nullptr;
 	QSpinBox* m_limitSpin = nullptr;
 	QCheckBox* m_sameShapesCheck = nullptr;

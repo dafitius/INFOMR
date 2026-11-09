@@ -6,6 +6,8 @@
 
 # Cache database
 /resources/CachedShapeDatabase/*
+*.csv
+*.png
 
 # CMake files
 CMakeCache.txt

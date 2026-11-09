@@ -53,7 +53,7 @@ public:
 
 	~Query() = default;
 
-	std::vector<QueryResult> search(std::size_t topK);
+	std::vector<QueryResult> search(std::size_t topK, bool loadMeshes = true);
 
 private:
 	std::filesystem::path queryMesh;
