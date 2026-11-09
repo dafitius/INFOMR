@@ -26,7 +26,8 @@ namespace querying
 				return values[index * dimensions + dimension];
 			}
 
-			template <class BoundingBox> bool kdtree_get_bbox(BoundingBox& /*box*/) const
+			template <class BoundingBox>
+			bool kdtree_get_bbox(BoundingBox& /*box*/) const
 			{
 				return false;
 			}
@@ -56,7 +57,7 @@ namespace querying
 			for (std::size_t h = 0; h < features.histograms.size(); ++h)
 				histogramWeight += featureWeight(weights, globalFeatureCount + h);
 
-			const double parts = (globalWeight > 0.0 ? 1.0 : 0.0) + (histogramWeight > 0.0 ? 1.0 : 0.0);
+			const double totalWeight = globalWeight + histogramWeight;
 			const auto factor = [&](const double share) { return metric == TreeMetric::L1 ? share : std::sqrt(share); };
 
 			std::vector<double> result;
@@ -64,15 +65,13 @@ namespace querying
 
 			for (std::size_t i = 0; i < globalFeatureCount; ++i)
 			{
-				const double share = globalWeight > 0.0 ? featureWeight(weights, i) / globalWeight / parts : 0.0;
+				const double share = totalWeight > 0.0 ? featureWeight(weights, i) / totalWeight : 0.0;
 				result.push_back(factor(share) * features.global[i]);
 			}
 
 			for (std::size_t h = 0; h < features.histograms.size(); ++h)
 			{
-				const double share = histogramWeight > 0.0
-										 ? featureWeight(weights, globalFeatureCount + h) / histogramWeight / parts / cumulativeBinCount
-										 : 0.0;
+				const double share = totalWeight > 0.0 ? featureWeight(weights, globalFeatureCount + h) / totalWeight / cumulativeBinCount : 0.0;
 				double cumulative = 0.0;
 				for (std::size_t bin = 0; bin < cumulativeBinCount; ++bin)
 				{
