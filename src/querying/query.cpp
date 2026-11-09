@@ -125,13 +125,14 @@ namespace
 		return cached ? &*cached : nullptr;
 	}
 
-	const querying::FeatureTree& featureTree(const Database& database, const std::vector<double>& weights, const querying::TreeMetric metric)
+	const querying::FeatureTree& featureTree(
+		const Database& database, const std::vector<double>& weights, const querying::TreeMetric metric, const bool withHistograms)
 	{
 		static std::unique_ptr<querying::FeatureTree> tree;
-		if (!tree || tree->metric() != metric || tree->weights() != weights)
+		if (!tree || tree->metric() != metric || tree->withHistograms() != withHistograms || tree->weights() != weights)
 		{
 			const auto begin = std::chrono::steady_clock::now();
-			tree = std::make_unique<querying::FeatureTree>(database.shapes, weights, metric);
+			tree = std::make_unique<querying::FeatureTree>(database.shapes, weights, metric, withHistograms);
 			std::cout << "Built the KD-tree in "
 					  << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count() << " ms" << std::endl;
 		}
@@ -196,6 +197,45 @@ namespace
 
 		return result / resultCount;
 	}
+
+	double binDistance(const ShapeDescriptor& query, const ShapeDescriptor& candidate, const std::vector<double>& weights, const bool l1)
+	{
+		const auto lp = [l1](const double difference) { return l1 ? std::abs(difference) : difference * difference; };
+		const auto root = [l1](const double sum) { return l1 ? sum : std::sqrt(sum); };
+
+		double globalDistance = 0.0;
+		double globalWeight = 0.0;
+		for (std::size_t i = 0; i < globalFeatureCount; ++i)
+		{
+			globalDistance += weightAt(weights, i) * lp(query.global[i] - candidate.global[i]);
+			globalWeight += weightAt(weights, i);
+		}
+
+		double histogramDistance = 0.0;
+		double histogramWeight = 0.0;
+		for (std::size_t h = 0; h < query.histograms.size(); ++h)
+		{
+			double sum = 0.0;
+			for (std::size_t bin = 0; bin < query.histograms[h].size(); ++bin)
+				sum += lp(query.histograms[h][bin] - candidate.histograms[h][bin]);
+			histogramDistance += weightAt(weights, globalFeatureCount + h) * root(sum / 2.0);
+			histogramWeight += weightAt(weights, globalFeatureCount + h);
+		}
+
+		double result = 0.0;
+		int parts = 0;
+		if (globalWeight > 0.0)
+		{
+			result += root(globalDistance / globalWeight);
+			++parts;
+		}
+		if (histogramWeight > 0.0)
+		{
+			result += histogramDistance / histogramWeight;
+			++parts;
+		}
+		return parts == 0 ? 0.0 : result / parts;
+	}
 } // namespace
 
 Query::Query(std::filesystem::path queryMesh, std::vector<double> weights, const DistanceMode mode)
@@ -228,14 +268,17 @@ std::vector<QueryResult> Query::search(std::size_t topK)
 		db->standardize(*queryDescriptor);
 
 	std::vector<std::pair<double, std::size_t>> ranked;
-	if (mode == DistanceMode::Mix)
+	if (mode == DistanceMode::Mix || mode == DistanceMode::L1 || mode == DistanceMode::L2)
 	{
 		const auto begin = std::chrono::steady_clock::now();
 		for (std::size_t i = 0; i < db->shapes.size(); ++i)
 		{
 			if (i == queryIndex)
 				continue;
-			if (const auto distance = descriptorDistance(*queryDescriptor, db->shapes[i].features, weights))
+			const auto& candidate = db->shapes[i].features;
+			const auto distance = mode == DistanceMode::Mix ? descriptorDistance(*queryDescriptor, candidate, weights)
+															: binDistance(*queryDescriptor, candidate, weights, mode == DistanceMode::L1);
+			if (distance)
 				ranked.emplace_back(*distance, i);
 		}
 		std::ranges::stable_sort(ranked, {}, &std::pair<double, std::size_t>::first);
@@ -244,7 +287,8 @@ std::vector<QueryResult> Query::search(std::size_t topK)
 	}
 	else
 	{
-		const auto& tree = featureTree(*db, weights, mode == DistanceMode::L1 ? querying::TreeMetric::L1 : querying::TreeMetric::L2);
+		const auto metric = mode == DistanceMode::GlobalsL2 ? querying::TreeMetric::L2 : querying::TreeMetric::L1;
+		const auto& tree = featureTree(*db, weights, metric, mode == DistanceMode::L1Emd);
 		const auto begin = std::chrono::steady_clock::now();
 
 		ranked = tree.nearest(*queryDescriptor, topK + 1);

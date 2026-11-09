@@ -23,7 +23,7 @@ namespace querying
 	class FeatureTree
 	{
 	public:
-		FeatureTree(const std::vector<StoredShape>& shapes, std::vector<double> weights, TreeMetric metric);
+		FeatureTree(const std::vector<StoredShape>& shapes, std::vector<double> weights, TreeMetric metric, bool withHistograms);
 		~FeatureTree();
 
 		FeatureTree(const FeatureTree&) = delete;
@@ -33,6 +33,7 @@ namespace querying
 
 		[[nodiscard]] const std::vector<double>& weights() const;
 		[[nodiscard]] TreeMetric metric() const;
+		[[nodiscard]] bool withHistograms() const;
 
 	private:
 		struct Impl;

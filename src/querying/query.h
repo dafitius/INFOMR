@@ -12,9 +12,18 @@ class Mesh;
 
 enum class DistanceMode
 {
+	/// L2 on the global features and EMD on the histograms, averaged (brute force)
 	Mix,
+	/// L1 on the global features and the histogram bins (brute force)
 	L1,
-	L2
+	/// L2 on the global features and the histogram bins (brute force)
+	L2,
+	/// L1 on the global features and the cumulative histogram bins, which is the EMD on the histograms (KD-tree)
+	L1Emd,
+	/// L1 on the global features only (KD-tree)
+	GlobalsL1,
+	/// L2 on the global features only (KD-tree)
+	GlobalsL2
 };
 
 struct QueryResult

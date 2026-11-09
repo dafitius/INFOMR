@@ -42,25 +42,28 @@ namespace querying
 	{
 		std::vector<double> weights;
 		TreeMetric metric;
+		bool withHistograms;
 		PointCloud points;
 		std::unique_ptr<L1Index> l1;
 		std::unique_ptr<L2Index> l2;
 
 		[[nodiscard]] std::vector<double> point(const FeatureVector& features) const
 		{
+			const std::size_t histogramCount = withHistograms ? features.histograms.size() : 0;
+
 			double globalWeight = 0.0;
 			for (std::size_t i = 0; i < globalFeatureCount; ++i)
 				globalWeight += featureWeight(weights, i);
 
 			double histogramWeight = 0.0;
-			for (std::size_t h = 0; h < features.histograms.size(); ++h)
+			for (std::size_t h = 0; h < histogramCount; ++h)
 				histogramWeight += featureWeight(weights, globalFeatureCount + h);
 
 			const double parts = (globalWeight > 0.0 ? 1.0 : 0.0) + (histogramWeight > 0.0 ? 1.0 : 0.0);
 			const auto factor = [&](const double share) { return metric == TreeMetric::L1 ? share : std::sqrt(share); };
 
 			std::vector<double> result;
-			result.reserve(globalFeatureCount + features.histograms.size() * cumulativeBinCount);
+			result.reserve(globalFeatureCount + histogramCount * cumulativeBinCount);
 
 			for (std::size_t i = 0; i < globalFeatureCount; ++i)
 			{
@@ -68,7 +71,7 @@ namespace querying
 				result.push_back(factor(share) * features.global[i]);
 			}
 
-			for (std::size_t h = 0; h < features.histograms.size(); ++h)
+			for (std::size_t h = 0; h < histogramCount; ++h)
 			{
 				const double share = histogramWeight > 0.0
 										 ? featureWeight(weights, globalFeatureCount + h) / histogramWeight / parts / cumulativeBinCount
@@ -84,11 +87,13 @@ namespace querying
 		}
 	};
 
-	FeatureTree::FeatureTree(const std::vector<StoredShape>& shapes, std::vector<double> weights, const TreeMetric metric)
+	FeatureTree::FeatureTree(
+		const std::vector<StoredShape>& shapes, std::vector<double> weights, const TreeMetric metric, const bool withHistograms)
 		: impl(std::make_unique<Impl>())
 	{
 		impl->weights = std::move(weights);
 		impl->metric = metric;
+		impl->withHistograms = withHistograms;
 		for (const auto& shape : shapes)
 		{
 			const auto point = impl->point(shape.features);
@@ -133,5 +138,10 @@ namespace querying
 	TreeMetric FeatureTree::metric() const
 	{
 		return impl->metric;
+	}
+
+	bool FeatureTree::withHistograms() const
+	{
+		return impl->withHistograms;
 	}
 } // namespace querying

@@ -88,9 +88,12 @@ void QueryPage::setupUI()
 	sidebarLayout->addWidget(distanceLabel);
 
 	distanceModeInput = new QComboBox(sidebar);
-	distanceModeInput->addItem("Euclidean + EMD (brute force)", static_cast<int>(DistanceMode::Mix));
-	distanceModeInput->addItem("L1 (KD-tree)", static_cast<int>(DistanceMode::L1));
-	distanceModeInput->addItem("L2 (KD-tree)", static_cast<int>(DistanceMode::L2));
+	distanceModeInput->addItem("L2 + EMD (brute force)", static_cast<int>(DistanceMode::Mix));
+	distanceModeInput->addItem("L1 (brute force)", static_cast<int>(DistanceMode::L1));
+	distanceModeInput->addItem("L2 (brute force)", static_cast<int>(DistanceMode::L2));
+	distanceModeInput->addItem("L1 + EMD (KD-tree)", static_cast<int>(DistanceMode::L1Emd));
+	distanceModeInput->addItem("L1, global features only (KD-tree)", static_cast<int>(DistanceMode::GlobalsL1));
+	distanceModeInput->addItem("L2, global features only (KD-tree)", static_cast<int>(DistanceMode::GlobalsL2));
 	sidebarLayout->addWidget(distanceModeInput);
 
 	// Search button
