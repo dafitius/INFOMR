@@ -13,7 +13,7 @@ namespace mesh::ops
 {
 	namespace transform
 	{
-		Mesh translate(const Mesh& mesh, const glm::vec3& translation);
+		Mesh translate(const Mesh& mesh, const glm::dvec3& translation);
 		Mesh rotate(const Mesh& mesh, const glm::quat& rotation);
 		Mesh scale(const Mesh& mesh, const glm::vec3& scale);
 	} // namespace transform
@@ -35,7 +35,7 @@ namespace mesh::ops
 
 	namespace util
 	{
-		glm::vec3 calcBaryCenter(std::span<const glm::vec3> points);
+		glm::dvec3 calcBaryCenter(std::span<const glm::vec3> points);
 	}
 } // namespace mesh::ops
 

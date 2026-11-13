@@ -38,6 +38,8 @@ GpuMesh::GpuMesh(const Mesh& mesh)
 
 	const auto axisVertices = generateAxis();
 	axis_.allocate(&GlObject::vertex_, axisVertices);
+
+	curvatureValues_ = mesh::features::local_curvature_descriptor::curvatureIndexFaceValues(mesh, 7);
 }
 
 GpuMesh::~GpuMesh() = default;

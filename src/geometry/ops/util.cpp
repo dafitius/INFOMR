@@ -7,15 +7,15 @@
 
 namespace mesh::ops::util
 {
-	glm::vec3 calcBaryCenter(std::span<const glm::vec3> points)
+	glm::dvec3 calcBaryCenter(const std::span<const glm::vec3> positions)
 	{
-		auto xIter = std::views::transform(points, [](auto& pos) { return pos.x; });
-		auto yIter = std::views::transform(points, [](auto& pos) { return pos.y; });
-		auto zIter = std::views::transform(points, [](auto& pos) { return pos.z; });
+		glm::dvec3 sum{0.0};
 
-		double const xMean = std::accumulate(xIter.begin(), xIter.end(), 0.0) / static_cast<double>(points.size());
-		double const yMean = std::accumulate(yIter.begin(), yIter.end(), 0.0) / static_cast<double>(points.size());
-		double const zMean = std::accumulate(zIter.begin(), zIter.end(), 0.0) / static_cast<double>(points.size());
-		return {xMean, yMean, zMean};
-	};
+		for (const auto& position : positions)
+		{
+			sum += glm::dvec3(position);
+		}
+
+		return sum / static_cast<double>(positions.size());
+	}
 } // namespace mesh::ops::util

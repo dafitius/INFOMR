@@ -36,6 +36,7 @@ public:
 	GlObject vertexNormals_;
 	GlObject boundaryEdges_;
 	GlObject axis_;
+	std::vector<float> curvatureValues_;
 
 private:
 	float axisLength_ = 1.0F;

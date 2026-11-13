@@ -129,6 +129,7 @@ QWidget* Workshop::setupDistributionPanel(QWidget* parent)
 			distributionBox->count() - 1, QString::fromUtf8(distribution.description.data(), static_cast<qsizetype>(distribution.description.size())),
 			Qt::ToolTipRole);
 	}
+
 	distributionBox->setToolTip("Shape property distribution of the current mesh, computed from random vertices");
 
 	distributionBinsSpin = new QSpinBox(panel);
@@ -247,6 +248,9 @@ void Workshop::setupUI()
 	auto* axesBox = new QCheckBox("World axes", renderGroup);
 	axesBox->setToolTip("Show the world coordinate axes");
 	axesBox->setChecked(viewport->renderSettings().showAxes);
+	auto* curvatureBox = new QCheckBox("Show curvature", renderGroup);
+	curvatureBox->setToolTip("Show the local curvature on the model");
+	curvatureBox->setChecked(viewport->renderSettings().showAxes);
 	auto* eigenvectorAxesBox = new QCheckBox("Principal axes", renderGroup);
 	eigenvectorAxesBox->setToolTip("Show the mesh's principal eigenvector axes");
 	eigenvectorAxesBox->setChecked(viewport->renderSettings().showEigenvectorAxes);
@@ -258,7 +262,8 @@ void Workshop::setupUI()
 	renderLayout->addWidget(hullBox, 2, 0);
 	renderLayout->addWidget(gridBox, 2, 1);
 	renderLayout->addWidget(axesBox, 3, 0);
-	renderLayout->addWidget(eigenvectorAxesBox, 3, 1);
+	renderLayout->addWidget(curvatureBox, 3, 1);
+	renderLayout->addWidget(eigenvectorAxesBox, 4, 0);
 	sidebarLayout->addWidget(renderGroup);
 
 	// Pipeline operations
@@ -350,6 +355,7 @@ void Workshop::setupUI()
 	connect(hullBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showHull, checked); });
 	connect(normalsBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showNormals, checked); });
 	connect(axesBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showAxes, checked); });
+	connect(curvatureBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showCurvature, checked); });
 
 	connect(
 		eigenvectorAxesBox, &QCheckBox::toggled, this,

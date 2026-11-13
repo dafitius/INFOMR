@@ -16,6 +16,7 @@ struct RenderSettings
 	bool showGrid = false;
 	bool showNormals = false;
 	bool showHull = false;
+	bool showCurvature = false;
 	QVector3D surfaceColor = QVector3D(0.25F, 0.65F, 0.95F);
 	QVector3D edgeColor = QVector3D(0.05F, 0.06F, 0.08F);
 };

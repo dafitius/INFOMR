@@ -102,7 +102,7 @@ private:
 
 	// mutable, lazily initialized
 	mutable Lazy<Bounds> bounds_;
-	mutable Lazy<Position> bary_center_;
+	mutable Lazy<glm::dvec3> bary_center_;
 	mutable Lazy<glm::quat> principle_axes_;
 	mutable Lazy<glm::vec3> moment_;
 	mutable Lazy<std::array<float, 3>> eigen_values_;
@@ -294,6 +294,12 @@ public:
 	}
 
 	[[nodiscard]]
+	Mesh translated(const glm::dvec3& translation) const
+	{
+		return mesh::ops::transform::translate(*this, translation);
+	}
+
+	[[nodiscard]]
 	Mesh translated(const glm::vec3& translation) const
 	{
 		return mesh::ops::transform::translate(*this, translation);
@@ -350,7 +356,7 @@ public:
 		if (ratio < 1 && ratio > 0 && vertexCountDifference > allowed_deviation)
 		{
 			// std::cout << "Simplifying with ratio " << ratio << " from " << newMesh->numVertices() << " vertices." << std::endl;
-			// newMesh.emplace(newMesh->decimated(ratio));
+			newMesh.emplace(newMesh->decimated(ratio));
 		}
 
 		// std::cout << "Done, mesh has " << newMesh->numVertices() << " vertices" << std::endl;
@@ -386,7 +392,7 @@ public:
 		return bounds_.getOrCreate([&] { return createBounds(); });
 	}
 
-	[[nodiscard]] glm::vec3 baryCenter() const
+	[[nodiscard]] glm::dvec3 baryCenter() const
 	{
 		return bary_center_.getOrCreate([&] { return mesh::ops::util::calcBaryCenter(positions_); });
 	}

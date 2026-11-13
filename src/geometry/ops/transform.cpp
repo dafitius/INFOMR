@@ -7,10 +7,10 @@
 
 #include <vector>
 
-Mesh mesh::ops::transform::translate(const Mesh& mesh, const glm::vec3& translation)
+Mesh mesh::ops::transform::translate(const Mesh& mesh, const glm::dvec3& translation)
 {
 	auto newPositions = std::vector<Mesh::Position>(mesh.positions().size());
-	std::ranges::transform(mesh.positions(), newPositions.begin(), [translation](auto& pos) { return pos + translation; });
+	std::ranges::transform(mesh.positions(), newPositions.begin(), [translation](auto& pos) { return glm::vec3(glm::dvec3(pos) + translation); });
 	return mesh.withPositions(newPositions);
 }
 

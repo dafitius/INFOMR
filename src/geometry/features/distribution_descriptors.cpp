@@ -1,6 +1,7 @@
 #include "../mesh.hpp"
 #include "features.h"
 #include <algorithm>
+#include <queue>
 #include <random>
 #include <vector>
 
@@ -97,7 +98,7 @@ namespace
 
 } // namespace
 
-namespace mesh::features::property_descriptors
+namespace mesh::features::distribution_descriptors
 {
 	void seedSampling(const std::uint32_t seed)
 	{

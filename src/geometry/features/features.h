@@ -24,7 +24,7 @@ namespace mesh::features
 		float sphericity(const Mesh& mesh);
 	} // namespace global_descriptors
 
-	namespace property_descriptors
+	namespace distribution_descriptors
 	{
 		void seedSampling(std::uint32_t seed);
 
@@ -34,6 +34,14 @@ namespace mesh::features
 		std::vector<float> D3(const Mesh& mesh);
 		std::vector<float> D4(const Mesh& mesh);
 	} // namespace property_descriptors
+
+	namespace local_curvature_descriptor
+	{
+		std::vector<float> curvatureIndex(const Mesh& mesh, size_t radius, size_t numBins);
+		std::vector<float> minCurvatureFaceValues(const Mesh& mesh, size_t radius);
+		std::vector<float> maxCurvatureFaceValues(const Mesh& mesh, size_t radius);
+		std::vector<float> curvatureIndexFaceValues(const Mesh& mesh, size_t radius);
+	}
 
 } // namespace mesh::features
 
