@@ -48,6 +48,17 @@ FetchContent_Declare(
         GIT_TAG         9a653cb243db6a09c94f833b28732b62f033e2b5 #refs/tags/v1.7.1
         SOURCE_SUBDIR   header_only
 )
+FetchContent_Declare(
+        Eigen3
+        GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+        GIT_TAG        3.4.0
+        GIT_SHALLOW    TRUE
+)
+
+set(EIGEN_BUILD_DOC OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(Eigen3)
+
 FetchContent_MakeAvailable(nanoflann)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
@@ -59,6 +70,12 @@ FetchContent_MakeAvailable(qhull)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
+
+include(FetchContent)
+FetchContent_Declare(meshfix GIT_REPOSITORY https://github.com/alex-mextner/meshfix.git GIT_TAG v0.1.1)
+set(MESHFIX_BUILD_CLI OFF)
+set(MESHFIX_BUILD_TESTS OFF)
+FetchContent_MakeAvailable(meshfix)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_source_files_properties(*.c LANGUAGE C)
@@ -95,7 +112,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Quick
         Qt6::QuickWidgets
         glm::glm
-        qhullcpp qhullstatic_r
+        qhullcpp
+        qhullstatic_r
+        Eigen3::Eigen
 )
 
 file(GLOB_RECURSE database_generator_src
@@ -116,7 +135,7 @@ target_link_libraries(generate_database PRIVATE
         Qt6::Core
         Qt6::Gui
         glm::glm
-        qhullcpp qhullstatic_r
+        qhullcpp qhullstatic_r meshfix::meshfix_static
 )
 
 if(WIN32)

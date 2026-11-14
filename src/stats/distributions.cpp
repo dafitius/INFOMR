@@ -48,7 +48,7 @@ namespace stats
 
 	std::span<const Distribution> distributions()
 	{
-		namespace descriptors = mesh::features::property_descriptors;
+		namespace descriptors = mesh::features::distribution_descriptors;
 
 		static constexpr std::array all{
 			Distribution{"a3", "Angle between three random vertices", BinRange{.min = 0.0, .max = std::numbers::pi}, descriptors::A3},

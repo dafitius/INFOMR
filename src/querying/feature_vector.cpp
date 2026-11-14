@@ -37,7 +37,7 @@ namespace querying
 			.histograms = {},
 		};
 
-		mesh::features::property_descriptors::seedSampling(seed);
+		mesh::features::distribution_descriptors::seedSampling(seed);
 		for (const auto& distribution : stats::distributions())
 		{
 			const auto samples = distribution.sample(mesh);

@@ -209,9 +209,17 @@ namespace stats
 					const auto size = extent(m);
 					return static_cast<double>(std::max({size.x, size.y, size.z}));
 				}},
+			Metric{
+				"min_extent", "Smallest bounding box side, 0 after scaling to the unit cube",
+				[](const Mesh& m)
+				{
+					const auto size = extent(m);
+					return static_cast<double>(std::min({size.x, size.y, size.z}));
+				}},
 			Metric{"bary_x", "Barycenter x", [](const Mesh& m) { return static_cast<double>(m.baryCenter().x); }},
 			Metric{"bary_y", "Barycenter y", [](const Mesh& m) { return static_cast<double>(m.baryCenter().y); }},
 			Metric{"bary_z", "Barycenter z", [](const Mesh& m) { return static_cast<double>(m.baryCenter().z); }},
+			Metric{"orientation_angle", "Orientation angle", [](const Mesh& m) { return static_cast<double>(glm::degrees(glm::angle(m.principleAxes()))); }},
 			Metric{
 				"bary_distance", "Distance from the barycenter to the origin, 0 after centering",
 				[](const Mesh& m) { return static_cast<double>(glm::length(m.baryCenter())); }},

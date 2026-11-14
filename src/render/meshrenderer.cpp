@@ -165,4 +165,51 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 				mesh.hull_.bound([&] { glDrawElements(GL_LINES, mesh.hull_.indexCount(), GL_UNSIGNED_INT, nullptr); });
 			});
 	}
+
+	if (settings.showCurvature)
+	{
+		surfaceProgram_.bound(
+			[&](QOpenGLShaderProgram& program)
+			{
+				glUniformMatrix4fv(program.uniformLocation("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
+				glUniformMatrix4fv(program.uniformLocation("modelView"), 1, GL_FALSE, glm::value_ptr(view));
+
+
+				auto curvatureColor = [](float value) -> QVector3D
+				{
+					if (!std::isfinite(value))
+						return {1.0F, 1.0F, 1.0F};
+
+					constexpr float gamma = 0.2F;
+					value = std::clamp(value, 0.0F, 1.0F);
+					value = std::pow(value, gamma);
+
+					constexpr std::array colors = {
+						QVector3D{0.0F, 0.0F, 1.0F}, // Blue
+						QVector3D{0.0F, 1.0F, 1.0F}, // Cyan
+						QVector3D{1.0F, 1.0F, 0.0F}, // Yellow
+						QVector3D{1.0F, 0.0F, 0.0F}	 // Red
+					};
+
+					const float scaled = value * (colors.size() - 1);
+					const auto index = static_cast<std::size_t>(scaled);
+
+					if (index >= colors.size() - 1)
+						return colors.back();
+
+					const float t = scaled - static_cast<float>(index);
+
+					return colors[index] * (1.0F - t) + colors[index + 1] * t;
+				};
+
+				for (std::size_t face = 0; face < mesh.curvatureValues_.size(); ++face)
+				{
+					program.setUniformValue("fillColor", curvatureColor(mesh.curvatureValues_[face]));
+
+					const auto offset = reinterpret_cast<const void*>(face * 3 * sizeof(std::uint32_t));
+
+					mesh.triangleMesh_.bound([&] { glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, offset); });
+				}
+			});
+	}
 }
