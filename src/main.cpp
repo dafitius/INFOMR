@@ -75,9 +75,9 @@ int main(int argc, char* argv[])
 			printUsage();
 			return 2;
 		}
-		if (queryCountArgument < 0 || kArgument < 0 || modeArgument < 0 || modeArgument > 2)
+		if (queryCountArgument < 0 || kArgument < 0 || modeArgument < 0 || modeArgument > 5)
 		{
-			std::cerr << "Query count and k must be non-negative, and mode must be 0, 1, or 2." << std::endl;
+			std::cerr << "Query count and k must be non-negative, and mode must be 0, 1, 2, 3, 4 or 5." << std::endl;
 			printUsage();
 			return 2;
 		}

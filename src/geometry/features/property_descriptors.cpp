@@ -6,7 +6,7 @@
 
 namespace
 {
-	constexpr std::size_t MAX_SAMPLES = 10'000;
+	constexpr std::size_t MAX_SAMPLES = 100'000;
 
 	std::mt19937& randomEngine()
 	{

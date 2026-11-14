@@ -172,7 +172,10 @@ def plot_histograms(
 
         class_dir = output_dir / safe_filename(class_name)
         class_dir.mkdir(parents=True, exist_ok=True)
-        output_path = class_dir / f"{safe_filename(descriptor.lower())}.png"
+        output_path = (
+            class_dir
+            / f"{safe_filename(descriptor.lower())}-{safe_filename(class_name)}.png"
+        )
         fig.savefig(output_path, dpi=160)
         plt.close(fig)
         plots_written += 1
