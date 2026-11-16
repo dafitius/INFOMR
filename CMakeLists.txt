@@ -135,6 +135,7 @@ target_link_libraries(generate_database PRIVATE
         Qt6::Core
         Qt6::Gui
         glm::glm
+        Eigen3::Eigen
         qhullcpp qhullstatic_r meshfix::meshfix_static
 )
 

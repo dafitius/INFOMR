@@ -28,7 +28,8 @@ QueryPage::QueryPage(QWidget* parent)
 
 	// Important: Do not change the order of the labels, this should be the same order as the feature vector
 	setWeightLabels(
-		{"Volume", "Surface area", "Compactness", "3D rectangularity", "Diameter", "Convexity", "Eccentricity", "A3", "D1", "D2", "D3", "D4"});
+		{"Volume", "Surface area", "Compactness", "3D rectangularity", "Diameter", "Convexity", "Eccentricity", "A3", "D1", "D2", "D3", "D4",
+		 "Curvature"});
 }
 
 QueryPage::~QueryPage() {}
@@ -91,7 +92,7 @@ void QueryPage::setupUI()
 	distanceModeInput->addItem("L2 + EMD (brute force)", static_cast<int>(DistanceMode::Mix));
 	distanceModeInput->addItem("L1 (brute force)", static_cast<int>(DistanceMode::L1));
 	distanceModeInput->addItem("L2 (brute force)", static_cast<int>(DistanceMode::L2));
-	distanceModeInput->addItem("L1 + EMD (KD-tree)", static_cast<int>(DistanceMode::L1Emd));
+	distanceModeInput->addItem("L1 + EMD, balanced (KD-tree)", static_cast<int>(DistanceMode::L1Emd));
 	distanceModeInput->addItem("L1, global features only (KD-tree)", static_cast<int>(DistanceMode::GlobalsL1));
 	distanceModeInput->addItem("L2, global features only (KD-tree)", static_cast<int>(DistanceMode::GlobalsL2));
 	sidebarLayout->addWidget(distanceModeInput);
@@ -255,8 +256,7 @@ void QueryPage::displayResults(const std::vector<QueryResult>& results)
 	{
 		const auto& result = results[i];
 		const QString name = QString::fromStdString(result.name);
-		const QString subtitle =
-			QString("%1 · Distance: %2").arg(QString::fromStdString(result.className)).arg(result.distance, 0, 'f', 5);
+		const QString subtitle = QString("%1 · Distance: %2").arg(QString::fromStdString(result.className)).arg(result.distance, 0, 'f', 5);
 
 		if (result.normalizedMesh)
 			resultsLayout->addWidget(new ResultCard(name, *result.normalizedMesh, subtitle));

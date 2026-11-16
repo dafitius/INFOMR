@@ -13,7 +13,6 @@
 #include <cmath>
 #include <numbers>
 #include <optional>
-#include <queue>
 #include <vector>
 
 namespace
@@ -143,40 +142,41 @@ namespace mesh::features::local_curvature_descriptor
 		auto adjacency = mesh.faces().faceAdjacency();
 
 		std::vector<std::optional<Curvatures>> curvatureValues(numFaces);
+		std::vector<std::size_t> visitedGeneration(numFaces, 0);
+		std::vector<std::size_t> depth(numFaces);
+		std::vector<std::size_t> neighborhood;
+		std::vector<glm::dvec3> points;
+		neighborhood.reserve(std::min(numFaces, std::size_t{512}));
+		points.reserve(std::min(numFaces, std::size_t{512}));
 
 		for (std::size_t f = 0; f < numFaces; ++f)
 		{
 			if (glm::length(normals[f]) < eps)
 				continue;
 
-			// Find the face neighborhood using BFS.
-			std::vector<std::size_t> neighborhood;
-			std::vector depth(numFaces, std::numeric_limits<std::size_t>::max());
-
-			std::queue<std::size_t> queue;
-
-			queue.push(f);
+			neighborhood.clear();
+			neighborhood.push_back(f);
+			visitedGeneration[f] = f + 1;
 			depth[f] = 0;
 
-			while (!queue.empty())
+			// Find the face neighborhood using BFS.
+			for (std::size_t i = 0; i < neighborhood.size(); ++i)
 			{
-				const auto current = queue.front();
-				queue.pop();
-
-				neighborhood.push_back(current);
+				const auto current = neighborhood[i];
 
 				if (depth[current] >= maxDepth)
 					continue;
 
 				for (const auto neighbor : adjacency[current])
 				{
-					if (depth[neighbor] != std::numeric_limits<std::size_t>::max())
+					if (visitedGeneration[neighbor] == f + 1)
 					{
 						continue;
 					}
 
+					visitedGeneration[neighbor] = f + 1;
 					depth[neighbor] = depth[current] + 1;
-					queue.push(neighbor);
+					neighborhood.push_back(neighbor);
 				}
 			}
 
@@ -184,9 +184,7 @@ namespace mesh::features::local_curvature_descriptor
 			if (neighborhood.size() < 6)
 				continue;
 
-			std::vector<glm::dvec3> points;
-			points.reserve(neighborhood.size());
-
+			points.clear();
 			for (const auto neighbor : neighborhood)
 				points.push_back(centroids[neighbor]);
 

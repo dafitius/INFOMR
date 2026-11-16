@@ -30,6 +30,12 @@ namespace stats
 		constexpr double maxD2 = 1.2;
 		constexpr double maxD3 = 0.65;
 		constexpr double maxD4 = 0.35;
+		constexpr size_t curvatureNeighborhoodDepth = 7;
+
+		std::vector<float> curvatureIndexSamples(const Mesh& mesh)
+		{
+			return mesh::features::local_curvature_descriptor::curvatureIndexFaceValues(mesh, curvatureNeighborhoodDepth);
+		}
 
 		void writeCsvField(std::ostream& output, const std::string_view value)
 		{
@@ -58,6 +64,7 @@ namespace stats
 				"d3", "Square root of the area of the triangle between three random vertices", BinRange{.min = 0.0, .max = maxD3}, descriptors::D3},
 			Distribution{
 				"d4", "Cube root of the volume of the tetrahedron between four random vertices", BinRange{.min = 0.0, .max = maxD4}, descriptors::D4},
+			Distribution{"curvature", "Local curvature index", BinRange{.min = 0.0, .max = 1.0}, curvatureIndexSamples},
 		};
 		return all;
 	}
@@ -152,7 +159,8 @@ namespace stats
 								const auto samples = distribution.sample(transformed);
 								histograms.push_back(binHistogram(samples, distribution.range, numBins));
 								sampleCounts.push_back(
-									static_cast<std::size_t>(std::ranges::count_if(samples, [](const float sample) { return std::isfinite(sample); })));
+									static_cast<std::size_t>(
+										std::ranges::count_if(samples, [](const float sample) { return std::isfinite(sample); })));
 							}
 
 							for (std::size_t distributionIndex = 0; distributionIndex < allDistributions.size(); ++distributionIndex)

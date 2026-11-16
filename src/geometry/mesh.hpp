@@ -360,7 +360,7 @@ public:
 				newMesh.emplace(simplified);
 		}
 
-		std::cout << "Done, mesh has " << newMesh->numVertices() << " vertices" << std::endl;
+		// std::cout << "Done, mesh has " << newMesh->numVertices() << " vertices" << std::endl;
 		return newMesh.value();
 	}
 

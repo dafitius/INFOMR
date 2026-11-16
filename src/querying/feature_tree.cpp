@@ -60,7 +60,9 @@ namespace querying
 			for (std::size_t h = 0; h < histogramCount; ++h)
 				histogramWeight += featureWeight(weights, globalFeatureCount + h);
 
-			const double totalWeight = globalWeight + histogramWeight;
+			const double activeGroupCount = static_cast<double>((globalWeight > 0.0) + (histogramWeight > 0.0));
+			const double globalGroupShare = globalWeight > 0.0 ? 1.0 / (activeGroupCount * globalWeight) : 0.0;
+			const double histogramGroupShare = histogramWeight > 0.0 ? 1.0 / (activeGroupCount * histogramWeight) : 0.0;
 			const auto factor = [&](const double share) { return metric == TreeMetric::L1 ? share : std::sqrt(share); };
 
 			std::vector<double> result;
@@ -68,13 +70,13 @@ namespace querying
 
 			for (std::size_t i = 0; i < globalFeatureCount; ++i)
 			{
-				const double share = totalWeight > 0.0 ? featureWeight(weights, i) / totalWeight : 0.0;
+				const double share = globalGroupShare * featureWeight(weights, i);
 				result.push_back(factor(share) * features.global[i]);
 			}
 
 			for (std::size_t h = 0; h < histogramCount; ++h)
 			{
-				const double share = totalWeight > 0.0 ? featureWeight(weights, globalFeatureCount + h) / totalWeight / cumulativeBinCount : 0.0;
+				const double share = histogramGroupShare * featureWeight(weights, globalFeatureCount + h) / cumulativeBinCount;
 				double cumulative = 0.0;
 				for (std::size_t bin = 0; bin < cumulativeBinCount; ++bin)
 				{

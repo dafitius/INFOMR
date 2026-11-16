@@ -1,4 +1,4 @@
-#define USE_MESHFIX 1
+#define USE_MESHFIX 0
 
 #include "generate_database.h"
 #include "../src/geometry/mesh.hpp"
@@ -83,16 +83,14 @@ namespace
 
 			for (;;)
 			{
-				path_ = base / std::format(
-					"generate_database_meshfix_{}_{}", timestamp, sequence.fetch_add(1));
+				path_ = base / std::format("generate_database_meshfix_{}_{}", timestamp, sequence.fetch_add(1));
 
 				std::error_code error;
 				if (std::filesystem::create_directory(path_, error))
 					return;
 
 				if (error)
-					throw std::filesystem::filesystem_error(
-						"Could not create MeshFix temporary directory", path_, error);
+					throw std::filesystem::filesystem_error("Could not create MeshFix temporary directory", path_, error);
 			}
 		}
 
@@ -104,8 +102,7 @@ namespace
 			std::error_code error;
 			std::filesystem::remove_all(path_, error);
 			if (error)
-				std::cerr << "Could not remove temporary directory " << path_
-				          << ": " << error.message() << '\n';
+				std::cerr << "Could not remove temporary directory " << path_ << ": " << error.message() << '\n';
 		}
 
 		const std::filesystem::path& path() const
@@ -163,12 +160,10 @@ namespace
 
 		meshfix_mesh* inputRaw = nullptr;
 		auto status = meshfix_mesh_read(inputPath.string().c_str(), &inputRaw);
-		std::unique_ptr<meshfix_mesh, decltype(&meshfix_mesh_free)> inputMesh(
-			inputRaw, &meshfix_mesh_free);
+		std::unique_ptr<meshfix_mesh, decltype(&meshfix_mesh_free)> inputMesh(inputRaw, &meshfix_mesh_free);
 
 		if (status != MESHFIX_OK)
-			throw std::runtime_error(std::format(
-				"MeshFix could not read input: {}", meshfix_last_error()));
+			throw std::runtime_error(std::format("MeshFix could not read input: {}", meshfix_last_error()));
 
 		meshfix_options options;
 		meshfix_options_init(&options);
@@ -178,25 +173,21 @@ namespace
 
 		meshfix_mesh* repairedRaw = nullptr;
 		status = meshfix_repair(inputMesh.get(), &options, &repairedRaw, &report);
-		std::unique_ptr<meshfix_mesh, decltype(&meshfix_mesh_free)> repairedMesh(
-			repairedRaw, &meshfix_mesh_free);
+		std::unique_ptr<meshfix_mesh, decltype(&meshfix_mesh_free)> repairedMesh(repairedRaw, &meshfix_mesh_free);
 
 		if (status != MESHFIX_OK)
-			throw std::runtime_error(std::format(
-				"MeshFix repair failed: {}", meshfix_last_error()));
+			throw std::runtime_error(std::format("MeshFix repair failed: {}", meshfix_last_error()));
 
 		if (!report.manifold_after || !report.watertight_after)
 		{
-			std::cerr << "MeshFix could not fully repair mesh: "
-			          << report.non_manifold_edges_after << " non-manifold edges, "
-			          << report.boundary_edges_after << " boundary edges\n";
+			std::cerr << "MeshFix could not fully repair mesh: " << report.non_manifold_edges_after << " non-manifold edges, "
+					  << report.boundary_edges_after << " boundary edges\n";
 			return std::nullopt;
 		}
 
 		status = meshfix_mesh_write(repairedMesh.get(), outputPath.string().c_str());
 		if (status != MESHFIX_OK)
-			throw std::runtime_error(std::format(
-				"MeshFix could not write output: {}", meshfix_last_error()));
+			throw std::runtime_error(std::format("MeshFix could not write output: {}", meshfix_last_error()));
 
 		auto repaired = Mesh::fromObj(outputPath);
 		if (!repaired)
@@ -246,8 +237,7 @@ bool writeFeatures(const std::filesystem::path& outputPath, const std::vector<Ca
 			continue;
 		}
 
-		file << candidate.path.parent_path().filename().string()
-		     << ',' << candidate.path.filename().string();
+		file << candidate.path.parent_path().filename().string() << ',' << candidate.path.filename().string();
 
 		for (const auto value : candidate.features.global)
 			file << std::format(",{}", value);
@@ -330,8 +320,7 @@ int createCacheDB(const std::uint32_t seed)
 
 	if (error)
 	{
-		std::cerr << "Failed to scan shape database directory: " << root.string()
-		          << " (" << error.message() << ")" << std::endl;
+		std::cerr << "Failed to scan shape database directory: " << root.string() << " (" << error.message() << ")" << std::endl;
 		return 1;
 	}
 
@@ -351,16 +340,14 @@ int createCacheDB(const std::uint32_t seed)
 			}
 			else
 			{
-				auto features = querying::extractFeatures(
-					*candidateShape, querying::shapeSeed(path.filename().string(), seed));
+				auto features = querying::extractFeatures(*candidateShape, querying::shapeSeed(path.filename().string(), seed));
 				std::cout << "Processed " << path << std::endl;
 				candidates.push_back({path, std::move(*candidateShape), std::move(features)});
 			}
 		}
 		else if (error)
 		{
-			std::cerr << "Failed to inspect shape database entry: " << path.string()
-			          << " (" << error.message() << ")" << std::endl;
+			std::cerr << "Failed to inspect shape database entry: " << path.string() << " (" << error.message() << ")" << std::endl;
 			error.clear();
 		}
 
@@ -375,8 +362,7 @@ int createCacheDB(const std::uint32_t seed)
 	std::filesystem::create_directories(cacheRoot, error);
 	if (error)
 	{
-		std::cerr << "Failed to create cache directory: " << cacheRoot.string()
-		          << " (" << error.message() << ")" << std::endl;
+		std::cerr << "Failed to create cache directory: " << cacheRoot.string() << " (" << error.message() << ")" << std::endl;
 		return 1;
 	}
 
@@ -385,8 +371,7 @@ int createCacheDB(const std::uint32_t seed)
 		const auto relativePath = std::filesystem::relative(candidate.path, root, error);
 		if (error)
 		{
-			std::cerr << "Failed to determine cache path for shape: " << candidate.path.string()
-			          << " (" << error.message() << ")" << std::endl;
+			std::cerr << "Failed to determine cache path for shape: " << candidate.path.string() << " (" << error.message() << ")" << std::endl;
 			return 1;
 		}
 
@@ -394,8 +379,7 @@ int createCacheDB(const std::uint32_t seed)
 		std::filesystem::create_directories(outputPath.parent_path(), error);
 		if (error)
 		{
-			std::cerr << "Failed to create cache directory: " << outputPath.parent_path().string()
-			          << " (" << error.message() << ")" << std::endl;
+			std::cerr << "Failed to create cache directory: " << outputPath.parent_path().string() << " (" << error.message() << ")" << std::endl;
 			return 1;
 		}
 
@@ -403,8 +387,7 @@ int createCacheDB(const std::uint32_t seed)
 		std::cout << "Exported " << outputPath << std::endl;
 	}
 
-	const auto featuresPath = cacheRoot /
-		(seed == querying::defaultSeed ? "features.csv" : std::format("features_seed{}.csv", seed));
+	const auto featuresPath = cacheRoot / (seed == querying::defaultSeed ? "features.csv" : std::format("features_seed{}.csv", seed));
 
 	if (!writeFeatures(featuresPath, candidates))
 	{
@@ -413,7 +396,6 @@ int createCacheDB(const std::uint32_t seed)
 	}
 
 	std::cout << "Wrote features to " << featuresPath.string() << std::endl;
-	std::cout << "Successfully created cache DB: " << candidates.size()
-	          << " processed, " << skipped << " skipped" << std::endl;
+	std::cout << "Successfully created cache DB: " << candidates.size() << " processed, " << skipped << " skipped" << std::endl;
 	return 0;
 }
