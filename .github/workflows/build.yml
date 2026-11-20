@@ -61,6 +61,7 @@ jobs:
           cmake -B build -S . -G Ninja
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_PREFIX_PATH="${{ env.QT_ROOT_DIR }}"
+          -DCMAKE_Fortran_COMPILER=
 
       - name: Build
         run: cmake --build build --config Release --parallel
