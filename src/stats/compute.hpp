@@ -23,8 +23,7 @@ namespace stats
 	/// @brief Called with the number of processed shapes and the total, may be called from multiple threads at once
 	using ProgressCallback = std::function<void(size_t done, size_t total)>;
 
-	struct RunResult
-	{
+	struct RunResult {
 		StatsTable table;
 		std::vector<std::filesystem::path> failed;
 	};
@@ -35,9 +34,9 @@ namespace stats
 	/// @brief Loads the given shapes (in parallel), runs the pipeline on each of them and measures the result.
 	/// The table is labelled with the pipeline and has one column per metric.
 	/// @param cancel Optional flag, when set the remaining shapes are skipped (and not reported as failed)
-	[[nodiscard]] RunResult compute(
-		const ShapeDb& database, std::span<const ShapeRef> shapes, const mesh::Pipeline& pipeline, std::span<const Metric> selected = metrics(),
-		const std::atomic<bool>* cancel = nullptr, const ProgressCallback& onProgress = {});
+	[[nodiscard]] RunResult compute(const ShapeDb& database, std::span<const ShapeRef> shapes, const mesh::Pipeline& pipeline,
+									std::span<const Metric> selected = metrics(), const std::atomic<bool>* cancel = nullptr,
+									const ProgressCallback& onProgress = {});
 } // namespace stats
 
 #endif // MULTIMEDIARETRIEVAL_COMPUTE_HPP

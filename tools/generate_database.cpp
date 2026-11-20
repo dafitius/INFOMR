@@ -31,39 +31,32 @@
 #include <memory>
 #endif
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
 	std::uint32_t seed = querying::defaultSeed;
-	if (argc > 2)
-	{
+	if (argc > 2) {
 		std::cerr << "Usage: generate_database [seed]" << std::endl;
 		return 1;
 	}
 
-	if (argc > 1)
-	{
+	if (argc > 1) {
 		const std::string_view argument = argv[1];
 		const auto result = std::from_chars(argument.data(), argument.data() + argument.size(), seed);
-		if (result.ec != std::errc{} || result.ptr != argument.data() + argument.size())
-		{
+		if (result.ec != std::errc{} || result.ptr != argument.data() + argument.size()) {
 			std::cerr << "Usage: generate_database [seed]" << std::endl;
 			return 1;
 		}
 	}
 
-	try
-	{
+	try {
 		return createCacheDB(seed);
 	}
-	catch (const std::exception& exception)
-	{
+	catch (const std::exception& exception) {
 		std::cerr << "Failed to create cache database: " << exception.what() << std::endl;
 		return 1;
 	}
 }
 
-struct Candidate
-{
+struct Candidate {
 	std::filesystem::path path;
 	Mesh mesh;
 	querying::FeatureVector features;
@@ -72,17 +65,14 @@ struct Candidate
 #if USE_MESHFIX
 namespace
 {
-	class TemporaryDirectory
-	{
+	class TemporaryDirectory {
 	public:
-		TemporaryDirectory()
-		{
+		TemporaryDirectory() {
 			static std::atomic<std::uint64_t> sequence{0};
 			const auto base = std::filesystem::temp_directory_path();
 			const auto timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
 
-			for (;;)
-			{
+			for (;;) {
 				path_ = base / std::format("generate_database_meshfix_{}_{}", timestamp, sequence.fetch_add(1));
 
 				std::error_code error;
@@ -97,16 +87,14 @@ namespace
 		TemporaryDirectory(const TemporaryDirectory&) = delete;
 		TemporaryDirectory& operator=(const TemporaryDirectory&) = delete;
 
-		~TemporaryDirectory()
-		{
+		~TemporaryDirectory() {
 			std::error_code error;
 			std::filesystem::remove_all(path_, error);
 			if (error)
 				std::cerr << "Could not remove temporary directory " << path_ << ": " << error.message() << '\n';
 		}
 
-		const std::filesystem::path& path() const
-		{
+		const std::filesystem::path& path() const {
 			return path_;
 		}
 
@@ -114,8 +102,7 @@ namespace
 		std::filesystem::path path_;
 	};
 
-	bool isUsableMesh(const Mesh& mesh)
-	{
+	bool isUsableMesh(const Mesh& mesh) {
 		if (mesh.numFaces() == 0 || !mesh.isTriangleMesh())
 			return false;
 
@@ -123,15 +110,13 @@ namespace
 		if (!topology.isClosed() || !topology.nonManifoldEdges().empty())
 			return false;
 
-		for (std::size_t vertex = 0; vertex < mesh.numVertices(); ++vertex)
-		{
+		for (std::size_t vertex = 0; vertex < mesh.numVertices(); ++vertex) {
 			if (topology.vertexStarSubsets(vertex).size() > 1)
 				return false;
 		}
 
 		const auto incidence = mesh.faces().edgeIncidence();
-		for (const auto& occurrences : incidence | std::views::values)
-		{
+		for (const auto& occurrences : incidence | std::views::values) {
 			if (occurrences.size() != 2)
 				return false;
 
@@ -144,15 +129,13 @@ namespace
 		return true;
 	}
 
-	std::optional<Mesh> repairWithMeshFix(const Mesh& input)
-	{
+	std::optional<Mesh> repairWithMeshFix(const Mesh& input) {
 		TemporaryDirectory temp;
 		const auto inputPath = temp.path() / "input.obj";
 		const auto outputPath = temp.path() / "repaired.obj";
 
 		auto triangulated = input.triangulated();
-		if (triangulated.numFaces() == 0)
-		{
+		if (triangulated.numFaces() == 0) {
 			std::cerr << "Triangulation produced an empty mesh\n";
 			return std::nullopt;
 		}
@@ -178,8 +161,7 @@ namespace
 		if (status != MESHFIX_OK)
 			throw std::runtime_error(std::format("MeshFix repair failed: {}", meshfix_last_error()));
 
-		if (!report.manifold_after || !report.watertight_after)
-		{
+		if (!report.manifold_after || !report.watertight_after) {
 			std::cerr << "MeshFix could not fully repair mesh: " << report.non_manifold_edges_after << " non-manifold edges, "
 					  << report.boundary_edges_after << " boundary edges\n";
 			return std::nullopt;
@@ -193,8 +175,7 @@ namespace
 		if (!repaired)
 			throw std::runtime_error("Could not load MeshFix output OBJ");
 
-		if (!isUsableMesh(*repaired))
-		{
+		if (!isUsableMesh(*repaired)) {
 			std::cerr << "Repaired mesh has invalid or inconsistent topology\n";
 			return std::nullopt;
 		}
@@ -204,8 +185,7 @@ namespace
 } // namespace
 #endif
 
-bool writeFeatures(const std::filesystem::path& outputPath, const std::vector<Candidate>& candidates)
-{
+bool writeFeatures(const std::filesystem::path& outputPath, const std::vector<Candidate>& candidates) {
 	std::ofstream file(outputPath);
 	if (!file)
 		return false;
@@ -214,8 +194,7 @@ bool writeFeatures(const std::filesystem::path& outputPath, const std::vector<Ca
 	for (const auto name : querying::globalFeatureNames)
 		file << ',' << name;
 
-	for (const auto& distribution : stats::distributions())
-	{
+	for (const auto& distribution : stats::distributions()) {
 		for (std::size_t bin = 0; bin < querying::histogramBinCount; ++bin)
 			file << std::format(",{}_{}", distribution.name, bin);
 	}
@@ -228,11 +207,9 @@ bool writeFeatures(const std::filesystem::path& outputPath, const std::vector<Ca
 
 	std::ranges::sort(sorted, {}, &Candidate::path);
 
-	for (const auto* candidatePtr : sorted)
-	{
+	for (const auto* candidatePtr : sorted) {
 		const auto& candidate = *candidatePtr;
-		if (candidate.mesh.numFaces() == 0)
-		{
+		if (candidate.mesh.numFaces() == 0) {
 			std::cerr << "Skipped empty shape in features: " << candidate.path << '\n';
 			continue;
 		}
@@ -242,8 +219,7 @@ bool writeFeatures(const std::filesystem::path& outputPath, const std::vector<Ca
 		for (const auto value : candidate.features.global)
 			file << std::format(",{}", value);
 
-		for (const auto& histogram : candidate.features.histograms)
-		{
+		for (const auto& histogram : candidate.features.histograms) {
 			for (const auto value : histogram)
 				file << std::format(",{}", value);
 		}
@@ -254,11 +230,9 @@ bool writeFeatures(const std::filesystem::path& outputPath, const std::vector<Ca
 	return !file.fail();
 }
 
-std::optional<Mesh> normalizeShape(const std::filesystem::path& path)
-{
+std::optional<Mesh> normalizeShape(const std::filesystem::path& path) {
 	auto loaded = Mesh::fromObj(path);
-	if (!loaded || loaded->numFaces() == 0)
-	{
+	if (!loaded || loaded->numFaces() == 0) {
 		std::cerr << "Could not load a non-empty mesh: " << path << '\n';
 		return std::nullopt;
 	}
@@ -269,8 +243,7 @@ std::optional<Mesh> normalizeShape(const std::filesystem::path& path)
 		return std::nullopt;
 
 	auto remeshed = repaired->remeshed(10000);
-	if (!isUsableMesh(remeshed))
-	{
+	if (!isUsableMesh(remeshed)) {
 		std::cerr << "Remeshing produced invalid topology: " << path << '\n';
 		return std::nullopt;
 	}
@@ -280,8 +253,7 @@ std::optional<Mesh> normalizeShape(const std::filesystem::path& path)
 		throw std::runtime_error("Invalid normalization pipeline");
 
 	auto normalized = remaining->apply(remeshed);
-	if (!isUsableMesh(normalized))
-	{
+	if (!isUsableMesh(normalized)) {
 		std::cerr << "Normalization produced invalid topology: " << path << '\n';
 		return std::nullopt;
 	}
@@ -289,8 +261,7 @@ std::optional<Mesh> normalizeShape(const std::filesystem::path& path)
 	return normalized;
 #else
 	auto normalized = mesh::normalized(*loaded);
-	if (normalized.numFaces() == 0)
-	{
+	if (normalized.numFaces() == 0) {
 		std::cerr << "Normalization produced an empty mesh: " << path << '\n';
 		return std::nullopt;
 	}
@@ -299,14 +270,12 @@ std::optional<Mesh> normalizeShape(const std::filesystem::path& path)
 #endif
 }
 
-int createCacheDB(const std::uint32_t seed)
-{
+int createCacheDB(const std::uint32_t seed) {
 	const std::filesystem::path root{SHAPE_DB_ROOT};
 	const std::filesystem::path cacheRoot{CACHED_DB_ROOT};
 
 	std::error_code error;
-	if (!std::filesystem::is_directory(root, error))
-	{
+	if (!std::filesystem::is_directory(root, error)) {
 		std::cerr << "Shape database directory is unavailable: " << root.string();
 		if (error)
 			std::cerr << " (" << error.message() << ')';
@@ -318,67 +287,54 @@ int createCacheDB(const std::uint32_t seed)
 	std::filesystem::recursive_directory_iterator it(root, error);
 	const std::filesystem::recursive_directory_iterator end;
 
-	if (error)
-	{
+	if (error) {
 		std::cerr << "Failed to scan shape database directory: " << root.string() << " (" << error.message() << ")" << std::endl;
 		return 1;
 	}
 
 	std::size_t skipped = 0;
 
-	while (it != end)
-	{
+	while (it != end) {
 		const auto path = it->path();
 
-		if (it->is_regular_file(error) && !error && path.extension() == ".obj")
-		{
+		if (it->is_regular_file(error) && !error && path.extension() == ".obj") {
 			auto candidateShape = normalizeShape(path);
-			if (!candidateShape)
-			{
+			if (!candidateShape) {
 				std::cerr << "Skipped broken mesh: " << path << '\n';
 				++skipped;
-			}
-			else
-			{
+			} else {
 				auto features = querying::extractFeatures(*candidateShape, querying::shapeSeed(path.filename().string(), seed));
 				std::cout << "Processed " << path << std::endl;
 				candidates.push_back({path, std::move(*candidateShape), std::move(features)});
 			}
-		}
-		else if (error)
-		{
+		} else if (error) {
 			std::cerr << "Failed to inspect shape database entry: " << path.string() << " (" << error.message() << ")" << std::endl;
 			error.clear();
 		}
 
 		it.increment(error);
-		if (error)
-		{
+		if (error) {
 			std::cerr << "Failed while scanning shape database: " << error.message() << std::endl;
 			return 1;
 		}
 	}
 
 	std::filesystem::create_directories(cacheRoot, error);
-	if (error)
-	{
+	if (error) {
 		std::cerr << "Failed to create cache directory: " << cacheRoot.string() << " (" << error.message() << ")" << std::endl;
 		return 1;
 	}
 
-	for (const auto& candidate : candidates)
-	{
+	for (const auto& candidate : candidates) {
 		const auto relativePath = std::filesystem::relative(candidate.path, root, error);
-		if (error)
-		{
+		if (error) {
 			std::cerr << "Failed to determine cache path for shape: " << candidate.path.string() << " (" << error.message() << ")" << std::endl;
 			return 1;
 		}
 
 		const auto outputPath = cacheRoot / relativePath;
 		std::filesystem::create_directories(outputPath.parent_path(), error);
-		if (error)
-		{
+		if (error) {
 			std::cerr << "Failed to create cache directory: " << outputPath.parent_path().string() << " (" << error.message() << ")" << std::endl;
 			return 1;
 		}
@@ -389,8 +345,7 @@ int createCacheDB(const std::uint32_t seed)
 
 	const auto featuresPath = cacheRoot / (seed == querying::defaultSeed ? "features.csv" : std::format("features_seed{}.csv", seed));
 
-	if (!writeFeatures(featuresPath, candidates))
-	{
+	if (!writeFeatures(featuresPath, candidates)) {
 		std::cerr << "Failed to write features: " << featuresPath.string() << std::endl;
 		return 1;
 	}

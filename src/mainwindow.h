@@ -7,8 +7,7 @@
 #include <QMainWindow>
 #include <QTabWidget>
 
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
 	Q_OBJECT
 
 public:
@@ -19,7 +18,7 @@ private:
 	void setupUI();
 	void openModel(std::filesystem::path source);
 
-	std::shared_ptr<ShapeDb> database_; //database is shared_ptr, so it shouldn't ever get deleted.
+	std::shared_ptr<ShapeDb> database_; // database is shared_ptr, so it shouldn't ever get deleted.
 	QTabWidget* tabWidget;
 };
 

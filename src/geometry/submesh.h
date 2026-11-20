@@ -10,20 +10,16 @@
 
 class Mesh;
 
-class SubMesh
-{
+class SubMesh {
 public:
 	SubMesh(const std::span<const glm::vec3>& positions, const std::span<const glm::vec3>& normals, const FaceList& faceList)
 		: positions_(positions)
 		, normals_(normals)
-		, face_list_(faceList)
-	{
-	}
+		, face_list_(faceList) {}
 
 	Mesh toMesh() const;
 
-	[[nodiscard]] FaceList faceList() const
-	{
+	[[nodiscard]] FaceList faceList() const {
 		return face_list_;
 	}
 

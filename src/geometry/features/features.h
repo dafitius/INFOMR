@@ -33,7 +33,7 @@ namespace mesh::features
 		std::vector<float> D2(const Mesh& mesh);
 		std::vector<float> D3(const Mesh& mesh);
 		std::vector<float> D4(const Mesh& mesh);
-	} // namespace property_descriptors
+	} // namespace distribution_descriptors
 
 	namespace local_curvature_descriptor
 	{
@@ -41,7 +41,7 @@ namespace mesh::features
 		std::vector<float> minCurvatureFaceValues(const Mesh& mesh, size_t radius);
 		std::vector<float> maxCurvatureFaceValues(const Mesh& mesh, size_t radius);
 		std::vector<float> curvatureIndexFaceValues(const Mesh& mesh, size_t radius);
-	}
+	} // namespace local_curvature_descriptor
 
 } // namespace mesh::features
 

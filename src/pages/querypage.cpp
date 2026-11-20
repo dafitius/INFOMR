@@ -22,20 +22,17 @@
 #include <utility>
 
 QueryPage::QueryPage(QWidget* parent)
-	: QWidget(parent)
-{
+	: QWidget(parent) {
 	setupUI();
 
 	// Important: Do not change the order of the labels, this should be the same order as the feature vector
-	setWeightLabels(
-		{"Volume", "Surface area", "Compactness", "3D rectangularity", "Diameter", "Convexity", "Eccentricity", "A3", "D1", "D2", "D3", "D4",
-		 "Curvature"});
+	setWeightLabels({"Volume", "Surface area", "Compactness", "3D rectangularity", "Diameter", "Convexity", "Eccentricity", "A3", "D1", "D2", "D3",
+					 "D4", "Curvature"});
 }
 
 QueryPage::~QueryPage() {}
 
-void QueryPage::setupUI()
-{
+void QueryPage::setupUI() {
 	auto* mainLayout = new QVBoxLayout(this);
 	mainLayout->setContentsMargins(16, 16, 16, 16);
 
@@ -133,32 +130,25 @@ void QueryPage::setupUI()
 	splitter->setSizes({300, 700});
 
 	connect(searchButton, &QPushButton::clicked, this, &QueryPage::startSearch);
-	connect(
-		browseButton, &QPushButton::clicked, this,
-		[this]()
-		{
-			const QString path = QFileDialog::getOpenFileName(
-				this, "Select 3D model", QString(),
-				"3D models (*.obj);;"
-				"All files (*)");
+	connect(browseButton, &QPushButton::clicked, this, [this]() {
+		const QString path = QFileDialog::getOpenFileName(this, "Select 3D model", QString(),
+														  "3D models (*.obj);;"
+														  "All files (*)");
 
-			if (!path.isEmpty())
-				modelPathInput->setText(path);
-		});
+		if (!path.isEmpty())
+			modelPathInput->setText(path);
+	});
 }
 
-void QueryPage::setWeightLabels(const QStringList& labels)
-{
+void QueryPage::setWeightLabels(const QStringList& labels) {
 	weightInputs.clear();
 
-	while (auto* item = weightsLayout->takeAt(0))
-	{
+	while (auto* item = weightsLayout->takeAt(0)) {
 		delete item->widget();
 		delete item;
 	}
 
-	for (const QString& label : labels)
-	{
+	for (const QString& label : labels) {
 		auto* row = new QWidget(weightsWidget);
 		auto* rowLayout = new QHBoxLayout(row);
 		rowLayout->setContentsMargins(0, 0, 0, 0);
@@ -183,14 +173,12 @@ void QueryPage::setWeightLabels(const QStringList& labels)
 	weightsLayout->addStretch();
 }
 
-std::filesystem::path QueryPage::getSelectedMeshPath() const
-{
+std::filesystem::path QueryPage::getSelectedMeshPath() const {
 	const QString uploadedPath = modelPathInput->text().trimmed();
 	return std::filesystem::path(uploadedPath.toStdString());
 }
 
-std::vector<double> QueryPage::getWeights() const
-{
+std::vector<double> QueryPage::getWeights() const {
 	std::vector<double> weights;
 	weights.reserve(static_cast<std::size_t>(weightInputs.size()));
 
@@ -200,18 +188,15 @@ std::vector<double> QueryPage::getWeights() const
 	return weights;
 }
 
-void QueryPage::startSearch()
-{
+void QueryPage::startSearch() {
 	const auto meshPath = getSelectedMeshPath();
 
-	if (meshPath.empty())
-	{
+	if (meshPath.empty()) {
 		QMessageBox::warning(this, "Search", "Please select a model.");
 		return;
 	}
 
-	if (!std::filesystem::exists(meshPath))
-	{
+	if (!std::filesystem::exists(meshPath)) {
 		QMessageBox::warning(this, "Search", "The selected file does not exist.");
 		return;
 	}
@@ -226,8 +211,7 @@ void QueryPage::startSearch()
 	displayResults(results);
 }
 
-void QueryPage::displayResults(const std::vector<QueryResult>& results)
-{
+void QueryPage::displayResults(const std::vector<QueryResult>& results) {
 	++runCount;
 	auto* runWidget = new QWidget(containerWidget);
 	auto* runLayout = new QVBoxLayout(runWidget);
@@ -252,8 +236,7 @@ void QueryPage::displayResults(const std::vector<QueryResult>& results)
 
 	resultsLayout->addWidget(createModelCard(queryName, currentQueryMesh, "Query model"));
 
-	for (std::size_t i = 0; i < results.size(); ++i)
-	{
+	for (std::size_t i = 0; i < results.size(); ++i) {
 		const auto& result = results[i];
 		const QString name = QString::fromStdString(result.name);
 		const QString subtitle = QString("%1 · Distance: %2").arg(QString::fromStdString(result.className)).arg(result.distance, 0, 'f', 5);
@@ -270,7 +253,6 @@ void QueryPage::displayResults(const std::vector<QueryResult>& results)
 	containerLayout->addWidget(runWidget);
 }
 
-ResultCard* QueryPage::createModelCard(const QString& name, const std::filesystem::path& path, const QString& subtitle)
-{
+ResultCard* QueryPage::createModelCard(const QString& name, const std::filesystem::path& path, const QString& subtitle) {
 	return new ResultCard(name, path, subtitle);
 }

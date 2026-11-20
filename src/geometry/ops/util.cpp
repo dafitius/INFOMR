@@ -7,12 +7,10 @@
 
 namespace mesh::ops::util
 {
-	glm::dvec3 calcBaryCenter(const std::span<const glm::vec3> positions)
-	{
+	glm::dvec3 calcBaryCenter(const std::span<const glm::vec3> positions) {
 		glm::dvec3 sum{0.0};
 
-		for (const auto& position : positions)
-		{
+		for (const auto& position : positions) {
 			sum += glm::dvec3(position);
 		}
 

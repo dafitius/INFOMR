@@ -20,13 +20,11 @@
 #include <QVBoxLayout>
 
 Workshop::Workshop(QWidget* parent)
-	: QWidget(parent)
-{
+	: QWidget(parent) {
 	setupUI();
 }
 
-void Workshop::loadMesh(const Mesh& mesh)
-{
+void Workshop::loadMesh(const Mesh& mesh) {
 	const auto object = mesh;
 	viewport->setMesh(object);
 
@@ -44,13 +42,11 @@ void Workshop::loadMesh(const Mesh& mesh)
 	recalcStats();
 }
 
-void Workshop::recalcStats()
-{
+void Workshop::recalcStats() {
 	updateDistribution();
 
 	auto meshOpt = viewport->getMesh();
-	if (!meshOpt.has_value())
-	{
+	if (!meshOpt.has_value()) {
 		statsLabel->setText("No mesh loaded");
 		statsLabel->setWordWrap(true);
 		return;
@@ -70,30 +66,26 @@ void Workshop::recalcStats()
 					 .arg(mesh.eccentricity())
 					 .arg(mesh.diameter());
 
-	if (mesh.numSkippedFaces() > 0)
-	{
+	if (mesh.numSkippedFaces() > 0) {
 		stats += QString("\nSkipped invalid faces: %1").arg(mesh.numSkippedFaces());
 	}
 	statsLabel->setText(stats);
 	statsLabel->setWordWrap(true);
 }
 
-void Workshop::updateDistribution()
-{
+void Workshop::updateDistribution() {
 	distributionView->setHistogram(nullptr);
 	distributionHistogram.reset();
 	distributionSummary->clear();
 
 	const auto mesh = viewport->getMesh();
 	const auto distribution = stats::findDistribution(distributionBox->currentData().toString().toStdString());
-	if (!mesh || !distribution)
-	{
+	if (!mesh || !distribution) {
 		return;
 	}
 
 	QVector<Sample> samples;
-	for (const auto value : distribution->sample(*mesh))
-	{
+	for (const auto value : distribution->sample(*mesh)) {
 		samples.push_back(Sample(value, {}));
 	}
 
@@ -113,21 +105,19 @@ void Workshop::updateDistribution()
 									 .arg(summary.stddev, 0, 'g', 4));
 }
 
-QWidget* Workshop::setupDistributionPanel(QWidget* parent)
-{
+QWidget* Workshop::setupDistributionPanel(QWidget* parent) {
 	auto* panel = new QWidget(parent);
 	auto* layout = new QVBoxLayout(panel);
 	layout->setContentsMargins(0, 8, 0, 0);
 
 	auto* controls = new QHBoxLayout;
 	distributionBox = new QComboBox(panel);
-	for (const auto& distribution : stats::distributions())
-	{
+	for (const auto& distribution : stats::distributions()) {
 		const auto name = QString::fromUtf8(distribution.name.data(), static_cast<qsizetype>(distribution.name.size()));
 		distributionBox->addItem(name.toUpper(), name);
-		distributionBox->setItemData(
-			distributionBox->count() - 1, QString::fromUtf8(distribution.description.data(), static_cast<qsizetype>(distribution.description.size())),
-			Qt::ToolTipRole);
+		distributionBox->setItemData(distributionBox->count() - 1,
+									 QString::fromUtf8(distribution.description.data(), static_cast<qsizetype>(distribution.description.size())),
+									 Qt::ToolTipRole);
 	}
 
 	distributionBox->setToolTip("Shape property distribution of the current mesh, computed from random vertices");
@@ -163,8 +153,7 @@ QWidget* Workshop::setupDistributionPanel(QWidget* parent)
 
 Workshop::~Workshop() = default;
 
-void Workshop::setupUI()
-{
+void Workshop::setupUI() {
 	auto* mainLayout = new QVBoxLayout(this);
 	mainLayout->setContentsMargins(12, 12, 12, 12);
 	mainLayout->setSpacing(10);
@@ -348,18 +337,17 @@ void Workshop::setupUI()
 	connect(shadedBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showSurface, checked); });
 	connect(edgesBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showEdges, checked); });
 
-	connect(
-		boundingBox, &QCheckBox::toggled, this,
-		[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showBoundingBox, checked); });
+	connect(boundingBox, &QCheckBox::toggled, this,
+			[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showBoundingBox, checked); });
 
 	connect(hullBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showHull, checked); });
 	connect(normalsBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showNormals, checked); });
 	connect(axesBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showAxes, checked); });
-	connect(curvatureBox, &QCheckBox::toggled, this, [this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showCurvature, checked); });
+	connect(curvatureBox, &QCheckBox::toggled, this,
+			[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showCurvature, checked); });
 
-	connect(
-		eigenvectorAxesBox, &QCheckBox::toggled, this,
-		[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showEigenvectorAxes, checked); });
+	connect(eigenvectorAxesBox, &QCheckBox::toggled, this,
+			[this](const bool checked) { viewport->setRenderSetting(&RenderSettings::showEigenvectorAxes, checked); });
 
 	connect(runPipelineButton, &QPushButton::clicked, viewport, &MeshViewport::runFullPipeline);
 

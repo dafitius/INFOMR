@@ -10,8 +10,7 @@
 #include "../geometry/mesh.hpp"
 #include "meshpreview.h"
 
-class BrowserCard : public QFrame
-{
+class BrowserCard : public QFrame {
 	Q_OBJECT
 
 public:

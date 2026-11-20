@@ -16,8 +16,7 @@ class QLabel;
 class QPushButton;
 class QSpinBox;
 
-class Workshop : public QWidget
-{
+class Workshop : public QWidget {
 	Q_OBJECT
 
 public:

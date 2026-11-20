@@ -8,8 +8,7 @@
 #include <filesystem>
 #include <optional>
 
-class ResultCard : public QFrame
-{
+class ResultCard : public QFrame {
 public:
 	ResultCard(const QString& name, const std::filesystem::path& meshSource, const QString& subtitle, QWidget* parent = nullptr);
 	ResultCard(const QString& name, const Mesh& mesh, const QString& subtitle, QWidget* parent = nullptr);

@@ -21,15 +21,14 @@ namespace querying
 	constexpr std::size_t globalFeatureCount = 7;
 	constexpr std::size_t histogramBinCount = 32;
 
-	constexpr std::array<std::string_view, globalFeatureCount> globalFeatureNames{
-		"volume", "surface_area", "compactness", "rectangularity", "diameter", "convexity", "eccentricity"};
+	constexpr std::array<std::string_view, globalFeatureCount> globalFeatureNames{"volume",	  "surface_area", "compactness", "rectangularity",
+																				  "diameter", "convexity",	  "eccentricity"};
 
 	/// Seed used when none is given
 	constexpr std::uint32_t defaultSeed = 0;
 
 	/// @brief All features of one (normalized) shape
-	struct FeatureVector
-	{
+	struct FeatureVector {
 		std::array<double, globalFeatureCount> global{};
 
 		/// One histogram per stats::distributions(), in that order, each histogramBinCount bins summing to 1
@@ -46,8 +45,7 @@ namespace querying
 	[[nodiscard]] double featureWeight(const std::vector<double>& weights, std::size_t index);
 
 	/// @brief The stored features of one database shape, a row of features.csv
-	struct StoredShape
-	{
+	struct StoredShape {
 		std::string className;
 		std::string fileName;
 		FeatureVector features;

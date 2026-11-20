@@ -9,8 +9,7 @@
 MeshPreview::MeshPreview(const std::span<const float> vertexBuffer, const std::span<const uint32_t> indexBuffer, QWidget* parent)
 	: QOpenGLWidget(parent)
 	, vertex_buffer(vertexBuffer)
-	, index_buffer(indexBuffer)
-{
+	, index_buffer(indexBuffer) {
 	setMinimumSize(180, 140);
 	setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 	clock_.start();
@@ -21,18 +20,15 @@ MeshPreview::MeshPreview(const std::span<const float> vertexBuffer, const std::s
 	frameTimer_.start(16);
 }
 
-void MeshPreview::setRotationSpeed(const float rotationSpeed)
-{
+void MeshPreview::setRotationSpeed(const float rotationSpeed) {
 	rotation_speed_ = rotationSpeed;
 }
 
-float MeshPreview::rotationSpeed() const
-{
+float MeshPreview::rotationSpeed() const {
 	return rotation_speed_;
 }
 
-void MeshPreview::initializeGL()
-{
+void MeshPreview::initializeGL() {
 	initializeOpenGLFunctions();
 
 	glDisable(GL_CULL_FACE);
@@ -60,8 +56,7 @@ void MeshPreview::initializeGL()
 
 	glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertices.size() * sizeof(float)), vertices.data(), GL_STATIC_DRAW);
 
-	auto configureVertexAttributes = [](QOpenGLShaderProgram& prog)
-	{
+	auto configureVertexAttributes = [](QOpenGLShaderProgram& prog) {
 		prog.enableAttributeArray(0);
 		prog.setAttributeBuffer(0, GL_FLOAT, 0, 3, 3 * static_cast<int>(sizeof(float)));
 	};
@@ -78,13 +73,11 @@ void MeshPreview::initializeGL()
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void MeshPreview::resizeGL(const int width, const int height)
-{
+void MeshPreview::resizeGL(const int width, const int height) {
 	glViewport(0, 0, width, height);
 }
 
-void MeshPreview::paintGL()
-{
+void MeshPreview::paintGL() {
 	QColor const backgroundColor = palette().color(QPalette::Window);
 	glClearColor(backgroundColor.redF(), backgroundColor.greenF(), backgroundColor.blueF(), backgroundColor.alphaF());
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -105,8 +98,7 @@ void MeshPreview::paintGL()
 	QMatrix4x4 projection;
 	projection.perspective(45.0F, aspectRatio, 0.1F, 100.0F);
 
-	auto renderLoop = [this, projection, view, model](QOpenGLShaderProgram& prog)
-	{
+	auto renderLoop = [this, projection, view, model](QOpenGLShaderProgram& prog) {
 		const auto mvpMatrix = projection * view * model;
 		const auto modelViewMatrix = view * model;
 

@@ -10,8 +10,7 @@
 class Mesh;
 
 // Owns the GPU buffers of a mesh. Must be created and destroyed while its OpenGL context is current.
-class GpuMesh
-{
+class GpuMesh {
 public:
 	explicit GpuMesh(const Mesh& mesh);
 	~GpuMesh();

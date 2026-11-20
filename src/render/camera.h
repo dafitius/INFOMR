@@ -2,8 +2,7 @@
 
 #include "../geometry/mesh.hpp"
 
-class Camera
-{
+class Camera {
 public:
 	void frame(const Mesh::Bounds& bounds);
 	void reset();

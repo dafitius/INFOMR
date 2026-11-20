@@ -24,8 +24,7 @@ namespace half_edge
 	using VertexRef = size_t;
 	using Face = std::vector<VertexRef>;
 
-	struct Halfedge
-	{
+	struct Halfedge {
 		VertexRef vertex{};
 		FaceRef face{};
 		HalfedgeRef next{};
@@ -33,23 +32,20 @@ namespace half_edge
 		std::optional<HalfedgeRef> opposite;
 	};
 
-	struct EdgeKey
-	{
+	struct EdgeKey {
 		VertexRef a;
 		VertexRef b;
 
 		bool operator==(const EdgeKey&) const = default;
 
-		EdgeKey canonize() const
-		{
+		EdgeKey canonize() const {
 			return {.a = std::min(a, b), .b = std::max(a, b)};
 		}
 	};
 
 	using EdgeToFaceMap = std::unordered_map<EdgeKey, std::vector<FaceRef>, UndirectedEdgeKeyHash>;
 
-	struct HalfEdgeSet
-	{
+	struct HalfEdgeSet {
 	private:
 		std::vector<Halfedge> halfedges_;
 		std::vector<std::optional<HalfedgeRef>> vertex_halfedge_; // vertex idx -> halfedge
@@ -59,41 +55,34 @@ namespace half_edge
 		Lazy<std::vector<std::vector<EdgeKey>>> vertexEdges_;		  // vertex idx -> incident edges
 
 	public:
-		[[nodiscard]] std::span<const Halfedge> halfedges() const
-		{
+		[[nodiscard]] std::span<const Halfedge> halfedges() const {
 			return std::span{halfedges_};
 		}
 
-		[[nodiscard]] auto boundaryHalfedges() const
-		{
+		[[nodiscard]] auto boundaryHalfedges() const {
 			return halfedges_ | std::views::filter([this](const Halfedge& he) { return isBoundaryHalfedge(he); });
 		}
 
-		[[nodiscard]] std::optional<Halfedge> getHalfedgeFromVertex(const VertexRef vertex) const
-		{
+		[[nodiscard]] std::optional<Halfedge> getHalfedgeFromVertex(const VertexRef vertex) const {
 			const auto ref = vertex_halfedge_[vertex];
 			return ref.and_then([&](const HalfedgeRef refer) { return std::make_optional<Halfedge>(halfedges_[refer]); });
 		}
 
-		[[nodiscard]] std::optional<Halfedge> getHalfedgeFromFace(const FaceRef face) const
-		{
+		[[nodiscard]] std::optional<Halfedge> getHalfedgeFromFace(const FaceRef face) const {
 			const auto ref = face_halfedge_[face];
 			return ref.and_then([&](const HalfedgeRef refer) { return std::make_optional<Halfedge>(halfedges_[refer]); });
 		}
 
-		[[nodiscard]] std::optional<HalfedgeRef> halfedgeRefFromVertex(const VertexRef vertex) const
-		{
+		[[nodiscard]] std::optional<HalfedgeRef> halfedgeRefFromVertex(const VertexRef vertex) const {
 			return vertex_halfedge_[vertex];
 		}
 
-		[[nodiscard]] std::optional<HalfedgeRef> halfedgeRefFromFace(const FaceRef face) const
-		{
+		[[nodiscard]] std::optional<HalfedgeRef> halfedgeRefFromFace(const FaceRef face) const {
 			return face_halfedge_[face];
 		}
 
 		[[nodiscard]]
-		bool isNonManifoldHalfedge(const Halfedge& edge) const
-		{
+		bool isNonManifoldHalfedge(const Halfedge& edge) const {
 			const auto& edgeFace = this->edgeToFace_.getOrCreate([this] { return calcEdgeFaces(); });
 			const auto from = halfedges()[edge.prev].vertex;
 			const auto to = edge.vertex;
@@ -104,8 +93,7 @@ namespace half_edge
 		}
 
 		[[nodiscard]]
-		bool isBoundaryHalfedge(const Halfedge& edge) const
-		{
+		bool isBoundaryHalfedge(const Halfedge& edge) const {
 			const auto& edgeFace = this->edgeToFace_.getOrCreate([this] { return calcEdgeFaces(); });
 			const auto from = halfedges()[edge.prev].vertex;
 			const auto to = edge.vertex;
@@ -116,40 +104,33 @@ namespace half_edge
 		}
 
 		[[nodiscard]]
-		bool isBoundaryHalfedge(const HalfedgeRef edge) const
-		{
+		bool isBoundaryHalfedge(const HalfedgeRef edge) const {
 			const auto& he = halfedges()[edge];
 			return isBoundaryHalfedge(he);
 		}
 
-		[[nodiscard]] bool isClosed() const
-		{
+		[[nodiscard]] bool isClosed() const {
 			return std::ranges::all_of(halfedges_, [](const Halfedge& he) { return he.opposite.has_value(); });
 		}
 
-		[[nodiscard]] std::vector<VertexRef> orderedVertexNeighbors(const VertexRef v) const
-		{
-			if (!isClosed())
-			{
+		[[nodiscard]] std::vector<VertexRef> orderedVertexNeighbors(const VertexRef v) const {
+			if (!isClosed()) {
 				std::cerr << "Tried to run vertexRing on unclosed mesh, this is unsupported!" << '\n';
 				return std::vector<VertexRef>{};
 			}
 
 			std::vector<VertexRef> neighbors;
 
-			if (v >= vertex_halfedge_.size() || !vertex_halfedge_[v].has_value())
-			{
+			if (v >= vertex_halfedge_.size() || !vertex_halfedge_[v].has_value()) {
 				return neighbors;
 			}
 
 			const auto start = *vertex_halfedge_[v];
 			auto current = start;
-			for (std::size_t i = 0; i < halfedges_.size(); ++i)
-			{
+			for (std::size_t i = 0; i < halfedges_.size(); ++i) {
 				neighbors.push_back(next(current).vertex);
 				current = opposite(current).prev;
-				if (current == start)
-				{
+				if (current == start) {
 					break;
 				}
 			}
@@ -157,8 +138,7 @@ namespace half_edge
 			return neighbors;
 		}
 
-		static HalfEdgeSet build(const FaceList& faces, const std::size_t numVertices)
-		{
+		static HalfEdgeSet build(const FaceList& faces, const std::size_t numVertices) {
 			HalfEdgeSet topo;
 			topo.vertex_halfedge_.assign(numVertices, std::nullopt);
 			topo.face_halfedge_.resize(faces.size(), std::nullopt);
@@ -166,21 +146,18 @@ namespace half_edge
 			std::unordered_map<EdgeKey, std::vector<HalfedgeRef>, UndirectedEdgeKeyHash> edgeMap;
 			edgeMap.reserve(faces.indices().size());
 
-			for (const auto& [faceIndex, face] : faces.all() | std::views::enumerate)
-			{
+			for (const auto& [faceIndex, face] : faces.all() | std::views::enumerate) {
 				const auto f = static_cast<std::size_t>(faceIndex);
 				const auto faceStart = topo.halfedges_.size();
 				topo.face_halfedge_[f] = faceStart;
 
 				const std::size_t numFaceVertices = face.size();
-				if (numFaceVertices == 0)
-				{
+				if (numFaceVertices == 0) {
 					continue;
 				}
 				topo.halfedges_.resize(topo.halfedges_.size() + numFaceVertices);
 
-				for (std::size_t i = 0; i < numFaceVertices; ++i)
-				{
+				for (std::size_t i = 0; i < numFaceVertices; ++i) {
 					const HalfedgeRef edgeIndex = faceStart + i;
 					const HalfedgeRef nextIndex = faceStart + ((i + 1) % numFaceVertices);
 					const HalfedgeRef prevIndex = faceStart + ((i + numFaceVertices - 1) % numFaceVertices);
@@ -196,8 +173,7 @@ namespace half_edge
 						.opposite = std::nullopt,
 					};
 
-					if (topo.vertex_halfedge_[dest] == std::nullopt)
-					{
+					if (topo.vertex_halfedge_[dest] == std::nullopt) {
 						topo.vertex_halfedge_[dest] = edgeIndex;
 					}
 
@@ -206,10 +182,8 @@ namespace half_edge
 				}
 			}
 
-			for (const auto& halfedges : edgeMap | std::views::values)
-			{
-				if (halfedges.size() != 2)
-				{
+			for (const auto& halfedges : edgeMap | std::views::values) {
+				if (halfedges.size() != 2) {
 					continue;
 				}
 				const HalfedgeRef a = halfedges[0];
@@ -219,11 +193,9 @@ namespace half_edge
 				topo.halfedges_[b].opposite = a;
 			}
 
-			for (HalfedgeRef h = 0; h < topo.halfedges_.size(); ++h)
-			{
+			for (HalfedgeRef h = 0; h < topo.halfedges_.size(); ++h) {
 				const auto& he = topo.halfedges_[h];
-				if (!he.opposite.has_value())
-				{
+				if (!he.opposite.has_value()) {
 					topo.vertex_halfedge_[he.vertex] = h;
 				}
 			}
@@ -232,23 +204,18 @@ namespace half_edge
 		}
 
 		[[nodiscard]]
-		std::vector<std::vector<std::size_t>> boundaryLoops() const
-		{
+		std::vector<std::vector<std::size_t>> boundaryLoops() const {
 			const auto& hes = halfedges();
 
-			auto nextBoundary = [&](const HalfedgeRef edgeIndex) -> std::optional<HalfedgeRef>
-			{
+			auto nextBoundary = [&](const HalfedgeRef edgeIndex) -> std::optional<HalfedgeRef> {
 				auto nextEdgeIndex = hes[edgeIndex].next;
 
-				for (std::size_t guard = 0; guard < hes.size(); ++guard)
-				{
-					if (isBoundaryHalfedge(nextEdgeIndex))
-					{
+				for (std::size_t guard = 0; guard < hes.size(); ++guard) {
+					if (isBoundaryHalfedge(nextEdgeIndex)) {
 						return nextEdgeIndex;
 					}
 
-					if (!has_opposite(nextEdgeIndex))
-					{
+					if (!has_opposite(nextEdgeIndex)) {
 						return std::nullopt;
 					}
 
@@ -261,10 +228,8 @@ namespace half_edge
 			std::vector<bool> seen(hes.size(), false);
 			std::vector<std::vector<std::size_t>> loops;
 
-			for (HalfedgeRef start = 0; start < hes.size(); ++start)
-			{
-				if (!isBoundaryHalfedge(start) || seen[start])
-				{
+			for (HalfedgeRef start = 0; start < hes.size(); ++start) {
+				if (!isBoundaryHalfedge(start) || seen[start]) {
 					continue;
 				}
 
@@ -272,8 +237,7 @@ namespace half_edge
 				auto h = std::optional{start};
 				bool closed = false;
 
-				while (h && !seen[*h])
-				{
+				while (h && !seen[*h]) {
 					const auto current = *h;
 					seen[current] = true;
 					loop.push_back(hes[current].vertex);
@@ -282,8 +246,7 @@ namespace half_edge
 					closed = h && *h == start;
 				}
 
-				if (closed && loop.size() >= 3)
-				{
+				if (closed && loop.size() >= 3) {
 					loops.push_back(std::move(loop));
 				}
 			}
@@ -292,29 +255,24 @@ namespace half_edge
 		}
 
 		/// Edges shared by 3 or more faces
-		[[nodiscard]] std::vector<EdgeKey> nonManifoldEdges() const
-		{
+		[[nodiscard]] std::vector<EdgeKey> nonManifoldEdges() const {
 			const auto& edgeToFaceMap = edgeToFace_.getOrCreate([this] { return calcEdgeFaces(); });
 
 			std::vector<EdgeKey> out;
-			for (const auto& [edge, faces] : edgeToFaceMap)
-			{
-				if (faces.size() > 2)
-				{
+			for (const auto& [edge, faces] : edgeToFaceMap) {
+				if (faces.size() > 2) {
 					out.push_back(edge);
 				}
 			}
 			return out;
 		}
 
-		[[nodiscard]] auto getFaceswithEdge(EdgeKey key) const
-		{
+		[[nodiscard]] auto getFaceswithEdge(EdgeKey key) const {
 			const auto& edgeToFaceMap = edgeToFace_.getOrCreate([this] { return calcEdgeFaces(); });
 			return edgeToFaceMap.at(key.canonize());
 		}
 
-		[[nodiscard]] std::vector<FaceRef> facesAtVertex(const VertexRef v) const
-		{
+		[[nodiscard]] std::vector<FaceRef> facesAtVertex(const VertexRef v) const {
 			const auto& vertexHalfedges = vertexHalfedges_.getOrCreate([this] { return calcVertexHalfedges(); });
 
 			std::vector<FaceRef> faces;
@@ -330,15 +288,13 @@ namespace half_edge
 		//  For a normal interior star this is one set, since all faces can "reach" eachother
 		//  A non-manifold edge, or boundary edge can break this connection between faces and result in more subsets.
 		//  There is more info on this in section 4.1 of http://mesh.brown.edu/taubin/pdfs/Gueziec-etal-tvcg01.pdf
-		[[nodiscard]] std::vector<std::vector<FaceRef>> vertexStarSubsets(const VertexRef v) const
-		{
+		[[nodiscard]] std::vector<std::vector<FaceRef>> vertexStarSubsets(const VertexRef v) const {
 			const auto& edgeToFaces = edgeToFace_.getOrCreate([this] { return calcEdgeFaces(); });
 			const auto& vertexEdges = vertexEdges_.getOrCreate([this] { return calcVertexEdges(); });
 
 			std::unordered_map<FaceRef, std::vector<FaceRef>> adjacency;
 
-			for (const auto& edge : vertexEdges[v])
-			{
+			for (const auto& edge : vertexEdges[v]) {
 				const auto& faces = edgeToFaces.at(edge);
 
 				if (faces.size() != 2) // No boundary or non-manifold edges
@@ -353,10 +309,8 @@ namespace half_edge
 			std::unordered_set<FaceRef> visited;
 			std::vector<std::vector<FaceRef>> components;
 
-			for (const FaceRef start : facesAtVertex(v))
-			{
-				if (!visited.insert(start).second)
-				{
+			for (const FaceRef start : facesAtVertex(v)) {
+				if (!visited.insert(start).second) {
 					continue;
 				}
 
@@ -364,17 +318,14 @@ namespace half_edge
 
 				std::vector stack{start};
 
-				while (!stack.empty())
-				{
+				while (!stack.empty()) {
 					const FaceRef f = stack.back();
 					stack.pop_back();
 
 					component.push_back(f);
 
-					for (const FaceRef neighbor : adjacency[f])
-					{
-						if (!visited.insert(neighbor).second)
-						{
+					for (const FaceRef neighbor : adjacency[f]) {
+						if (!visited.insert(neighbor).second) {
 							continue;
 						}
 						stack.push_back(neighbor);
@@ -386,31 +337,25 @@ namespace half_edge
 		}
 
 	private:
-		[[nodiscard]] const Halfedge& next(const HalfedgeRef h) const
-		{
+		[[nodiscard]] const Halfedge& next(const HalfedgeRef h) const {
 			return halfedges_[halfedges_[h].next];
 		}
 
-		[[nodiscard]] const Halfedge& prev(const HalfedgeRef h) const
-		{
+		[[nodiscard]] const Halfedge& prev(const HalfedgeRef h) const {
 			return halfedges_[halfedges_[h].prev];
 		}
 
-		[[nodiscard]] const Halfedge& opposite(const HalfedgeRef h) const
-		{
+		[[nodiscard]] const Halfedge& opposite(const HalfedgeRef h) const {
 			return halfedges_[*halfedges_[h].opposite];
 		}
 
-		[[nodiscard]] bool has_opposite(const HalfedgeRef h) const
-		{
+		[[nodiscard]] bool has_opposite(const HalfedgeRef h) const {
 			return halfedges_[h].opposite.has_value();
 		}
 
-		[[nodiscard]] EdgeToFaceMap calcEdgeFaces() const
-		{
+		[[nodiscard]] EdgeToFaceMap calcEdgeFaces() const {
 			EdgeToFaceMap map;
-			for (const auto& he : halfedges_)
-			{
+			for (const auto& he : halfedges_) {
 				const VertexRef from = halfedges_[he.prev].vertex;
 				const VertexRef to = he.vertex;
 				EdgeKey const edge{from, to};
@@ -419,8 +364,7 @@ namespace half_edge
 			return map;
 		}
 
-		[[nodiscard]] std::vector<std::vector<HalfedgeRef>> calcVertexHalfedges() const
-		{
+		[[nodiscard]] std::vector<std::vector<HalfedgeRef>> calcVertexHalfedges() const {
 			std::vector<std::vector<HalfedgeRef>> result(vertex_halfedge_.size());
 
 			for (HalfedgeRef h = 0; h < halfedges_.size(); ++h)
@@ -429,14 +373,12 @@ namespace half_edge
 			return result;
 		}
 
-		[[nodiscard]] std::vector<std::vector<EdgeKey>> calcVertexEdges() const
-		{
+		[[nodiscard]] std::vector<std::vector<EdgeKey>> calcVertexEdges() const {
 			const auto& edgeToFaces = edgeToFace_.getOrCreate([this] { return calcEdgeFaces(); });
 
 			std::vector<std::vector<EdgeKey>> result(vertex_halfedge_.size());
 
-			for (const auto& edge : edgeToFaces | std::views::keys)
-			{
+			for (const auto& edge : edgeToFaces | std::views::keys) {
 				result[edge.a].push_back(edge);
 				result[edge.b].push_back(edge);
 			}

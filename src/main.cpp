@@ -17,8 +17,7 @@
 #include <string_view>
 #include <vector>
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
 	// constexpr auto theme = theme::Mode::Dark;
 	constexpr auto theme = theme::Mode::Light;
 
@@ -26,28 +25,23 @@ int main(int argc, char* argv[])
 	auto shapeDb = ShapeDb::open(SHAPE_DB_ROOT);
 	// auto shapeDb = ShapeDb::open(CACHED_DB_ROOT);
 
-	if (!shapeDb)
-	{
+	if (!shapeDb) {
 		std::cerr << "Failed to create ShapeDB\n";
 		return 1;
 	}
 
-	if (argc >= 2 && std::string_view{argv[1]} == "--evaluate")
-	{
-		const auto printUsage = []
-		{
+	if (argc >= 2 && std::string_view{argv[1]} == "--evaluate") {
+		const auto printUsage = [] {
 			std::cerr << "Usage: --evaluate <amount of queries (0=all)> <k (0=amount of shapes in class)> <weights as string, e.g. \"0.5,0.3,0.6\"> "
 						 "<mode (Mix->0,L11->1,L2->2)> [ROC CSV output path]"
 					  << std::endl;
 		};
-		if (argc != 6 && argc != 7)
-		{
+		if (argc != 6 && argc != 7) {
 			printUsage();
 			return 2;
 		}
 
-		const auto parseInteger = [](const std::string_view text)
-		{
+		const auto parseInteger = [](const std::string_view text) {
 			std::size_t parsedLength = 0;
 			const auto value = std::stoll(std::string{text}, &parsedLength);
 			if (parsedLength != text.size())
@@ -58,26 +52,22 @@ int main(int argc, char* argv[])
 		long long queryCountArgument;
 		long long kArgument;
 		long long modeArgument;
-		try
-		{
+		try {
 			queryCountArgument = parseInteger(argv[2]);
 			kArgument = parseInteger(argv[3]);
 			modeArgument = parseInteger(argv[5]);
 		}
-		catch (const std::invalid_argument& error)
-		{
+		catch (const std::invalid_argument& error) {
 			std::cerr << "Invalid evaluation arguments: " << error.what() << std::endl;
 			printUsage();
 			return 2;
 		}
-		catch (const std::out_of_range& error)
-		{
+		catch (const std::out_of_range& error) {
 			std::cerr << "Evaluation argument is out of range: " << error.what() << std::endl;
 			printUsage();
 			return 2;
 		}
-		if (queryCountArgument < 0 || kArgument < 0 || modeArgument < 0 || modeArgument > 5)
-		{
+		if (queryCountArgument < 0 || kArgument < 0 || modeArgument < 0 || modeArgument > 5) {
 			std::cerr << "Query count and k must be non-negative, and mode must be 0, 1, 2, 3, 4 or 5." << std::endl;
 			printUsage();
 			return 2;
@@ -86,23 +76,19 @@ int main(int argc, char* argv[])
 		std::vector<double> weights;
 		std::stringstream weightStream(argv[4]);
 		std::string weight;
-		while (std::getline(weightStream, weight, ','))
-		{
+		while (std::getline(weightStream, weight, ',')) {
 			std::size_t parsedLength = 0;
-			try
-			{
+			try {
 				const auto value = std::stod(weight, &parsedLength);
 				if (parsedLength != weight.size())
 					throw std::invalid_argument("expected a comma-separated list of numbers");
 				weights.push_back(value);
 			}
-			catch (const std::invalid_argument& error)
-			{
+			catch (const std::invalid_argument& error) {
 				std::cerr << "Invalid weights: " << error.what() << std::endl;
 				return 2;
 			}
-			catch (const std::out_of_range& error)
-			{
+			catch (const std::out_of_range& error) {
 				std::cerr << "Weight is out of range: " << error.what() << std::endl;
 				return 2;
 			}
@@ -115,11 +101,9 @@ int main(int argc, char* argv[])
 		std::ofstream rocCsv;
 		std::ofstream scoreCsv;
 		std::filesystem::path scoreCsvPath;
-		if (argc == 7)
-		{
+		if (argc == 7) {
 			rocCsv.open(argv[6]);
-			if (!rocCsv)
-			{
+			if (!rocCsv) {
 				std::cerr << "Failed to open ROC CSV output: " << argv[6] << std::endl;
 				return 1;
 			}
@@ -128,16 +112,14 @@ int main(int argc, char* argv[])
 			const std::filesystem::path rocCsvPath{argv[6]};
 			scoreCsvPath = rocCsvPath.parent_path() / (rocCsvPath.stem().string() + "_scores" + rocCsvPath.extension().string());
 			scoreCsv.open(scoreCsvPath);
-			if (!scoreCsv)
-			{
+			if (!scoreCsv) {
 				std::cerr << "Failed to open ROC candidate scores output: " << scoreCsvPath.string() << std::endl;
 				return 1;
 			}
 			scoreCsv << "query_index,query_class,query_file,candidate_class,candidate_file,distance,relevant\n";
 		}
 
-		struct Counts
-		{
+		struct Counts {
 			std::size_t tp = 0;
 			std::size_t fp = 0;
 			std::size_t fn = 0;
@@ -146,8 +128,7 @@ int main(int argc, char* argv[])
 			std::size_t aurocQueries = 0;
 		};
 
-		const auto metricsFor = [](const Counts& counts)
-		{
+		const auto metricsFor = [](const Counts& counts) {
 			const auto precisionDenominator = counts.tp + counts.fp;
 			const auto recallDenominator = counts.tp + counts.fn;
 			const auto precision = precisionDenominator == 0 ? 0.0 : static_cast<double>(counts.tp) / static_cast<double>(precisionDenominator);
@@ -157,11 +138,9 @@ int main(int argc, char* argv[])
 			return std::array{precision, recall, f1};
 		};
 
-		const auto writeCsvField = [](std::ostream& output, const std::string& field)
-		{
+		const auto writeCsvField = [](std::ostream& output, const std::string& field) {
 			output << '"';
-			for (const auto character : field)
-			{
+			for (const auto character : field) {
 				if (character == '"')
 					output << "\"\"";
 				else
@@ -170,10 +149,9 @@ int main(int argc, char* argv[])
 			output << '"';
 		};
 
-		const auto aurocFor = [&writeCsvField](
-								  const std::vector<QueryResult>& rankedResults, const std::string& relevantClass, std::ostream* curveCsv,
-								  const std::size_t queryIndex, const ShapeRef& queryShape) -> std::optional<double>
-		{
+		const auto aurocFor = [&writeCsvField](const std::vector<QueryResult>& rankedResults, const std::string& relevantClass,
+											   std::ostream* curveCsv, const std::size_t queryIndex,
+											   const ShapeRef& queryShape) -> std::optional<double> {
 			const auto positiveCount = static_cast<std::size_t>(
 				std::ranges::count_if(rankedResults, [&relevantClass](const auto& result) { return result.className == relevantClass; }));
 			const auto negativeCount = rankedResults.size() - positiveCount;
@@ -181,10 +159,8 @@ int main(int argc, char* argv[])
 				return std::nullopt;
 
 			std::streamsize originalPrecision = 0;
-			if (curveCsv)
-			{
-				const auto writePoint = [&](const std::optional<double> threshold, const double falsePositiveRate, const double truePositiveRate)
-				{
+			if (curveCsv) {
+				const auto writePoint = [&](const std::optional<double> threshold, const double falsePositiveRate, const double truePositiveRate) {
 					*curveCsv << queryIndex << ',';
 					writeCsvField(*curveCsv, queryShape.className);
 					*curveCsv << ',';
@@ -204,16 +180,14 @@ int main(int argc, char* argv[])
 			double previousFalsePositiveRate = 0.0;
 			double previousTruePositiveRate = 0.0;
 			double area = 0.0;
-			for (std::size_t i = 0; i < rankedResults.size();)
-			{
+			for (std::size_t i = 0; i < rankedResults.size();) {
 				auto end = i + 1;
 				while (end < rankedResults.size() && rankedResults[end].distance == rankedResults[i].distance)
 					end++;
 
 				std::size_t tiedPositives = 0;
 				std::size_t tiedNegatives = 0;
-				for (auto j = i; j < end; j++)
-				{
+				for (auto j = i; j < end; j++) {
 					if (rankedResults[j].className == relevantClass)
 						tiedPositives++;
 					else
@@ -224,8 +198,7 @@ int main(int argc, char* argv[])
 				const auto falsePositiveRate = static_cast<double>(seenNegatives) / static_cast<double>(negativeCount);
 				const auto truePositiveRate = static_cast<double>(seenPositives) / static_cast<double>(positiveCount);
 				area += (falsePositiveRate - previousFalsePositiveRate) * (truePositiveRate + previousTruePositiveRate) / 2.0;
-				if (curveCsv)
-				{
+				if (curveCsv) {
 					*curveCsv << queryIndex << ',';
 					writeCsvField(*curveCsv, queryShape.className);
 					*curveCsv << ',';
@@ -247,8 +220,7 @@ int main(int argc, char* argv[])
 		std::map<std::string, Counts> perClass;
 		double totalAuroc = 0.0;
 		std::size_t totalAurocQueries = 0;
-		for (std::size_t i = 0; i < meshes.size(); i++)
-		{
+		for (std::size_t i = 0; i < meshes.size(); i++) {
 			const auto mesh = meshes[i];
 			const auto path = std::filesystem::path(std::string{SHAPE_DB_ROOT} + "/" + mesh.className + "/" + mesh.fileName);
 			Query query(path, weights, distMode);
@@ -259,8 +231,7 @@ int main(int argc, char* argv[])
 			const auto results = query.search(shapeDb->numShapes(), false);
 			Counts queryCounts;
 
-			for (size_t j = 0; j < std::min(classK, results.size()); j++)
-			{
+			for (size_t j = 0; j < std::min(classK, results.size()); j++) {
 				if (results[j].className == mesh.className)
 					queryCounts.tp++;
 				else
@@ -268,11 +239,9 @@ int main(int argc, char* argv[])
 			}
 			queryCounts.fn = classSize - 1 - queryCounts.tp;
 
-			if (argc == 7)
-			{
+			if (argc == 7) {
 				scoreCsv << std::setprecision(17);
-				for (const auto& result : results)
-				{
+				for (const auto& result : results) {
 					scoreCsv << i << ',';
 					writeCsvField(scoreCsv, mesh.className);
 					scoreCsv << ',';
@@ -290,13 +259,11 @@ int main(int argc, char* argv[])
 			std::cout << std::fixed << std::setprecision(4) << "Query " << i << " Class: " << mesh.className << " - TP: " << queryCounts.tp
 					  << " FP: " << queryCounts.fp << " FN: " << queryCounts.fn << " Precision: " << precision << " Recall: " << recall
 					  << " F1: " << f1 << " AUROC: ";
-			if (auroc)
-			{
+			if (auroc) {
 				std::cout << *auroc;
 				totalAuroc += *auroc;
 				totalAurocQueries++;
-			}
-			else
+			} else
 				std::cout << "N/A";
 			std::cout << std::endl;
 
@@ -305,8 +272,7 @@ int main(int argc, char* argv[])
 			classCounts.fp += queryCounts.fp;
 			classCounts.fn += queryCounts.fn;
 			classCounts.queries++;
-			if (auroc)
-			{
+			if (auroc) {
 				classCounts.auroc += *auroc;
 				classCounts.aurocQueries++;
 			}
@@ -321,19 +287,16 @@ int main(int argc, char* argv[])
 		double macroAuroc = 0.0;
 		std::size_t macroClassCount = 0;
 		std::size_t macroAurocClassCount = 0;
-		for (const auto& [className, counts] : perClass)
-		{
+		for (const auto& [className, counts] : perClass) {
 			const auto [precision, recall, f1] = metricsFor(counts);
 			std::cout << "CLASS " << className << " - Queries: " << counts.queries << " TP: " << counts.tp << " FP: " << counts.fp
 					  << " FN: " << counts.fn << " Precision: " << precision << " Recall: " << recall << " F1: " << f1 << " AUROC: ";
-			if (counts.aurocQueries > 0)
-			{
+			if (counts.aurocQueries > 0) {
 				const auto classAuroc = counts.auroc / static_cast<double>(counts.aurocQueries);
 				std::cout << classAuroc;
 				macroAuroc += classAuroc;
 				macroAurocClassCount++;
-			}
-			else
+			} else
 				std::cout << "N/A";
 			std::cout << std::endl;
 			macroPrecision += precision;
@@ -341,8 +304,7 @@ int main(int argc, char* argv[])
 			macroF1 += f1;
 			macroClassCount++;
 		}
-		if (macroClassCount > 0)
-		{
+		if (macroClassCount > 0) {
 			std::cout << "MACRO AVG - Precision: " << macroPrecision / static_cast<double>(macroClassCount)
 					  << " Recall: " << macroRecall / static_cast<double>(macroClassCount)
 					  << " F1: " << macroF1 / static_cast<double>(macroClassCount) << " AUROC: ";
@@ -361,12 +323,10 @@ int main(int argc, char* argv[])
 			std::cout << "N/A";
 		std::cout << std::endl;
 
-		if (argc == 7)
-		{
+		if (argc == 7) {
 			rocCsv.flush();
 			scoreCsv.flush();
-			if (!rocCsv || !scoreCsv)
-			{
+			if (!rocCsv || !scoreCsv) {
 				std::cerr << "Failed while writing ROC CSV output: " << argv[6] << " or " << scoreCsvPath.string() << std::endl;
 				return 1;
 			}

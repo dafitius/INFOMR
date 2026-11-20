@@ -22,15 +22,13 @@
 
 class Mesh;
 
-class ObjFile
-{
+class ObjFile {
 public:
 	static std::optional<Mesh> read(const std::filesystem::path& filePath);
 	static bool write(const std::filesystem::path& path, const Mesh& mesh);
 
 private:
-	struct ElementCounts
-	{
+	struct ElementCounts {
 		size_t positions = 0;
 		size_t normals = 0;
 		size_t faces = 0;

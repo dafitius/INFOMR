@@ -10,15 +10,13 @@
 
 MainWindow::MainWindow(std::shared_ptr<ShapeDb> database, QWidget* parent)
 	: QMainWindow(parent)
-	, database_(database)
-{
+	, database_(database) {
 	setupUI();
 }
 
 MainWindow::~MainWindow() {}
 
-void MainWindow::setupUI()
-{
+void MainWindow::setupUI() {
 	auto* centralWidget = new QWidget(this);
 	auto* layout = new QVBoxLayout(centralWidget);
 	layout->setContentsMargins(0, 0, 0, 0);
@@ -48,28 +46,22 @@ void MainWindow::setupUI()
 	setCentralWidget(centralWidget);
 }
 
-void MainWindow::openModel(std::filesystem::path source)
-{
+void MainWindow::openModel(std::filesystem::path source) {
 	std::optional<Mesh> mesh;
 
-	if (source.extension() == ".obj")
-	{
+	if (source.extension() == ".obj") {
 		mesh.emplace(*Mesh::fromObj(source));
-	}
-	else
-	{
+	} else {
 		std::cerr << "Unsupported mesh format: " << source.extension() << '\n';
 		return;
 	}
 
-	if (!mesh)
-	{
+	if (!mesh) {
 		std::cerr << "Failed to load mesh: " << source << '\n';
 		return;
 	}
 
-	if (auto* const workshop = qobject_cast<Workshop*>(tabWidget->widget(1)); workshop != nullptr)
-	{
+	if (auto* const workshop = qobject_cast<Workshop*>(tabWidget->widget(1)); workshop != nullptr) {
 		workshop->loadMesh(*mesh);
 		tabWidget->setCurrentWidget(workshop);
 	}

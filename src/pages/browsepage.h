@@ -11,14 +11,12 @@
 #include "../components/browsercard.h"
 #include "../io/shape_db.hpp"
 
-struct MeshData
-{
+struct MeshData {
 	QString name;
 	std::filesystem::path source;
 };
 
-class BrowsePage : public QWidget
-{
+class BrowsePage : public QWidget {
 	Q_OBJECT
 
 public:

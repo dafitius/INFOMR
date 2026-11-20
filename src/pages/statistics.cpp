@@ -46,18 +46,15 @@
 
 namespace
 {
-	std::filesystem::path toPath(const QString& path)
-	{
+	std::filesystem::path toPath(const QString& path) {
 		return std::filesystem::path(path.toStdU16String());
 	}
 
-	QString toQString(const std::string_view text)
-	{
+	QString toQString(const std::string_view text) {
 		return QString::fromUtf8(text.data(), static_cast<qsizetype>(text.size()));
 	}
 
-	QString summaryText(const Histogram& histogram)
-	{
+	QString summaryText(const Histogram& histogram) {
 		const auto summary = histogram.summary();
 		return QObject::tr("n = %1    min = %2    max = %3    mean = %4    median = %5    std = %6")
 			.arg(summary.count)
@@ -68,25 +65,20 @@ namespace
 			.arg(summary.stddev, 0, 'g', 6);
 	}
 
-	std::optional<mesh::Pipeline> pipelineFromRunLabel(std::string label)
-	{
-		if (auto pipeline = mesh::Pipeline::parse(label))
-		{
+	std::optional<mesh::Pipeline> pipelineFromRunLabel(std::string label) {
+		if (auto pipeline = mesh::Pipeline::parse(label)) {
 			return pipeline;
 		}
 
-		if (label.empty() || label.back() != ')')
-		{
+		if (label.empty() || label.back() != ')') {
 			return std::nullopt;
 		}
 		const auto suffix = label.rfind(" (");
-		if (suffix == std::string::npos || suffix + 2 == label.size() - 1)
-		{
+		if (suffix == std::string::npos || suffix + 2 == label.size() - 1) {
 			return std::nullopt;
 		}
 		const auto number = std::string_view(label).substr(suffix + 2, label.size() - suffix - 3);
-		if (!std::ranges::all_of(number, [](const unsigned char character) { return std::isdigit(character) != 0; }))
-		{
+		if (!std::ranges::all_of(number, [](const unsigned char character) { return std::isdigit(character) != 0; })) {
 			return std::nullopt;
 		}
 		return mesh::Pipeline::parse(std::string_view(label).substr(0, suffix));
@@ -96,22 +88,18 @@ namespace
 Statistics::Statistics(std::shared_ptr<ShapeDb> database, QWidget* parent)
 	: QWidget(parent)
 	, m_database(std::move(database))
-	, m_cancel(std::make_shared<std::atomic<bool>>(false))
-{
+	, m_cancel(std::make_shared<std::atomic<bool>>(false)) {
 	setupUI();
 }
 
-Statistics::~Statistics()
-{
-	if (m_worker != nullptr)
-	{
+Statistics::~Statistics() {
+	if (m_worker != nullptr) {
 		m_cancel->store(true);
 		m_worker->wait();
 	}
 }
 
-void Statistics::setupUI()
-{
+void Statistics::setupUI() {
 	auto* root = new QVBoxLayout(this);
 
 	auto* pipelineRow = new QHBoxLayout;
@@ -120,8 +108,7 @@ void Statistics::setupUI()
 	m_pipelineEdit->setPlaceholderText(tr("raw (no operations)"));
 	m_pipelineEdit->setToolTip(tr("Operations applied to every shape before measuring, in order, separated by '>'"));
 	m_operationBox = new QComboBox(this);
-	for (const auto& operation : mesh::operations())
-	{
+	for (const auto& operation : mesh::operations()) {
 		m_operationBox->addItem(toQString(operation.name), toQString(operation.name));
 		m_operationBox->setItemData(m_operationBox->count() - 1, toQString(operation.description), Qt::ToolTipRole);
 	}
@@ -247,26 +234,19 @@ void Statistics::setupUI()
 	refreshRunLists();
 
 	auto updateBucketCount = [this] { m_bucketLabel->setText(tr("%1").arg(m_view->bucketCount())); };
-	connect(
-		m_bucketSlider, &QSlider::valueChanged, this,
-		[this, updateBucketCount](int v)
-		{
-			m_view->setBucketCount(v);
-			updateBucketCount();
-		});
-	connect(
-		scaleBox, &QComboBox::currentIndexChanged, this,
-		[this, scaleBox](int) { m_view->setScale(static_cast<HistogramView::Scale>(scaleBox->currentData().toInt())); });
+	connect(m_bucketSlider, &QSlider::valueChanged, this, [this, updateBucketCount](int v) {
+		m_view->setBucketCount(v);
+		updateBucketCount();
+	});
+	connect(scaleBox, &QComboBox::currentIndexChanged, this,
+			[this, scaleBox](int) { m_view->setScale(static_cast<HistogramView::Scale>(scaleBox->currentData().toInt())); });
 	connect(clipCheck, &QCheckBox::toggled, m_view, &HistogramView::setClipOutliers);
-	connect(
-		addStepButton, &QPushButton::clicked, this,
-		[this]
-		{
-			const auto current = m_pipelineEdit->text().trimmed();
-			const auto step = m_operationBox->currentData().toString();
-			m_pipelineEdit->setText(
-				current.isEmpty() || current == toQString(mesh::Pipeline::emptyLabel) ? step : current + toQString(mesh::Pipeline::separator) + step);
-		});
+	connect(addStepButton, &QPushButton::clicked, this, [this] {
+		const auto current = m_pipelineEdit->text().trimmed();
+		const auto step = m_operationBox->currentData().toString();
+		m_pipelineEdit->setText(
+			current.isEmpty() || current == toQString(mesh::Pipeline::emptyLabel) ? step : current + toQString(mesh::Pipeline::separator) + step);
+	});
 	connect(clearStepsButton, &QPushButton::clicked, m_pipelineEdit, &QLineEdit::clear);
 	connect(m_limitCheck, &QCheckBox::toggled, m_limitSpin, &QWidget::setEnabled);
 	connect(m_computeButton, &QPushButton::clicked, this, &Statistics::compute);
@@ -274,31 +254,24 @@ void Statistics::setupUI()
 	connect(m_exportButton, &QPushButton::clicked, this, &Statistics::exportCsv);
 	connect(m_descriptorExportButton, &QPushButton::clicked, this, &Statistics::exportDescriptorHistograms);
 	connect(m_removeRunButton, &QPushButton::clicked, this, &Statistics::removeRun);
-	connect(
-		m_runList, &QListWidget::currentRowChanged, this,
-		[this](int)
-		{
-			m_exportButton->setEnabled(m_worker == nullptr && selectedRun() != nullptr);
-			m_descriptorExportButton->setEnabled(m_worker == nullptr && selectedRun() != nullptr);
-			m_removeRunButton->setEnabled(selectedRun() != nullptr);
-			updateColumnList();
-		});
+	connect(m_runList, &QListWidget::currentRowChanged, this, [this](int) {
+		m_exportButton->setEnabled(m_worker == nullptr && selectedRun() != nullptr);
+		m_descriptorExportButton->setEnabled(m_worker == nullptr && selectedRun() != nullptr);
+		m_removeRunButton->setEnabled(selectedRun() != nullptr);
+		updateColumnList();
+	});
 	connect(m_compareBox, &QComboBox::currentIndexChanged, this, [this](int) { updateView(); });
 	connect(m_modeBox, &QComboBox::currentIndexChanged, this, [this](int) { updateView(); });
 	connect(m_classFilter, &QComboBox::currentIndexChanged, this, [this](int) { updateView(); });
-	connect(
-		m_list, &QListWidget::currentRowChanged, this,
-		[this, updateBucketCount](int)
-		{
-			updateView();
-			updateBucketCount();
-		});
+	connect(m_list, &QListWidget::currentRowChanged, this, [this, updateBucketCount](int) {
+		updateView();
+		updateBucketCount();
+	});
 	connect(m_view, &HistogramView::bucketClicked, this, &Statistics::onBucketClicked);
 	updateBucketCount();
 }
 
-void Statistics::setBusy(const bool busy)
-{
+void Statistics::setBusy(const bool busy) {
 	m_computeButton->setEnabled(!busy);
 	m_loadButton->setEnabled(!busy);
 	m_exportButton->setEnabled(!busy && selectedRun() != nullptr);
@@ -307,27 +280,21 @@ void Statistics::setBusy(const bool busy)
 	m_progress->setVisible(busy);
 }
 
-void Statistics::compute()
-{
-	if (m_worker != nullptr)
-	{
+void Statistics::compute() {
+	if (m_worker != nullptr) {
 		return;
 	}
 
 	auto pipeline = mesh::Pipeline::parse(m_pipelineEdit->text().toStdString());
-	if (!pipeline)
-	{
+	if (!pipeline) {
 		m_statusLabel->setText(tr("Unknown operation in the pipeline, use the operations from the list"));
 		return;
 	}
 
 	std::vector<ShapeRef> shapes;
-	if (const auto* run = selectedRun(); m_sameShapesCheck->isChecked() && run != nullptr)
-	{
+	if (const auto* run = selectedRun(); m_sameShapesCheck->isChecked() && run != nullptr) {
 		shapes = run->shapes();
-	}
-	else
-	{
+	} else {
 		const size_t limit = m_limitCheck->isChecked() ? static_cast<size_t>(m_limitSpin->value()) : 0;
 		shapes = m_database->randomClassBalancedShapes(limit);
 	}
@@ -339,10 +306,8 @@ void Statistics::compute()
 	m_cancel->store(false);
 
 	m_worker = QThread::create(
-		[this, database = m_database, cancel = m_cancel, shapes = std::move(shapes), pipeline = std::move(*pipeline), progress = m_progress]
-		{
-			auto onProgress = [progress](const size_t done, size_t)
-			{
+		[this, database = m_database, cancel = m_cancel, shapes = std::move(shapes), pipeline = std::move(*pipeline), progress = m_progress] {
+			auto onProgress = [progress](const size_t done, size_t) {
 				QMetaObject::invokeMethod(
 					progress, [progress, done] { progress->setValue(std::max(progress->value(), static_cast<int>(done))); }, Qt::QueuedConnection);
 			};
@@ -350,43 +315,34 @@ void Statistics::compute()
 
 			QMetaObject::invokeMethod(
 				this,
-				[this, result]
-				{
-					for (const auto& path : result->failed)
-					{
+				[this, result] {
+					for (const auto& path : result->failed) {
 						qWarning() << "Failed to load mesh:" << QString::fromStdString(path.string());
 					}
 					const auto numShapes = result->table.rows().size();
 					addRun(std::move(result->table));
-					m_statusLabel->setText(
-						result->failed.empty() ? tr("%1 shapes").arg(numShapes)
-											   : tr("%1 shapes, %2 failed to load").arg(numShapes).arg(result->failed.size()));
+					m_statusLabel->setText(result->failed.empty() ? tr("%1 shapes").arg(numShapes)
+																  : tr("%1 shapes, %2 failed to load").arg(numShapes).arg(result->failed.size()));
 				},
 				Qt::QueuedConnection);
 		});
 	m_worker->setParent(this);
-	connect(
-		m_worker, &QThread::finished, this,
-		[this]
-		{
-			m_worker->deleteLater();
-			m_worker = nullptr;
-			setBusy(false);
-		});
+	connect(m_worker, &QThread::finished, this, [this] {
+		m_worker->deleteLater();
+		m_worker = nullptr;
+		setBusy(false);
+	});
 	m_worker->start();
 }
 
-void Statistics::loadCsv()
-{
+void Statistics::loadCsv() {
 	const QString path = QFileDialog::getOpenFileName(this, tr("Load statistics"), QString(), tr("CSV files (*.csv);;All files (*)"));
-	if (path.isEmpty())
-	{
+	if (path.isEmpty()) {
 		return;
 	}
 
 	auto table = stats::StatsTable::readCsv(toPath(path));
-	if (!table)
-	{
+	if (!table) {
 		m_statusLabel->setText(tr("Could not read %1").arg(QFileInfo(path).fileName()));
 		return;
 	}
@@ -396,56 +352,46 @@ void Statistics::loadCsv()
 	setBusy(false);
 }
 
-void Statistics::exportCsv()
-{
+void Statistics::exportCsv() {
 	const auto* run = selectedRun();
-	if (run == nullptr)
-	{
+	if (run == nullptr) {
 		return;
 	}
 
 	const QString path = QFileDialog::getSaveFileName(this, tr("Export statistics"), "shape_db_statistics.csv", tr("CSV files (*.csv)"));
-	if (path.isEmpty())
-	{
+	if (path.isEmpty()) {
 		return;
 	}
 
 	const bool written = run->writeCsv(toPath(path));
-	m_statusLabel->setText(
-		written ? tr("Exported %1 shapes to %2").arg(run->rows().size()).arg(QFileInfo(path).fileName())
-				: tr("Could not write %1").arg(QFileInfo(path).fileName()));
+	m_statusLabel->setText(written ? tr("Exported %1 shapes to %2").arg(run->rows().size()).arg(QFileInfo(path).fileName())
+								   : tr("Could not write %1").arg(QFileInfo(path).fileName()));
 }
 
-void Statistics::exportDescriptorHistograms()
-{
-	if (m_worker != nullptr)
-	{
+void Statistics::exportDescriptorHistograms() {
+	if (m_worker != nullptr) {
 		return;
 	}
 
 	const auto* run = selectedRun();
-	if (run == nullptr)
-	{
+	if (run == nullptr) {
 		return;
 	}
 	auto pipeline = pipelineFromRunLabel(run->label());
-	if (!pipeline)
-	{
+	if (!pipeline) {
 		m_statusLabel->setText(tr("Cannot export descriptor histograms: the selected run has no recognized pipeline label"));
 		return;
 	}
 
 	auto shapes = run->shapes();
 	const auto classFilter = m_classFilter->currentData().toString().toStdString();
-	if (!classFilter.empty())
-	{
+	if (!classFilter.empty()) {
 		std::erase_if(shapes, [&](const ShapeRef& shape) { return shape.className != classFilter; });
 	}
 
-	const QString csvPath = QFileDialog::getSaveFileName(
-		this, tr("Export per-shape descriptor histograms"), "shape_descriptor_histograms.csv", tr("CSV files (*.csv)"));
-	if (csvPath.isEmpty())
-	{
+	const QString csvPath =
+		QFileDialog::getSaveFileName(this, tr("Export per-shape descriptor histograms"), "shape_descriptor_histograms.csv", tr("CSV files (*.csv)"));
+	if (csvPath.isEmpty()) {
 		return;
 	}
 
@@ -457,54 +403,42 @@ void Statistics::exportDescriptorHistograms()
 	m_statusLabel->setText(tr("Computing descriptor histograms for %1 shapes...").arg(shapes.size()));
 	m_cancel->store(false);
 
-	m_worker = QThread::create(
-		[this, database = m_database, cancel = m_cancel, shapes = std::move(shapes), pipeline = std::move(*pipeline), outputPath, bins,
-		 progress = m_progress, fileName = QFileInfo(csvPath).fileName()]
-		{
-			auto onProgress = [progress](const size_t done, size_t)
-			{
-				QMetaObject::invokeMethod(
-					progress, [progress, done] { progress->setValue(std::max(progress->value(), static_cast<int>(done))); }, Qt::QueuedConnection);
-			};
-			auto result = std::make_shared<stats::HistogramCsvResult>(
-				stats::writePerShapeHistogramsCsv(*database, shapes, pipeline, outputPath, bins, cancel.get(), onProgress));
-
+	m_worker = QThread::create([this, database = m_database, cancel = m_cancel, shapes = std::move(shapes), pipeline = std::move(*pipeline),
+								outputPath, bins, progress = m_progress, fileName = QFileInfo(csvPath).fileName()] {
+		auto onProgress = [progress](const size_t done, size_t) {
 			QMetaObject::invokeMethod(
-				this,
-				[this, result, fileName]
-				{
-					for (const auto& path : result->failed)
-					{
-						qWarning() << "Failed to compute descriptor histograms for:" << QString::fromStdString(path.string());
-					}
-					m_statusLabel->setText(
-						result->written
-							? tr("Exported %1 descriptor histograms for %2 shapes to %3 (%4 shapes failed)")
-								  .arg(result->histogramCount)
-								  .arg(result->shapesWritten)
-								  .arg(fileName)
-								  .arg(result->failed.size())
-							: tr("Could not write %1").arg(fileName));
-				},
-				Qt::QueuedConnection);
-		});
+				progress, [progress, done] { progress->setValue(std::max(progress->value(), static_cast<int>(done))); }, Qt::QueuedConnection);
+		};
+		auto result = std::make_shared<stats::HistogramCsvResult>(
+			stats::writePerShapeHistogramsCsv(*database, shapes, pipeline, outputPath, bins, cancel.get(), onProgress));
+
+		QMetaObject::invokeMethod(
+			this,
+			[this, result, fileName] {
+				for (const auto& path : result->failed) {
+					qWarning() << "Failed to compute descriptor histograms for:" << QString::fromStdString(path.string());
+				}
+				m_statusLabel->setText(result->written ? tr("Exported %1 descriptor histograms for %2 shapes to %3 (%4 shapes failed)")
+															 .arg(result->histogramCount)
+															 .arg(result->shapesWritten)
+															 .arg(fileName)
+															 .arg(result->failed.size())
+													   : tr("Could not write %1").arg(fileName));
+			},
+			Qt::QueuedConnection);
+	});
 	m_worker->setParent(this);
-	connect(
-		m_worker, &QThread::finished, this,
-		[this]
-		{
-			m_worker->deleteLater();
-			m_worker = nullptr;
-			setBusy(false);
-		});
+	connect(m_worker, &QThread::finished, this, [this] {
+		m_worker->deleteLater();
+		m_worker = nullptr;
+		setBusy(false);
+	});
 	m_worker->start();
 }
 
-void Statistics::addRun(stats::StatsTable table)
-{
+void Statistics::addRun(stats::StatsTable table) {
 	const auto baseLabel = table.label();
-	for (int number = 2; std::ranges::any_of(m_runs, [&](const auto& run) { return run.label() == table.label(); }); ++number)
-	{
+	for (int number = 2; std::ranges::any_of(m_runs, [&](const auto& run) { return run.label() == table.label(); }); ++number) {
 		table.setLabel(std::format("{} ({})", baseLabel, number));
 	}
 
@@ -514,11 +448,9 @@ void Statistics::addRun(stats::StatsTable table)
 	m_runList->setCurrentRow(static_cast<int>(m_runs.size()) - 1);
 }
 
-void Statistics::removeRun()
-{
+void Statistics::removeRun() {
 	const int row = m_runList->currentRow();
-	if (row < 0 || row >= static_cast<int>(m_runs.size()))
-	{
+	if (row < 0 || row >= static_cast<int>(m_runs.size())) {
 		return;
 	}
 
@@ -529,8 +461,7 @@ void Statistics::removeRun()
 	updateColumnList();
 }
 
-void Statistics::refreshRunLists()
-{
+void Statistics::refreshRunLists() {
 	const int selected = m_runList->currentRow();
 	const QString compared = m_compareBox->currentData().toString();
 
@@ -540,8 +471,7 @@ void Statistics::refreshRunLists()
 	m_runList->clear();
 	m_compareBox->clear();
 	m_compareBox->addItem(tr("Nothing"), QString());
-	for (const auto& run : m_runs)
-	{
+	for (const auto& run : m_runs) {
 		const auto label = QString::fromStdString(run.label());
 		m_runList->addItem(tr("%1  (%2 shapes)").arg(label).arg(run.rows().size()));
 		m_compareBox->addItem(label, label);
@@ -553,15 +483,12 @@ void Statistics::refreshRunLists()
 	m_compareBox->blockSignals(false);
 }
 
-void Statistics::updateClassFilter()
-{
+void Statistics::updateClassFilter() {
 	const QString previous = m_classFilter->currentData().toString();
 
 	std::set<std::string> classNames;
-	for (const auto& run : m_runs)
-	{
-		for (const auto& row : run.rows())
-		{
+	for (const auto& run : m_runs) {
+		for (const auto& row : run.rows()) {
 			classNames.insert(row.className);
 		}
 	}
@@ -569,8 +496,7 @@ void Statistics::updateClassFilter()
 	m_classFilter->blockSignals(true);
 	m_classFilter->clear();
 	m_classFilter->addItem(tr("All classes"), QString());
-	for (const auto& className : classNames)
-	{
+	for (const auto& className : classNames) {
 		const QString name = QString::fromStdString(className);
 		m_classFilter->addItem(name, name);
 	}
@@ -578,19 +504,15 @@ void Statistics::updateClassFilter()
 	m_classFilter->blockSignals(false);
 }
 
-void Statistics::updateColumnList()
-{
+void Statistics::updateColumnList() {
 	const QString previous = (m_list->currentItem() != nullptr) ? m_list->currentItem()->text() : QString();
 
 	m_list->blockSignals(true);
 	m_list->clear();
-	if (const auto* run = selectedRun())
-	{
-		for (const auto& column : run->columns())
-		{
+	if (const auto* run = selectedRun()) {
+		for (const auto& column : run->columns()) {
 			auto* item = new QListWidgetItem(QString::fromStdString(column), m_list);
-			if (const auto metric = stats::findMetric(column))
-			{
+			if (const auto metric = stats::findMetric(column)) {
 				item->setToolTip(toQString(metric->description));
 			}
 		}
@@ -604,71 +526,59 @@ void Statistics::updateColumnList()
 	updateView();
 }
 
-const stats::StatsTable* Statistics::selectedRun() const
-{
+const stats::StatsTable* Statistics::selectedRun() const {
 	const int row = m_runList->currentRow();
 	return row >= 0 && row < static_cast<int>(m_runs.size()) ? &m_runs[static_cast<size_t>(row)] : nullptr;
 }
 
-const stats::StatsTable* Statistics::comparisonRun() const
-{
+const stats::StatsTable* Statistics::comparisonRun() const {
 	const auto label = m_compareBox->currentData().toString().toStdString();
 	const auto found = std::ranges::find(m_runs, label, &stats::StatsTable::label);
 	return label.empty() || found == m_runs.end() ? nullptr : &*found;
 }
 
-QVector<Sample> Statistics::samples(const stats::StatsTable& run, const size_t column, const std::string& classFilter) const
-{
+QVector<Sample> Statistics::samples(const stats::StatsTable& run, const size_t column, const std::string& classFilter) const {
 	QVector<Sample> result;
 	result.reserve(static_cast<qsizetype>(run.rows().size()));
-	for (const auto& row : run.rows())
-	{
-		if (classFilter.empty() || row.className == classFilter)
-		{
+	for (const auto& row : run.rows()) {
+		if (classFilter.empty() || row.className == classFilter) {
 			result.push_back(Sample(row.values[column], m_database->resourcePath(row.className, row.fileName)));
 		}
 	}
 	return result;
 }
 
-void Statistics::updateView()
-{
+void Statistics::updateView() {
 	m_view->setHistogram(nullptr);
 	m_primary.reset();
 	m_comparison.reset();
 	m_summaryLabel->clear();
 
 	const auto* run = selectedRun();
-	if (run == nullptr || m_list->currentItem() == nullptr)
-	{
+	if (run == nullptr || m_list->currentItem() == nullptr) {
 		return;
 	}
 
 	const auto columnName = m_list->currentItem()->text().toStdString();
 	const auto column = run->columnIndex(columnName);
-	if (!column)
-	{
+	if (!column) {
 		return;
 	}
 
 	const std::string classFilter = m_classFilter->currentData().toString().toStdString();
 	const auto* other = comparisonRun();
 	const auto otherColumn = other != nullptr ? other->columnIndex(columnName) : std::nullopt;
-	if (other != nullptr && !otherColumn)
-	{
+	if (other != nullptr && !otherColumn) {
 		m_summaryLabel->setText(tr("%1 has no column %2").arg(QString::fromStdString(other->label())).arg(QString::fromStdString(columnName)));
 	}
 
 	const auto mode = static_cast<CompareMode>(m_modeBox->currentData().toInt());
-	if (otherColumn && mode == CompareMode::Difference)
-	{
+	if (otherColumn && mode == CompareMode::Difference) {
 		// Only shapes that are in both runs can be compared one by one
 		QVector<Sample> differences;
-		for (const auto& [first, second] : stats::matchRows(*run, *other))
-		{
+		for (const auto& [first, second] : stats::matchRows(*run, *other)) {
 			const auto& row = run->rows()[first];
-			if (classFilter.empty() || row.className == classFilter)
-			{
+			if (classFilter.empty() || row.className == classFilter) {
 				const double difference = other->rows()[second].values[*otherColumn] - row.values[*column];
 				differences.push_back(Sample(difference, m_database->resourcePath(row.className, row.fileName)));
 			}
@@ -678,16 +588,13 @@ void Statistics::updateView()
 		m_primary.emplace(name, Histogram::defaultBucketCount(static_cast<size_t>(differences.size())), differences);
 		m_view->setHistogram(&*m_primary);
 		m_summaryLabel->setText(tr("%1\n%2").arg(name).arg(summaryText(*m_primary)));
-	}
-	else
-	{
+	} else {
 		auto primarySamples = samples(*run, *column, classFilter);
-		m_primary.emplace(
-			QString::fromStdString(run->label()), Histogram::defaultBucketCount(static_cast<size_t>(primarySamples.size())), primarySamples);
+		m_primary.emplace(QString::fromStdString(run->label()), Histogram::defaultBucketCount(static_cast<size_t>(primarySamples.size())),
+						  primarySamples);
 		QString summary = otherColumn ? tr("%1: %2").arg(m_primary->name).arg(summaryText(*m_primary)) : summaryText(*m_primary);
 
-		if (otherColumn)
-		{
+		if (otherColumn) {
 			auto otherSamples = samples(*other, *otherColumn, classFilter);
 			m_comparison.emplace(QString::fromStdString(other->label()), m_primary->bucket_size, otherSamples);
 			summary += tr("\n%1: %2").arg(m_comparison->name).arg(summaryText(*m_comparison));
@@ -700,10 +607,8 @@ void Statistics::updateView()
 	m_view->setBucketCount(m_bucketSlider->value());
 }
 
-void Statistics::onBucketClicked(const QVector<Sample>& samples)
-{
-	if (samples.isEmpty())
-	{
+void Statistics::onBucketClicked(const QVector<Sample>& samples) {
+	if (samples.isEmpty()) {
 		return;
 	}
 	const Sample& pick = samples[QRandomGenerator::global()->bounded(samples.size())];

@@ -14,16 +14,14 @@
 
 BrowsePage::BrowsePage(std::shared_ptr<ShapeDb> database, QWidget* parent)
 	: QWidget(parent)
-	, database(std::move(database))
-{
+	, database(std::move(database)) {
 	setupUI();
 	setupClassList();
 }
 
 BrowsePage::~BrowsePage() {}
 
-void BrowsePage::setupUI()
-{
+void BrowsePage::setupUI() {
 	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
 	auto* mainLayout = new QVBoxLayout(this);
@@ -87,17 +85,14 @@ void BrowsePage::setupUI()
 	splitter->setSizes({300, 700});
 }
 
-void BrowsePage::setupClassList()
-{
+void BrowsePage::setupClassList() {
 	std::vector<std::string> classNames;
-	for (const auto& className : database->iterClassNames())
-	{
+	for (const auto& className : database->iterClassNames()) {
 		classNames.push_back(className);
 	}
 	std::sort(classNames.begin(), classNames.end());
 
-	for (const auto& className : classNames)
-	{
+	for (const auto& className : classNames) {
 		const QString name = QString::fromStdString(className);
 		classComboBox->addItem(name, name);
 	}
@@ -105,34 +100,28 @@ void BrowsePage::setupClassList()
 	connect(classComboBox, &QComboBox::currentIndexChanged, this, [this] { loadSelectedClass(); });
 }
 
-void BrowsePage::loadSelectedClass()
-{
+void BrowsePage::loadSelectedClass() {
 	clearMeshCards();
 
 	const QString className = classComboBox->currentData().toString();
 
-	if (className.isEmpty())
-	{
+	if (className.isEmpty()) {
 		return;
 	}
 
-	for (const auto& meshPath : database->iterClassShapePaths(className.toStdString()))
-	{
+	for (const auto& meshPath : database->iterClassShapePaths(className.toStdString())) {
 		const QFileInfo fileInfo(meshPath);
 
 		addMeshCard({.name = className + "/" + fileInfo.fileName(), .source = meshPath});
 	}
 
-	if (loadAllPreviewsBox->checkState() == Qt::CheckState::Checked)
-	{
+	if (loadAllPreviewsBox->checkState() == Qt::CheckState::Checked) {
 		activateAllMeshPreviews();
 	}
 }
 
-void BrowsePage::clearMeshCards()
-{
-	for (auto* card : meshCards)
-	{
+void BrowsePage::clearMeshCards() {
+	for (auto* card : meshCards) {
 		containerLayout->removeWidget(card);
 		delete card;
 	}
@@ -140,8 +129,7 @@ void BrowsePage::clearMeshCards()
 	meshCards.clear();
 }
 
-void BrowsePage::addMeshCard(const MeshData& mesh)
-{
+void BrowsePage::addMeshCard(const MeshData& mesh) {
 	auto* card = new BrowserCard(mesh.name, mesh.source, containerWidget);
 
 	const int index = static_cast<int>(meshCards.size());
@@ -156,20 +144,16 @@ void BrowsePage::addMeshCard(const MeshData& mesh)
 	connect(card, &BrowserCard::previewActivationRequested, this, &BrowsePage::activateMeshPreview);
 }
 
-void BrowsePage::onMeshCardClicked(const QString& meshName)
-{
+void BrowsePage::onMeshCardClicked(const QString& meshName) {
 	qDebug() << "Clicked mesh:" << meshName;
 }
 
-void BrowsePage::activateMeshPreview(BrowserCard* selectedCard)
-{
+void BrowsePage::activateMeshPreview(BrowserCard* selectedCard) {
 	selectedCard->setPreviewActive(true);
 }
 
-void BrowsePage::activateAllMeshPreviews()
-{
-	for (auto* card : meshCards)
-	{
+void BrowsePage::activateAllMeshPreviews() {
+	for (auto* card : meshCards) {
 		card->setPreviewActive(true);
 	}
 }

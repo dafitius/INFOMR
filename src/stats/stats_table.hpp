@@ -18,8 +18,7 @@
 
 namespace stats
 {
-	struct ShapeRow
-	{
+	struct ShapeRow {
 		std::string className;
 		std::string fileName;
 		std::vector<double> values;
@@ -27,34 +26,27 @@ namespace stats
 
 	/// @brief Named numeric columns with one row per shape, e.g. the metrics of the database after a pipeline (or extracted features).
 	/// Stored as CSV: an optional "# label: ..." line, a "class,file,<columns...>" header and one line per shape.
-	class StatsTable
-	{
+	class StatsTable {
 	public:
 		StatsTable() = default;
 
 		StatsTable(std::string label, std::vector<std::string> columns)
 			: label_(std::move(label))
-			, columns_(std::move(columns))
-		{
-		}
+			, columns_(std::move(columns)) {}
 
-		[[nodiscard]] const std::string& label() const
-		{
+		[[nodiscard]] const std::string& label() const {
 			return label_;
 		}
 
-		void setLabel(std::string label)
-		{
+		void setLabel(std::string label) {
 			label_ = std::move(label);
 		}
 
-		[[nodiscard]] std::span<const std::string> columns() const
-		{
+		[[nodiscard]] std::span<const std::string> columns() const {
 			return columns_;
 		}
 
-		[[nodiscard]] std::span<const ShapeRow> rows() const
-		{
+		[[nodiscard]] std::span<const ShapeRow> rows() const {
 			return rows_;
 		}
 

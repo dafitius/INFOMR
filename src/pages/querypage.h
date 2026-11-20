@@ -9,14 +9,13 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QStringList>
-#include <QVector>
 #include <QVBoxLayout>
+#include <QVector>
 #include <QWidget>
 #include <filesystem>
 #include <vector>
 
-class QueryPage : public QWidget
-{
+class QueryPage : public QWidget {
 	Q_OBJECT
 
 public:

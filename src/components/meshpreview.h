@@ -10,8 +10,7 @@
 
 class MeshPreview
 	: public QOpenGLWidget
-	, protected QOpenGLFunctions
-{
+	, protected QOpenGLFunctions {
 	Q_OBJECT
 
 public:

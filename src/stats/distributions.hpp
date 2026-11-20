@@ -20,21 +20,18 @@
 
 namespace stats
 {
-	struct BinRange
-	{
+	struct BinRange {
 		double min;
 		double max;
 
-		[[nodiscard]] double width() const
-		{
+		[[nodiscard]] double width() const {
 			return max - min;
 		}
 	};
 
 	/// @brief A shape property distribution (e.g. D2), sampled many times per mesh and reduced to a fixed length histogram.
 	/// To add a distribution, add it to distributions() in distributions.cpp.
-	struct Distribution
-	{
+	struct Distribution {
 		std::string_view name;
 		std::string_view description;
 
@@ -45,8 +42,7 @@ namespace stats
 		std::vector<float> (*sample)(const Mesh&);
 	};
 
-	struct HistogramCsvResult
-	{
+	struct HistogramCsvResult {
 		size_t shapesWritten = 0;
 		size_t histogramCount = 0;
 		size_t rowsWritten = 0;
@@ -65,9 +61,10 @@ namespace stats
 	[[nodiscard]] std::vector<double> binHistogram(std::span<const float> samples, BinRange range, size_t numBins);
 
 	/// @brief Exports a binned A3/D1-D4 histogram for each shape to a long-form CSV.
-	[[nodiscard]] HistogramCsvResult writePerShapeHistogramsCsv(
-		const ShapeDb& database, std::span<const ShapeRef> shapes, const mesh::Pipeline& pipeline, const std::filesystem::path& path, size_t numBins,
-		const std::atomic<bool>* cancel = nullptr, const HistogramProgressCallback& onProgress = {});
+	[[nodiscard]] HistogramCsvResult writePerShapeHistogramsCsv(const ShapeDb& database, std::span<const ShapeRef> shapes,
+																const mesh::Pipeline& pipeline, const std::filesystem::path& path, size_t numBins,
+																const std::atomic<bool>* cancel = nullptr,
+																const HistogramProgressCallback& onProgress = {});
 
 	/// @brief Earth Mover's Distance between two histograms over the same equally sized bins. the minimal amount of mass times the
 	/// distance it has to move to turn one into the other. A shift of the same shape by one bin costs little, unlike bin by bin distances.

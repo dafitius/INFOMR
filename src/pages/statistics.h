@@ -27,8 +27,7 @@ class QSplitter;
 class QThread;
 
 /// @brief Computes statistics of the database after a pipeline of operations ("runs"), shows them as histograms and compares runs
-class Statistics : public QWidget
-{
+class Statistics : public QWidget {
 	Q_OBJECT
 
 public:
@@ -45,8 +44,7 @@ public slots:
 	void exportDescriptorHistograms();
 
 private:
-	enum class CompareMode : std::uint8_t
-	{
+	enum class CompareMode : std::uint8_t {
 		Overlay,
 		Difference,
 	};

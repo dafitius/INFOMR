@@ -22,24 +22,20 @@ namespace mesh::pca
 {
 	/// @brief Covariance around the mean of the positions, so the model does not need to be centered first
 	/// @return
-	[[nodiscard]] inline glm::mat3 covariance(const std::span<const glm::vec3>& positions)
-	{
+	[[nodiscard]] inline glm::mat3 covariance(const std::span<const glm::vec3>& positions) {
 		glm::mat3 cov(0.0f);
 
-		if (positions.empty())
-		{
+		if (positions.empty()) {
 			return cov;
 		}
 
 		glm::dvec3 sum(0.0);
-		for (const auto& p : positions)
-		{
+		for (const auto& p : positions) {
 			sum += glm::dvec3(p);
 		}
 		const auto mean = glm::vec3(sum / static_cast<double>(positions.size()));
 
-		for (const auto& position : positions)
-		{
+		for (const auto& position : positions) {
 			const auto p = position - mean;
 			cov[0][0] += p.x * p.x;
 			cov[0][1] += p.x * p.y;
@@ -59,8 +55,7 @@ namespace mesh::pca
 	}
 
 	// https://en.wikipedia.org/wiki/Eigenvalue_algorithm#Symmetric_3%C3%973_matrices
-	[[nodiscard]] inline std::array<float, 3> eigenvalues(glm::mat3 covariance)
-	{
+	[[nodiscard]] inline std::array<float, 3> eigenvalues(glm::mat3 covariance) {
 		// Covariance matrix is symmetric.
 		// [ a  b  c
 		//   b  d  e
@@ -74,8 +69,7 @@ namespace mesh::pca
 
 		constexpr auto eps = std::numeric_limits<float>::epsilon();
 		auto p1 = (b * b) + (c * c) + (e * e);
-		if (p1 <= eps * ((a * a) + (d * d) + (f * f)))
-		{
+		if (p1 <= eps * ((a * a) + (d * d) + (f * f))) {
 			std::array<float, 3> diagonal{a, d, f};
 			std::ranges::sort(diagonal, std::greater{});
 			return diagonal;
@@ -85,8 +79,7 @@ namespace mesh::pca
 		auto p2 = (a - q) * (a - q) + (d - q) * (d - q) + (f - q) * (f - q) + 2 * p1;
 		p2 = std::max(0.0f, p2);
 		auto p = std::sqrt(p2 / 6.0f);
-		if (p <= eps * std::abs(q))
-		{
+		if (p <= eps * std::abs(q)) {
 			return {q, q, q};
 		}
 
@@ -95,16 +88,11 @@ namespace mesh::pca
 		auto r = glm::determinant(B) / 2;
 		r = std::clamp(r, -1.0f, 1.0f);
 		float phi = 0;
-		if (r <= -1)
-		{
+		if (r <= -1) {
 			phi = glm::pi<float>() / 3.0f;
-		}
-		else if (r >= 1)
-		{
+		} else if (r >= 1) {
 			phi = 0.0f;
-		}
-		else
-		{
+		} else {
 			phi = std::acos(r) / 3.0f;
 		}
 
@@ -112,33 +100,27 @@ namespace mesh::pca
 		float eig3 = q + (2 * p * std::cos(phi + (2 * glm::pi<float>() / 3)));
 		float eig2 = (3 * q) - eig1 - eig3;
 
-		if (eig1 < eig2)
-		{
+		if (eig1 < eig2) {
 			std::swap(eig1, eig2);
 		}
-		if (eig1 < eig3)
-		{
+		if (eig1 < eig3) {
 			std::swap(eig1, eig3);
 		}
-		if (eig2 < eig3)
-		{
+		if (eig2 < eig3) {
 			std::swap(eig2, eig3);
 		}
 		return {eig1, eig2, eig3};
 	}
 
 	//(A - λI) v = 0
-	[[nodiscard]] inline glm::vec3 eigenvector(const glm::mat3& c, const float lambda)
-	{
+	[[nodiscard]] inline glm::vec3 eigenvector(const glm::mat3& c, const float lambda) {
 		glm::vec3 const r1(c[0][0] - lambda, c[1][0], c[2][0]);
 		glm::vec3 const r2(c[0][1], c[1][1] - lambda, c[2][1]);
 		glm::vec3 const r3(c[0][2], c[1][2], c[2][2] - lambda);
 
 		glm::vec3 v = glm::cross(r1, r2);
-		for (const auto& candidate : {glm::cross(r1, r3), glm::cross(r2, r3)})
-		{
-			if (glm::length2(candidate) > glm::length2(v))
-			{
+		for (const auto& candidate : {glm::cross(r1, r3), glm::cross(r2, r3)}) {
+			if (glm::length2(candidate) > glm::length2(v)) {
 				v = candidate;
 			}
 		}
@@ -146,15 +128,13 @@ namespace mesh::pca
 		constexpr auto eps = std::numeric_limits<float>::epsilon();
 		const float rowScale = std::max({glm::length2(r1), glm::length2(r2), glm::length2(r3)});
 		const float len2 = glm::length2(v);
-		if (len2 <= eps * rowScale * rowScale)
-		{
+		if (len2 <= eps * rowScale * rowScale) {
 			return {1.0f, 0.0f, 0.0f}; // fallback
 		}
 		return v / std::sqrt(len2);
 	}
 
-	[[nodiscard]] static glm::quat compute(const std::span<const glm::vec3>& positions)
-	{
+	[[nodiscard]] static glm::quat compute(const std::span<const glm::vec3>& positions) {
 		glm::mat3 const cov = covariance(positions);
 		auto eigenvalues_ = eigenvalues(cov);
 
@@ -167,29 +147,23 @@ namespace mesh::pca
 		auto eps = std::numeric_limits<float>::epsilon();
 
 		glm::vec3 y = e1 - x * glm::dot(x, e1);
-		if (glm::length2(y) < eps)
-		{
+		if (glm::length2(y) < eps) {
 			y = e2 - x * glm::dot(x, e2);
 		}
-		if (glm::length2(y) < eps)
-		{
+		if (glm::length2(y) < eps) {
 			y = glm::cross(x, glm::vec3{0, 1, 0});
 		}
 		y = glm::normalize(y);
 
 		glm::vec3 z = glm::cross(x, y); // Try to derive z from other components
-		if (glm::length2(z) < eps)
-		{
+		if (glm::length2(z) < eps) {
 			z = glm::normalize(e2);
-		}
-		else
-		{
+		} else {
 			z = glm::normalize(z);
 		}
 		glm::mat3 const axes(x, y, z);
 
-		if (std::isnan(glm::determinant(axes)))
-		{
+		if (std::isnan(glm::determinant(axes))) {
 			std::cerr << "Something went wrong while calculating eigenvectors" << std::endl;
 			std::cout << "eigenvalue[0] = " << eigenvalues_[0] << '\n';
 			std::cout << "eigenvalue[1] = " << eigenvalues_[1] << '\n';

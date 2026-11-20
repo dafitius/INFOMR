@@ -12,8 +12,7 @@
 
 class MeshViewport
 	: public QOpenGLWidget
-	, protected QOpenGLFunctions
-{
+	, protected QOpenGLFunctions {
 	Q_OBJECT
 
 public:
@@ -28,8 +27,7 @@ public:
 
 	template <typename Func>
 		requires std::invocable<Func&, RenderSettings&> && std::same_as<std::invoke_result_t<Func&, RenderSettings&>, void>
-	void setRenderSettings(Func&& callback)
-	{
+	void setRenderSettings(Func&& callback) {
 		RenderSettings settings = renderSettings();
 		std::invoke(callback, settings);
 		setRenderSettings(settings);
@@ -37,8 +35,7 @@ public:
 
 	template <typename T, typename V>
 		requires std::convertible_to<V, T>
-	void setRenderSetting(T RenderSettings::* option, V&& value)
-	{
+	void setRenderSetting(T RenderSettings::* option, V&& value) {
 		RenderSettings settings = renderSettings();
 		settings.*option = std::forward<V>(value);
 		setRenderSettings(settings);

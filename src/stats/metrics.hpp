@@ -15,8 +15,7 @@ namespace stats
 {
 	/// @brief A named number computed from a single mesh, one column in a statistics table.
 	/// To add a statistic, add it to metrics() in metrics.cpp.
-	struct Metric
-	{
+	struct Metric {
 		std::string_view name;
 		std::string_view description;
 		double (*compute)(const Mesh&);

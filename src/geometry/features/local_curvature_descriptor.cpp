@@ -22,16 +22,14 @@ namespace
 
 	// "local quadratic surface to the centroids of a face and its neighboring faces using least-squares regression" -
 	// https://hal.science/hal-00725647/file/3dpvt02.pdf
-	std::optional<Curvatures>
-	estimatePrincipalCurvatures(const std::vector<glm::dvec3>& points, const glm::dvec3& origin, const glm::dvec3& normal, const glm::dvec3& tangent)
-	{
+	std::optional<Curvatures> estimatePrincipalCurvatures(const std::vector<glm::dvec3>& points, const glm::dvec3& origin, const glm::dvec3& normal,
+														  const glm::dvec3& tangent) {
 		const auto bitangent = glm::cross(normal, tangent);
 
 		Eigen::MatrixXd A(points.size(), 6);
 		Eigen::VectorXd b(points.size());
 
-		for (std::size_t i = 0; i < points.size(); ++i)
-		{
+		for (std::size_t i = 0; i < points.size(); ++i) {
 			const auto delta = points[i] - origin;
 
 			const double x = glm::dot(delta, tangent);
@@ -44,8 +42,7 @@ namespace
 
 		const Eigen::VectorXd c = A.colPivHouseholderQr().solve(b);
 
-		if (!c.allFinite())
-		{
+		if (!c.allFinite()) {
 			return std::nullopt;
 		}
 
@@ -75,8 +72,7 @@ namespace
 
 		Eigen::GeneralizedSelfAdjointEigenSolver const solver(II, I);
 
-		if (solver.info() != Eigen::Success)
-		{
+		if (solver.info() != Eigen::Success) {
 			return std::nullopt;
 		}
 
@@ -87,13 +83,10 @@ namespace
 
 	// From https://hal.science/hal-00725647/file/3dpvt02.pdf
 	// Even though the paper says this function returns in range [0,1] this is not true. It can return up to -1, making the range [-1,1]
-	std::optional<double> calculateCurvatureIndex(const double k1, const double k2)
-	{
+	std::optional<double> calculateCurvatureIndex(const double k1, const double k2) {
 		const double denominator = k1 - k2;
-		if (std::abs(denominator) < eps)
-		{
-			if (std::abs(k1) < eps)
-			{
+		if (std::abs(denominator) < eps) {
+			if (std::abs(k1) < eps) {
 				return std::nullopt;
 			}
 			return std::copysign(1.0, k1);
@@ -105,13 +98,11 @@ namespace
 
 namespace mesh::features::local_curvature_descriptor
 {
-	std::vector<std::optional<Curvatures>> calcPrincipalCurvatures(const Mesh& mesh, const size_t maxDepth)
-	{
+	std::vector<std::optional<Curvatures>> calcPrincipalCurvatures(const Mesh& mesh, const size_t maxDepth) {
 		const auto& positions = mesh.positions();
 		const auto& faces = mesh.faces().list();
 
-		if (mesh.faceType() != FaceSet::FaceType::TRI || faces.empty())
-		{
+		if (mesh.faceType() != FaceSet::FaceType::TRI || faces.empty()) {
 			return {};
 		}
 
@@ -121,8 +112,7 @@ namespace mesh::features::local_curvature_descriptor
 		std::vector<glm::dvec3> centroids(numFaces);
 		std::vector<glm::dvec3> normals(numFaces);
 
-		for (std::size_t f = 0; f < numFaces; ++f)
-		{
+		for (std::size_t f = 0; f < numFaces; ++f) {
 			const auto& face = faces[f];
 
 			const glm::dvec3 a = positions[face[0]];
@@ -149,8 +139,7 @@ namespace mesh::features::local_curvature_descriptor
 		neighborhood.reserve(std::min(numFaces, std::size_t{512}));
 		points.reserve(std::min(numFaces, std::size_t{512}));
 
-		for (std::size_t f = 0; f < numFaces; ++f)
-		{
+		for (std::size_t f = 0; f < numFaces; ++f) {
 			if (glm::length(normals[f]) < eps)
 				continue;
 
@@ -160,17 +149,14 @@ namespace mesh::features::local_curvature_descriptor
 			depth[f] = 0;
 
 			// Find the face neighborhood using BFS.
-			for (std::size_t i = 0; i < neighborhood.size(); ++i)
-			{
+			for (std::size_t i = 0; i < neighborhood.size(); ++i) {
 				const auto current = neighborhood[i];
 
 				if (depth[current] >= maxDepth)
 					continue;
 
-				for (const auto neighbor : adjacency[current])
-				{
-					if (visitedGeneration[neighbor] == f + 1)
-					{
+				for (const auto neighbor : adjacency[current]) {
+					if (visitedGeneration[neighbor] == f + 1) {
 						continue;
 					}
 
@@ -201,8 +187,7 @@ namespace mesh::features::local_curvature_descriptor
 
 			const double edgeLength = glm::length(projectedEdge);
 
-			if (edgeLength < eps)
-			{
+			if (edgeLength < eps) {
 				continue;
 			}
 
@@ -213,17 +198,14 @@ namespace mesh::features::local_curvature_descriptor
 	}
 
 	template <typename Projection>
-	std::vector<float> principalCurvatureFaceValues(const Mesh& mesh, const size_t depth, Projection projection, const bool normalize = true)
-	{
+	std::vector<float> principalCurvatureFaceValues(const Mesh& mesh, const size_t depth, Projection projection, const bool normalize = true) {
 		std::vector<float> values;
 		values.reserve(mesh.numFaces());
 		const float invalid = std::numeric_limits<float>::quiet_NaN();
 		double maxCurvature = 0.0;
 
-		for (const auto& candidates : calcPrincipalCurvatures(mesh, depth))
-		{
-			if (!candidates.has_value())
-			{
+		for (const auto& candidates : calcPrincipalCurvatures(mesh, depth)) {
+			if (!candidates.has_value()) {
 				values.push_back(invalid);
 				continue;
 			}
@@ -231,8 +213,7 @@ namespace mesh::features::local_curvature_descriptor
 			auto [k1, k2] = *candidates;
 			const std::optional<double> value = projection(k1, k2);
 
-			if (!value.has_value() || !std::isfinite(*value))
-			{
+			if (!value.has_value() || !std::isfinite(*value)) {
 				values.push_back(invalid);
 				continue;
 			}
@@ -241,10 +222,8 @@ namespace mesh::features::local_curvature_descriptor
 			maxCurvature = std::max(maxCurvature, std::abs(*value));
 		}
 
-		if (maxCurvature > 0.0 && normalize)
-		{
-			for (auto& value : values)
-			{
+		if (maxCurvature > 0.0 && normalize) {
+			for (auto& value : values) {
 				if (std::isfinite(value))
 					value /= static_cast<float>(maxCurvature);
 			}
@@ -252,16 +231,15 @@ namespace mesh::features::local_curvature_descriptor
 		return values;
 	}
 
-	std::vector<float> curvatureIndex(const Mesh& mesh, const size_t radius, const size_t numBins)
-	{
+	std::vector<float> curvatureIndex(const Mesh& mesh, const size_t radius, const size_t numBins) {
 		std::vector histogram(numBins, 0.0F);
 
 		const auto values = principalCurvatureFaceValues(mesh, radius, [](double k1, double k2) { return calculateCurvatureIndex(k1, k2); }, false);
 
 		size_t valid = 0;
-		for (const auto value : values)
-		{
-			if (!std::isfinite(value)) continue;
+		for (const auto value : values) {
+			if (!std::isfinite(value))
+				continue;
 			const double normalized = (value + 1.0) * 0.5;
 			const auto bin = std::min(static_cast<std::size_t>(normalized * numBins), numBins - 1);
 
@@ -269,8 +247,7 @@ namespace mesh::features::local_curvature_descriptor
 			valid++;
 		}
 
-		if (!values.empty())
-		{
+		if (!values.empty()) {
 			for (auto& bin : histogram)
 				bin /= static_cast<float>(valid);
 		}
@@ -278,28 +255,24 @@ namespace mesh::features::local_curvature_descriptor
 		return histogram;
 	}
 
-	std::vector<float> minCurvatureFaceValues(const Mesh& mesh, const size_t radius)
-	{
+	std::vector<float> minCurvatureFaceValues(const Mesh& mesh, const size_t radius) {
 		return principalCurvatureFaceValues(mesh, radius, [](double k1, double _) { return abs(k1); });
 	}
 
-	std::vector<float> maxCurvatureFaceValues(const Mesh& mesh, const size_t radius)
-	{
+	std::vector<float> maxCurvatureFaceValues(const Mesh& mesh, const size_t radius) {
 		return principalCurvatureFaceValues(mesh, radius, [](double _, double k2) { return abs(k2); });
 	}
 
-	std::vector<float> curvatureIndexFaceValues(const Mesh& mesh, const size_t radius)
-	{
+	std::vector<float> curvatureIndexFaceValues(const Mesh& mesh, const size_t radius) {
 		return principalCurvatureFaceValues(
 			mesh, radius,
-			[](double k1, double k2)
-			{
+			[](double k1, double k2) {
 				const auto value = calculateCurvatureIndex(k1, k2);
-				if (value.has_value())
-				{
+				if (value.has_value()) {
 					return std::make_optional((*value + 1.0) * 0.5);
 				}
 				return value;
-			}, false);
+			},
+			false);
 	}
 } // namespace mesh::features::local_curvature_descriptor

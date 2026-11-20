@@ -6,8 +6,7 @@
 #include "gpumesh.h"
 #include "shaderprogram.h"
 
-struct RenderSettings
-{
+struct RenderSettings {
 	bool showSurface = true;
 	bool showEdges = false;
 	bool showAxes = false;
@@ -21,8 +20,7 @@ struct RenderSettings
 	QVector3D edgeColor = QVector3D(0.05F, 0.06F, 0.08F);
 };
 
-class MeshRenderer : protected QOpenGLFunctions
-{
+class MeshRenderer : protected QOpenGLFunctions {
 public:
 	static std::optional<MeshRenderer> init();
 

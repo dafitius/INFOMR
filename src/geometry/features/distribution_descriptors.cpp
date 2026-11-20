@@ -9,15 +9,13 @@ namespace
 {
 	constexpr std::size_t MAX_SAMPLES = 100'000;
 
-	std::mt19937& randomEngine()
-	{
+	std::mt19937& randomEngine() {
 		static thread_local std::mt19937 rng{std::random_device{}()};
 		return rng;
 	}
 
 	template <typename Range>
-	std::vector<glm::vec3> sampleVertices(const Range& vertices, std::size_t count = MAX_SAMPLES)
-	{
+	std::vector<glm::vec3> sampleVertices(const Range& vertices, std::size_t count = MAX_SAMPLES) {
 		std::vector<glm::vec3> result;
 		result.reserve(std::min(count, vertices.size()));
 
@@ -29,8 +27,7 @@ namespace
 
 	/// Samples points as described by ACM Transactions on Graphics Volume 21, Issue 4: Shape distributions
 	template <std::size_t N = MAX_SAMPLES>
-	auto samplePoints(const Mesh& mesh)
-	{
+	auto samplePoints(const Mesh& mesh) {
 		const auto& cumulative = mesh.cumulativeFaceAreas();
 		const auto& positions = mesh.positions();
 		const auto& faces = mesh.faces().list();
@@ -39,11 +36,11 @@ namespace
 		std::uniform_real_distribution areaPick(0.0, cumulative.back());
 		std::uniform_real_distribution unit(0.0f, 1.0f);
 
-		const auto triangleArea = [](const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
-		{ return 0.5 * glm::length(glm::cross(b - a, c - a)); };
+		const auto triangleArea = [](const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
+			return 0.5 * glm::length(glm::cross(b - a, c - a));
+		};
 
-		const auto sample = [&]
-		{
+		const auto sample = [&] {
 			// "we select a face with probability proportional to its area."
 			const double r = areaPick(rng);
 			const auto faceIndex = std::min<std::size_t>(std::ranges::upper_bound(cumulative, r) - cumulative.begin(), cumulative.size() - 1);
@@ -51,11 +48,9 @@ namespace
 
 			double remaining = r - ((faceIndex != 0u) ? cumulative[faceIndex - 1] : 0.0);
 			std::size_t k = 1;
-			for (; k + 2 < face.size(); ++k)
-			{
+			for (; k + 2 < face.size(); ++k) {
 				const double area = triangleArea(positions[face[0]], positions[face[k]], positions[face[k + 1]]);
-				if (remaining < area)
-				{
+				if (remaining < area) {
 					break;
 				}
 				remaining -= area;
@@ -67,12 +62,9 @@ namespace
 			return (1.0f - sqrtR1) * positions[face[0]] + sqrtR1 * (1.0f - r2) * positions[face[k]] + sqrtR1 * r2 * positions[face[k + 1]];
 		};
 
-		if constexpr (N == 1)
-		{
+		if constexpr (N == 1) {
 			return sample();
-		}
-		else
-		{
+		} else {
 			std::vector<glm::vec3> result(N);
 			for (auto& p : result)
 				p = sample();
@@ -81,14 +73,10 @@ namespace
 	}
 
 	template <std::size_t M = 1, std::size_t N = MAX_SAMPLES>
-	auto samplePointSets(const Mesh& mesh)
-	{
-		if constexpr (N == 1)
-		{
+	auto samplePointSets(const Mesh& mesh) {
+		if constexpr (N == 1) {
 			return samplePoints<N>(mesh);
-		}
-		else
-		{
+		} else {
 			std::array<std::vector<glm::vec3>, M> result;
 			for (auto& p : result)
 				p = samplePoints<N>(mesh);
@@ -100,16 +88,14 @@ namespace
 
 namespace mesh::features::distribution_descriptors
 {
-	void seedSampling(const std::uint32_t seed)
-	{
+	void seedSampling(const std::uint32_t seed) {
 		randomEngine().seed(seed);
 	}
 
 	/// @brief A3: angle between 3 random vertices
 	/// @param mesh
 	/// @return
-	std::vector<float> A3(const Mesh& mesh)
-	{
+	std::vector<float> A3(const Mesh& mesh) {
 		const auto verts = mesh.positions();
 		if (verts.size() < 3)
 			return {};
@@ -121,8 +107,7 @@ namespace mesh::features::distribution_descriptors
 		std::vector<float> result;
 		result.reserve(count);
 
-		for (std::size_t i = 0; i < count; ++i)
-		{
+		for (std::size_t i = 0; i < count; ++i) {
 			const glm::vec3 ab = b[i] - a[i];
 			const glm::vec3 ac = c[i] - a[i];
 
@@ -144,8 +129,7 @@ namespace mesh::features::distribution_descriptors
 	/// @brief D1: distance between barycenter and random vertex. Assumes mesh is centered
 	/// @param mesh
 	/// @return
-	std::vector<float> D1(const Mesh& mesh)
-	{
+	std::vector<float> D1(const Mesh& mesh) {
 		auto verts = mesh.positions();
 		if (verts.empty())
 			return {};
@@ -164,8 +148,7 @@ namespace mesh::features::distribution_descriptors
 	/// @brief D2: distance between 2 random vertices
 	/// @param mesh
 	/// @return
-	std::vector<float> D2(const Mesh& mesh)
-	{
+	std::vector<float> D2(const Mesh& mesh) {
 		const auto verts = mesh.positions();
 		if (verts.size() < 2)
 			return {};
@@ -186,8 +169,7 @@ namespace mesh::features::distribution_descriptors
 	/// @brief D3: square root of area of triangle given by 3 random vertices
 	/// @param mesh
 	/// @return
-	std::vector<float> D3(const Mesh& mesh)
-	{
+	std::vector<float> D3(const Mesh& mesh) {
 		const auto verts = mesh.positions();
 		if (verts.size() < 3)
 			return {};
@@ -199,8 +181,7 @@ namespace mesh::features::distribution_descriptors
 		std::vector<float> result;
 		result.reserve(count);
 
-		for (std::size_t i = 0; i < count; ++i)
-		{
+		for (std::size_t i = 0; i < count; ++i) {
 			const glm::vec3 ab = b[i] - a[i];
 			const glm::vec3 ac = c[i] - a[i];
 
@@ -214,8 +195,7 @@ namespace mesh::features::distribution_descriptors
 	/// @brief D4: cube root of volume of tetrahedron formed by 4 random vertices
 	/// @param mesh
 	/// @return
-	std::vector<float> D4(const Mesh& mesh)
-	{
+	std::vector<float> D4(const Mesh& mesh) {
 		const auto verts = mesh.positions();
 		if (verts.size() < 4)
 			return {};
@@ -227,8 +207,7 @@ namespace mesh::features::distribution_descriptors
 		std::vector<float> result;
 		result.reserve(count);
 
-		for (std::size_t i = 0; i < count; ++i)
-		{
+		for (std::size_t i = 0; i < count; ++i) {
 			// https://stackoverflow.com/questions/9866452/calculate-volume-of-any-tetrahedron-given-4-points
 			const glm::vec3 ad = a[i] - d[i];
 			const glm::vec3 bd = b[i] - d[i];
@@ -242,4 +221,4 @@ namespace mesh::features::distribution_descriptors
 
 		return result;
 	}
-} // namespace mesh::features::property_descriptors
+} // namespace mesh::features::distribution_descriptors

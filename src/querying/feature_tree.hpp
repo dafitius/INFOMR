@@ -14,14 +14,9 @@
 
 namespace querying
 {
-	enum class TreeMetric
-	{
-		L1,
-		L2
-	};
+	enum class TreeMetric { L1, L2 };
 
-	class FeatureTree
-	{
+	class FeatureTree {
 	public:
 		FeatureTree(const std::vector<StoredShape>& shapes, std::vector<double> weights, TreeMetric metric, bool withHistograms);
 		~FeatureTree();

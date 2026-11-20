@@ -6,8 +6,7 @@
 
 class Mesh;
 
-GpuMesh::GpuMesh(const Mesh& mesh)
-{
+GpuMesh::GpuMesh(const Mesh& mesh) {
 	axisLength_ = std::max(mesh.bounds().radius(), 1e-3F) * 1.25F;
 
 	triangleMesh_.allocate(&GlObject::index_, mesh.triangleIndices());
@@ -44,13 +43,11 @@ GpuMesh::GpuMesh(const Mesh& mesh)
 
 GpuMesh::~GpuMesh() = default;
 
-float GpuMesh::axisLength() const
-{
+float GpuMesh::axisLength() const {
 	return axisLength_;
 }
 
-std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateGrid()
-{
+std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateGrid() {
 	constexpr size_t halfCells = 100;
 	constexpr float cellSize = .1;
 
@@ -62,8 +59,7 @@ std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateGrid()
 	debugGridVertices.reserve(((2 * halfCells) + 1) * 2 * 2 * 3);
 	debugGridIndices.reserve(((2 * halfCells) + 1) * 2 * 2);
 
-	for (auto i = -static_cast<int>(halfCells); i <= static_cast<int>(halfCells); ++i)
-	{
+	for (auto i = -static_cast<int>(halfCells); i <= static_cast<int>(halfCells); ++i) {
 		const float vPos = static_cast<float>(i) * cellSize;
 
 		const auto baseA = static_cast<std::uint32_t>(debugGridVertices.size() / 3);
@@ -80,8 +76,7 @@ std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateGrid()
 	return std::make_pair(debugGridIndices, debugGridVertices);
 }
 
-std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateNormals(const Mesh& mesh, const float length)
-{
+std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateNormals(const Mesh& mesh, const float length) {
 	const auto positions = mesh.positions();
 	const auto normals = mesh.normals();
 	const std::size_t vertexCount = positions.size();
@@ -91,8 +86,7 @@ std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateNormals(co
 	vertices.reserve(vertexCount * 2 * 3);
 	indices.reserve(vertexCount * 2);
 
-	for (auto&& [pos, vertex] : std::views::zip(positions, normals) | std::views::enumerate)
-	{
+	for (auto&& [pos, vertex] : std::views::zip(positions, normals) | std::views::enumerate) {
 		auto&& [position, normal] = vertex;
 
 		auto start = position;
@@ -107,8 +101,7 @@ std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateNormals(co
 	return std::make_pair(indices, vertices);
 }
 
-std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateBoundaryEdges(const Mesh& mesh)
-{
+std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateBoundaryEdges(const Mesh& mesh) {
 	const auto edges = mesh.boundaryEdges();
 	const auto positions = mesh.positions();
 
@@ -118,8 +111,7 @@ std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateBoundaryEd
 	vertices.reserve(edges.size() * 6);
 	indices.reserve(edges.size() * 2);
 
-	for (auto&& [pos, edge] : edges | std::views::enumerate)
-	{
+	for (auto&& [pos, edge] : edges | std::views::enumerate) {
 		const auto [left, right] = edge;
 
 		const auto start = positions[left];
@@ -134,30 +126,27 @@ std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateBoundaryEd
 	return std::make_pair(indices, vertices);
 }
 
-std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateBoundingBox(const Mesh& mesh)
-{
+std::pair<std::vector<uint32_t>, std::vector<float>> GpuMesh::generateBoundingBox(const Mesh& mesh) {
 	const auto& [min, max] = mesh.bounds();
-	const std::vector boundingBoxVertices = {min.x, min.y, min.z, max.x, min.y, min.z, max.x, max.y, min.z, min.x, max.y, min.z,
-											 min.x, min.y, max.z, max.x, min.y, max.z, max.x, max.y, max.z, min.x, max.y, max.z,};
+	const std::vector boundingBoxVertices = {
+		min.x, min.y, min.z, max.x, min.y, min.z, max.x, max.y, min.z, min.x, max.y, min.z,
+		min.x, min.y, max.z, max.x, min.y, max.z, max.x, max.y, max.z, min.x, max.y, max.z,
+	};
 	const std::vector<std::uint32_t> boundingBoxIndices = {0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7};
 	return std::make_pair(boundingBoxIndices, boundingBoxVertices);
 }
 
-std::vector<uint32_t> GpuMesh::generateHullEdges(const Mesh& mesh)
-{
+std::vector<uint32_t> GpuMesh::generateHullEdges(const Mesh& mesh) {
 	const auto hull = mesh.convexHull();
-	if (!hull.has_value())
-	{
+	if (!hull.has_value()) {
 		return std::vector<uint32_t>();
 	}
 
 	const auto faces = hull->faceList();
 
 	std::vector<std::uint32_t> indices;
-	for (const auto face : faces.all())
-	{
-		for (size_t i = 0; i < face.size(); ++i)
-		{
+	for (const auto face : faces.all()) {
+		for (size_t i = 0; i < face.size(); ++i) {
 			indices.push_back(static_cast<std::uint32_t>(face[i]));
 			indices.push_back(static_cast<std::uint32_t>(face[(i + 1) % face.size()]));
 		}
@@ -166,11 +155,8 @@ std::vector<uint32_t> GpuMesh::generateHullEdges(const Mesh& mesh)
 	return indices;
 }
 
-std::vector<float> GpuMesh::generateAxis()
-{
+std::vector<float> GpuMesh::generateAxis() {
 	return {
-		-1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F,
-		0.0F, -1.0F, 0.0F, 0.0F, 1.0F, 0.0F,
-		0.0F, 0.0F, -1.0F, 0.0F, 0.0F, 1.0F,
+		-1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, -1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, -1.0F, 0.0F, 0.0F, 1.0F,
 	};
 }

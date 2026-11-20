@@ -22,17 +22,17 @@ BinPackParameters: true
 BinPackArguments: true
 
 # Brace Wrapping
-AlignAfterOpenBracket: AlwaysBreak
+AlignAfterOpenBracket: true
 BraceWrapping:
-  AfterClass: true
-  AfterEnum: true
-  AfterFunction: true
+  AfterClass: false
+  AfterEnum: false
+  AfterFunction: false
   AfterNamespace: true
   AfterObjCDeclaration: true
-  AfterStruct: true
-  AfterUnion: true
+  AfterStruct: false
+  AfterUnion: false
   BeforeCatch: true
-  BeforeElse: true
+  BeforeElse: false
   IndentBraces: false
   SplitEmptyFunction: true
   SplitEmptyRecord: true
@@ -44,7 +44,7 @@ AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
 BreakBeforeBinaryOperators: None
-BreakBeforeBraces: Allman
+BreakBeforeBraces: Custom
 BreakBeforeInheritanceComma: true
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializersBeforeComma: false

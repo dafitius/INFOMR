@@ -7,20 +7,15 @@
 
 BrowserCard::BrowserCard(const QString& name, const std::filesystem::path& meshSource, QWidget* parent)
 	: QFrame(parent)
-	, meshName(name)
-{
-	if (meshSource.extension() == ".obj")
-	{
+	, meshName(name) {
+	if (meshSource.extension() == ".obj") {
 		object.emplace(*Mesh::fromObj(meshSource));
-	}
-	else
-	{
+	} else {
 		std::cerr << "Unsupported mesh format: " << meshSource.extension() << '\n';
 		return;
 	}
 
-	if (!object)
-	{
+	if (!object) {
 		std::cerr << "Failed to load mesh: " << meshSource << '\n';
 		return;
 	}
@@ -30,8 +25,7 @@ BrowserCard::BrowserCard(const QString& name, const std::filesystem::path& meshS
 
 BrowserCard::~BrowserCard() {}
 
-void BrowserCard::setupUI()
-{
+void BrowserCard::setupUI() {
 	setObjectName("BrowserCard");
 	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
@@ -76,19 +70,15 @@ void BrowserCard::setupUI()
 	connect(inspectBtn, &QPushButton::clicked, this, [this] { emit meshClicked(meshName); });
 }
 
-void BrowserCard::setPreviewActive(bool active)
-{
-	if (active && !preview_)
-	{
+void BrowserCard::setPreviewActive(bool active) {
+	if (active && !preview_) {
 		delete activatePreviewButton_;
 		activatePreviewButton_ = nullptr;
 		preview_ = new MeshPreview(object->vertexPositionBuffer(), object->triangleIndices(), previewHost_);
 		preview_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 		preview_->setMinimumHeight(180);
 		previewLayout_->addWidget(preview_);
-	}
-	else if (!active && preview_)
-	{
+	} else if (!active && preview_) {
 		previewLayout_->removeWidget(preview_);
 
 		delete preview_;

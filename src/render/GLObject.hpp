@@ -8,8 +8,7 @@
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
 
-class GlObject : protected QOpenGLFunctions
-{
+class GlObject : protected QOpenGLFunctions {
 public:
 	QOpenGLBuffer vertex_ = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
 	QOpenGLBuffer index_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
@@ -19,20 +18,17 @@ private:
 	GLsizei indexCount_ = 0;
 
 public:
-	GlObject()
-	{
+	GlObject() {
 		initializeOpenGLFunctions();
 		vao_.create();
 	};
 
-	[[nodiscard]] GLsizei indexCount() const
-	{
+	[[nodiscard]] GLsizei indexCount() const {
 		return indexCount_;
 	}
 
 	template <typename Func_>
-	void bound(Func_ func)
-	{
+	void bound(Func_ func) {
 		vao_.bind();
 		func();
 		vao_.release();
@@ -40,10 +36,8 @@ public:
 
 	template <typename B, typename T>
 		requires std::convertible_to<B, QOpenGLBuffer>
-	void allocate(B GlObject::* bufferType, const std::span<T> data)
-	{
-		if (bufferType == &GlObject::index_)
-		{
+	void allocate(B GlObject::* bufferType, const std::span<T> data) {
+		if (bufferType == &GlObject::index_) {
 			indexCount_ = static_cast<int>(data.size());
 		}
 		QOpenGLBuffer& buffer = this->*bufferType;
@@ -56,17 +50,14 @@ public:
 
 	template <typename B, typename T>
 		requires std::convertible_to<B, QOpenGLBuffer>
-	void allocate(B GlObject::* bufferType, const std::vector<T>& data)
-	{
+	void allocate(B GlObject::* bufferType, const std::vector<T>& data) {
 		allocate(bufferType, std::span{data});
 	}
 
 	template <typename B>
 		requires std::convertible_to<B, QOpenGLBuffer>
-	void allocate(B GlObject::* bufferType, GlObject& other)
-	{
-		if (bufferType == &GlObject::index_)
-		{
+	void allocate(B GlObject::* bufferType, GlObject& other) {
+		if (bufferType == &GlObject::index_) {
 			indexCount_ = other.indexCount();
 		}
 		QOpenGLBuffer& buffer = this->*bufferType;
@@ -75,16 +66,13 @@ public:
 		configureVertexArrayObject();
 	}
 
-	void configureVertexArrayObject()
-	{
-		this->bound(
-			[&]
-			{
-				vertex_.bind();
-				glEnableVertexAttribArray(0);
-				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
-				index_.bind();
-			});
+	void configureVertexArrayObject() {
+		this->bound([&] {
+			vertex_.bind();
+			glEnableVertexAttribArray(0);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+			index_.bind();
+		});
 
 		vertex_.release();
 		index_.release();

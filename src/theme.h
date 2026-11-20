@@ -7,14 +7,9 @@
 
 namespace theme
 {
-	enum class Mode
-	{
-		Dark,
-		Light
-	};
+	enum class Mode { Dark, Light };
 
-	struct Colors
-	{
+	struct Colors {
 		QColor window;
 		QColor windowText;
 		QColor base;
@@ -41,10 +36,8 @@ namespace theme
 		QColor primaryHover;
 	};
 
-	inline Colors colors(Mode mode)
-	{
-		if (mode == Mode::Dark)
-		{
+	inline Colors colors(Mode mode) {
+		if (mode == Mode::Dark) {
 			return {
 				QColor("#111318"), // window
 				QColor("#E6EAF0"), // windowText
@@ -101,8 +94,7 @@ namespace theme
 		};
 	}
 
-	inline void apply(QApplication& app, const Mode mode)
-	{
+	inline void apply(QApplication& app, const Mode mode) {
 		const auto colorMode = colors(mode);
 		QApplication::setStyle(QStyleFactory::create("Fusion"));
 

@@ -3,18 +3,14 @@
 #include <QOpenGLShaderProgram>
 #include <QString>
 
-class ShaderProgram
-{
+class ShaderProgram {
 public:
 	ShaderProgram();
 
 	ShaderProgram(ShaderProgram&& other) noexcept
-		: program_(std::move(other.program_))
-	{
-	}
+		: program_(std::move(other.program_)) {}
 
-	ShaderProgram& operator=(ShaderProgram&& other) noexcept
-	{
+	ShaderProgram& operator=(ShaderProgram&& other) noexcept {
 		if (this == &other)
 			return *this;
 		program_ = std::move(other.program_);

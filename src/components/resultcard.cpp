@@ -7,8 +7,7 @@
 #include <iostream>
 
 ResultCard::ResultCard(const QString& name, const std::filesystem::path& meshSource, const QString& subtitle, QWidget* parent)
-	: QFrame(parent)
-{
+	: QFrame(parent) {
 	if (const auto loaded = Mesh::fromObj(meshSource))
 		mesh_.emplace(*loaded);
 	else
@@ -19,13 +18,11 @@ ResultCard::ResultCard(const QString& name, const std::filesystem::path& meshSou
 
 ResultCard::ResultCard(const QString& name, const Mesh& mesh, const QString& subtitle, QWidget* parent)
 	: QFrame(parent)
-	, mesh_(mesh)
-{
+	, mesh_(mesh) {
 	setupUI(name, subtitle);
 }
 
-void ResultCard::setupUI(const QString& name, const QString& subtitle)
-{
+void ResultCard::setupUI(const QString& name, const QString& subtitle) {
 	setObjectName("resultCard");
 	setFrameShape(QFrame::StyledPanel);
 	setMinimumWidth(250);
@@ -40,8 +37,7 @@ void ResultCard::setupUI(const QString& name, const QString& subtitle)
 	title->setObjectName("cardTitle");
 	layout->addWidget(title);
 
-	if (mesh_)
-	{
+	if (mesh_) {
 		auto* preview = new MeshPreview(mesh_->vertexPositionBuffer(), mesh_->triangleIndices(), this);
 		preview->setMinimumHeight(180);
 		layout->addWidget(preview, 1);
@@ -49,9 +45,7 @@ void ResultCard::setupUI(const QString& name, const QString& subtitle)
 		auto* stats = new QLabel(QString("Vertices: %1 | Faces: %2").arg(mesh_->numVertices()).arg(mesh_->numFaces()), this);
 		stats->setObjectName("cardSubtitle");
 		layout->addWidget(stats);
-	}
-	else
-	{
+	} else {
 		auto* error = new QLabel("Preview unavailable", this);
 		error->setMinimumHeight(180);
 		error->setAlignment(Qt::AlignCenter);

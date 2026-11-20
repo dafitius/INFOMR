@@ -8,15 +8,13 @@
 namespace mesh::features::global_descriptors
 {
 
-	float surfaceArea(const Mesh& mesh)
-	{
+	float surfaceArea(const Mesh& mesh) {
 		auto faces = mesh.faces().list();
 		auto vertices = mesh.positions();
 
 		float sum = 0.0;
 
-		for (size_t i = 0; i < faces.size(); i++)
-		{
+		for (size_t i = 0; i < faces.size(); i++) {
 			auto face = faces[i];
 			glm::vec3 corner = vertices[face[0]];
 			glm::vec3 a = vertices[face[1]] - corner;
@@ -28,14 +26,12 @@ namespace mesh::features::global_descriptors
 		return sum / 2.0F;
 	}
 
-	float volume(const Mesh& mesh)
-	{
+	float volume(const Mesh& mesh) {
 		auto faces = mesh.faces().list();
 		auto verts = mesh.positions();
 		float sum = 0;
 
-		for (size_t i = 0; i < faces.size(); i++)
-		{
+		for (size_t i = 0; i < faces.size(); i++) {
 			auto face = faces[i];
 			if (face.size() != 3)
 				std::cerr << "Contains non-triangle faces" << std::endl;
@@ -49,8 +45,7 @@ namespace mesh::features::global_descriptors
 		return std::abs(sum);
 	}
 
-	float sphericity(const Mesh& mesh)
-	{
+	float sphericity(const Mesh& mesh) {
 		auto vol = volume(mesh);
 		auto area = surfaceArea(mesh);
 		if (vol == 0 || area == 0)
@@ -61,32 +56,26 @@ namespace mesh::features::global_descriptors
 		return c;
 	}
 
-	float compactness(const Mesh& mesh)
-	{
+	float compactness(const Mesh& mesh) {
 		return sphericity(mesh);
 	}
 
-	float rectangularity(const Mesh& mesh)
-	{
+	float rectangularity(const Mesh& mesh) {
 		auto vol = volume(mesh);
 		auto obbVolume = mesh.bounds().volume();
 		return obbVolume == 0.0F ? 0.0F : vol / obbVolume;
 	}
 
-	float diameter(const Mesh& mesh)
-	{
+	float diameter(const Mesh& mesh) {
 		auto convexHull = mesh.convexHull()->toMesh();
 		float max = 0;
 		auto points = convexHull.positions();
-		for (size_t i = 0; i < points.size(); i++)
-		{
+		for (size_t i = 0; i < points.size(); i++) {
 			auto pointA = points[i];
-			for (size_t j = points.size() - 1; i < j; j--)
-			{
+			for (size_t j = points.size() - 1; i < j; j--) {
 				auto pointB = points[j];
 				auto dist = glm::length2(pointA - pointB);
-				if (dist > max)
-				{
+				if (dist > max) {
 					max = dist;
 				}
 			}
@@ -95,8 +84,7 @@ namespace mesh::features::global_descriptors
 		return std::sqrt(max);
 	}
 
-	float convexity(const Mesh& mesh)
-	{
+	float convexity(const Mesh& mesh) {
 		auto vol = volume(mesh);
 		auto convexHull = mesh.convexHull();
 		if (!convexHull)
@@ -108,8 +96,7 @@ namespace mesh::features::global_descriptors
 		return hullVolume == 0.0F ? 0.0F : vol / hullVolume;
 	}
 
-	float eccentricity(const Mesh& mesh)
-	{
+	float eccentricity(const Mesh& mesh) {
 		auto vals = mesh.eigenValues();
 		return vals[0] / vals[2];
 	}
@@ -117,8 +104,7 @@ namespace mesh::features::global_descriptors
 	/// @brief Assumes tris and centered mesh
 	/// @param face
 	/// @return Volume of a single triangle
-	float signedVolumeOfTriangle(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3)
-	{
+	float signedVolumeOfTriangle(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3) {
 		auto v321 = p3.x * p2.y * p1.z;
 		auto v231 = p2.x * p3.y * p1.z;
 		auto v312 = p3.x * p1.y * p2.z;

@@ -17,8 +17,7 @@ namespace mesh
 {
 	/// @brief A named mesh operation that can be used as a pipeline step.
 	/// To make a new operation available everywhere (statistics page, CSV labels), add it to operations() in pipeline.cpp.
-	struct Operation
-	{
+	struct Operation {
 		std::string_view name;
 		std::string_view description;
 		Mesh (*apply)(const Mesh&);
@@ -28,8 +27,7 @@ namespace mesh
 	[[nodiscard]] std::optional<Operation> findOperation(std::string_view name);
 
 	/// @brief An ordered list of operations, applied one after the other, e.g. "scale_to_unit > fill_holes"
-	class Pipeline
-	{
+	class Pipeline {
 	public:
 		static constexpr std::string_view separator = " > ";
 		static constexpr std::string_view emptyLabel = "raw";
@@ -37,26 +35,21 @@ namespace mesh
 		Pipeline() = default;
 
 		explicit Pipeline(std::vector<Operation> steps)
-			: steps_(std::move(steps))
-		{
-		}
+			: steps_(std::move(steps)) {}
 
 		/// @brief Parses a label as produced by label(), operation names separated by '>'
 		/// @return nullopt if one of the names is not a known operation
 		[[nodiscard]] static std::optional<Pipeline> parse(std::string_view text);
 
-		void add(const Operation& operation)
-		{
+		void add(const Operation& operation) {
 			steps_.push_back(operation);
 		}
 
-		[[nodiscard]] std::span<const Operation> steps() const
-		{
+		[[nodiscard]] std::span<const Operation> steps() const {
 			return steps_;
 		}
 
-		[[nodiscard]] bool empty() const
-		{
+		[[nodiscard]] bool empty() const {
 			return steps_.empty();
 		}
 

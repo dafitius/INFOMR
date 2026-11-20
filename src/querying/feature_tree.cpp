@@ -11,24 +11,20 @@ namespace querying
 {
 	namespace
 	{
-		struct PointCloud
-		{
+		struct PointCloud {
 			std::size_t dimensions = 0;
 			std::vector<double> values;
 
-			[[nodiscard]] std::size_t kdtree_get_point_count() const
-			{
+			[[nodiscard]] std::size_t kdtree_get_point_count() const {
 				return dimensions == 0 ? 0 : values.size() / dimensions;
 			}
 
-			[[nodiscard]] double kdtree_get_pt(const std::size_t index, const std::size_t dimension) const
-			{
+			[[nodiscard]] double kdtree_get_pt(const std::size_t index, const std::size_t dimension) const {
 				return values[index * dimensions + dimension];
 			}
 
 			template <class BoundingBox>
-			bool kdtree_get_bbox(BoundingBox& /*box*/) const
-			{
+			bool kdtree_get_bbox(BoundingBox& /*box*/) const {
 				return false;
 			}
 		};
@@ -39,8 +35,7 @@ namespace querying
 		constexpr std::size_t cumulativeBinCount = histogramBinCount - 1;
 	} // namespace
 
-	struct FeatureTree::Impl
-	{
+	struct FeatureTree::Impl {
 		std::vector<double> weights;
 		TreeMetric metric;
 		bool withHistograms;
@@ -48,8 +43,7 @@ namespace querying
 		std::unique_ptr<L1Index> l1;
 		std::unique_ptr<L2Index> l2;
 
-		[[nodiscard]] std::vector<double> point(const FeatureVector& features) const
-		{
+		[[nodiscard]] std::vector<double> point(const FeatureVector& features) const {
 			const std::size_t histogramCount = withHistograms ? features.histograms.size() : 0;
 
 			double globalWeight = 0.0;
@@ -68,18 +62,15 @@ namespace querying
 			std::vector<double> result;
 			result.reserve(globalFeatureCount + histogramCount * cumulativeBinCount);
 
-			for (std::size_t i = 0; i < globalFeatureCount; ++i)
-			{
+			for (std::size_t i = 0; i < globalFeatureCount; ++i) {
 				const double share = globalGroupShare * featureWeight(weights, i);
 				result.push_back(factor(share) * features.global[i]);
 			}
 
-			for (std::size_t h = 0; h < histogramCount; ++h)
-			{
+			for (std::size_t h = 0; h < histogramCount; ++h) {
 				const double share = histogramGroupShare * featureWeight(weights, globalFeatureCount + h) / cumulativeBinCount;
 				double cumulative = 0.0;
-				for (std::size_t bin = 0; bin < cumulativeBinCount; ++bin)
-				{
+				for (std::size_t bin = 0; bin < cumulativeBinCount; ++bin) {
 					cumulative += features.histograms[h][bin];
 					result.push_back(factor(share) * cumulative);
 				}
@@ -88,15 +79,12 @@ namespace querying
 		}
 	};
 
-	FeatureTree::FeatureTree(
-		const std::vector<StoredShape>& shapes, std::vector<double> weights, const TreeMetric metric, const bool withHistograms)
-		: impl(std::make_unique<Impl>())
-	{
+	FeatureTree::FeatureTree(const std::vector<StoredShape>& shapes, std::vector<double> weights, const TreeMetric metric, const bool withHistograms)
+		: impl(std::make_unique<Impl>()) {
 		impl->weights = std::move(weights);
 		impl->metric = metric;
 		impl->withHistograms = withHistograms;
-		for (const auto& shape : shapes)
-		{
+		for (const auto& shape : shapes) {
 			const auto point = impl->point(shape.features);
 			impl->points.dimensions = point.size();
 			impl->points.values.insert(impl->points.values.end(), point.begin(), point.end());
@@ -111,8 +99,7 @@ namespace querying
 
 	FeatureTree::~FeatureTree() = default;
 
-	std::vector<std::pair<double, std::size_t>> FeatureTree::nearest(const FeatureVector& query, const std::size_t k) const
-	{
+	std::vector<std::pair<double, std::size_t>> FeatureTree::nearest(const FeatureVector& query, const std::size_t k) const {
 		if (k == 0 || impl->points.kdtree_get_point_count() == 0)
 			return {};
 
@@ -124,25 +111,21 @@ namespace querying
 
 		std::vector<std::pair<double, std::size_t>> result;
 		result.reserve(found);
-		for (std::size_t i = 0; i < found; ++i)
-		{
+		for (std::size_t i = 0; i < found; ++i) {
 			result.emplace_back(impl->l2 ? std::sqrt(distances[i]) : distances[i], indices[i]);
 		}
 		return result;
 	}
 
-	const std::vector<double>& FeatureTree::weights() const
-	{
+	const std::vector<double>& FeatureTree::weights() const {
 		return impl->weights;
 	}
 
-	TreeMetric FeatureTree::metric() const
-	{
+	TreeMetric FeatureTree::metric() const {
 		return impl->metric;
 	}
 
-	bool FeatureTree::withHistograms() const
-	{
+	bool FeatureTree::withHistograms() const {
 		return impl->withHistograms;
 	}
 } // namespace querying

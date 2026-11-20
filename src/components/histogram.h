@@ -13,23 +13,18 @@
 #include <utility>
 #include <vector>
 
-struct Sample
-{
+struct Sample {
 	double value = 0.0;
 	std::filesystem::path source;
 
 	Sample(const double value, const std::filesystem::path& source)
 		: value(value)
-		, source(source)
-	{
-	}
+		, source(source) {}
 };
 
-struct Histogram
-{
+struct Histogram {
 	/// @brief Aggregates over the finite sample values
-	struct Summary
-	{
+	struct Summary {
 		size_t count = 0;
 		double min = 0.0;
 		double max = 0.0;
@@ -45,9 +40,7 @@ struct Histogram
 	Histogram(const QString& name, const size_t bucketSize, const QVector<Sample>& samples)
 		: name(name)
 		, bucket_size(bucketSize)
-		, samples(samples)
-	{
-	}
+		, samples(samples) {}
 
 	/// @brief A bucket count that suits the number of samples (square root rule, clamped to [1, maxBuckets])
 	static size_t defaultBucketCount(size_t numSamples, size_t maxBuckets = 200);
@@ -55,13 +48,11 @@ struct Histogram
 	[[nodiscard]] Summary summary() const;
 };
 
-class HistogramView : public QWidget
-{
+class HistogramView : public QWidget {
 	Q_OBJECT
 
 public:
-	enum class Scale : std::uint8_t
-	{
+	enum class Scale : std::uint8_t {
 		Linear,
 		Log,
 	};
@@ -80,8 +71,7 @@ public:
 
 	void setFixedRange(std::optional<std::pair<double, double>> range);
 
-	size_t bucketCount() const
-	{
+	size_t bucketCount() const {
 		return m_bucketCount;
 	}
 
@@ -95,15 +85,13 @@ protected:
 	void leaveEvent(QEvent* event) override;
 
 private:
-	enum class SlotKind : std::uint8_t
-	{
+	enum class SlotKind : std::uint8_t {
 		Below,
 		Bucket,
 		Above,
 	};
 
-	struct BarRef
-	{
+	struct BarRef {
 		size_t slot;
 		size_t series; // 0 for the primary histogram, 1 for the comparison
 

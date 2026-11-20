@@ -17,18 +17,15 @@ namespace
 } // namespace
 
 MeshViewport::MeshViewport(QWidget* parent)
-	: QOpenGLWidget(parent)
-{
+	: QOpenGLWidget(parent) {
 	setFocusPolicy(Qt::StrongFocus);
 }
 
-MeshViewport::~MeshViewport()
-{
+MeshViewport::~MeshViewport() {
 	releaseGpuResources();
 }
 
-void MeshViewport::setMesh(const Mesh& mesh)
-{
+void MeshViewport::setMesh(const Mesh& mesh) {
 	mesh_.emplace(mesh);
 
 	uploadPending_ = true;
@@ -37,13 +34,11 @@ void MeshViewport::setMesh(const Mesh& mesh)
 	resetView();
 }
 
-const std::optional<Mesh> MeshViewport::getMesh()
-{
+const std::optional<Mesh> MeshViewport::getMesh() {
 	return mesh_;
 }
 
-void MeshViewport::runFullPipeline()
-{
+void MeshViewport::runFullPipeline() {
 	if (!mesh_)
 		return;
 
@@ -55,15 +50,13 @@ void MeshViewport::runFullPipeline()
 	resetView();
 }
 
-void MeshViewport::exportMesh()
-{
+void MeshViewport::exportMesh() {
 	if (!mesh_)
 		return;
 	mesh_.value().exportObj("/tmp/testing.obj");
 }
 
-void MeshViewport::orientNormals()
-{
+void MeshViewport::orientNormals() {
 	if (!mesh_)
 		return;
 
@@ -72,8 +65,7 @@ void MeshViewport::orientNormals()
 	update();
 }
 
-void MeshViewport::triangulate()
-{
+void MeshViewport::triangulate() {
 	if (!mesh_)
 		return;
 
@@ -82,8 +74,7 @@ void MeshViewport::triangulate()
 	update();
 }
 
-void MeshViewport::removeNonManifold()
-{
+void MeshViewport::removeNonManifold() {
 	if (!mesh_)
 		return;
 
@@ -92,8 +83,7 @@ void MeshViewport::removeNonManifold()
 	update();
 }
 
-void MeshViewport::fillHoles()
-{
+void MeshViewport::fillHoles() {
 	if (!mesh_)
 		return;
 
@@ -102,8 +92,7 @@ void MeshViewport::fillHoles()
 	update();
 }
 
-void MeshViewport::remesh()
-{
+void MeshViewport::remesh() {
 	if (!mesh_)
 		return;
 
@@ -112,8 +101,7 @@ void MeshViewport::remesh()
 	update();
 }
 
-void MeshViewport::normalizeTranslation()
-{
+void MeshViewport::normalizeTranslation() {
 	if (!mesh_)
 		return;
 
@@ -122,8 +110,7 @@ void MeshViewport::normalizeTranslation()
 	update();
 }
 
-void MeshViewport::normalizeRotation()
-{
+void MeshViewport::normalizeRotation() {
 	if (!mesh_)
 		return;
 
@@ -132,8 +119,7 @@ void MeshViewport::normalizeRotation()
 	update();
 }
 
-void MeshViewport::normalizePose()
-{
+void MeshViewport::normalizePose() {
 	if (!mesh_)
 		return;
 
@@ -142,8 +128,7 @@ void MeshViewport::normalizePose()
 	update();
 }
 
-void MeshViewport::scaleToUnit()
-{
+void MeshViewport::scaleToUnit() {
 	if (!mesh_)
 		return;
 
@@ -152,26 +137,22 @@ void MeshViewport::scaleToUnit()
 	update();
 }
 
-void MeshViewport::setRenderSettings(const RenderSettings& settings)
-{
+void MeshViewport::setRenderSettings(const RenderSettings& settings) {
 	settings_ = settings;
 	update();
 }
 
-const RenderSettings& MeshViewport::renderSettings() const
-{
+const RenderSettings& MeshViewport::renderSettings() const {
 	return settings_;
 }
 
-void MeshViewport::resetView()
-{
+void MeshViewport::resetView() {
 	camera_.frame(mesh_->bounds());
 	camera_.reset();
 	update();
 }
 
-void MeshViewport::initializeGL()
-{
+void MeshViewport::initializeGL() {
 	initializeOpenGLFunctions();
 
 	connect(context(), &QOpenGLContext::aboutToBeDestroyed, this, &MeshViewport::releaseGpuResources, Qt::UniqueConnection);
@@ -180,20 +161,17 @@ void MeshViewport::initializeGL()
 	uploadPending_ = mesh_.has_value();
 }
 
-void MeshViewport::paintGL()
-{
+void MeshViewport::paintGL() {
 	QColor const backgroundColor = palette().color(QPalette::Window);
 	glClearColor(backgroundColor.redF(), backgroundColor.greenF(), backgroundColor.blueF(), backgroundColor.alphaF());
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	if (uploadPending_)
-	{
+	if (uploadPending_) {
 		gpuMesh_ = mesh_ ? std::make_unique<GpuMesh>(*mesh_) : nullptr;
 		uploadPending_ = false;
 	}
 
-	if (!renderer_ || !gpuMesh_)
-	{
+	if (!renderer_ || !gpuMesh_) {
 		return;
 	}
 
@@ -201,18 +179,15 @@ void MeshViewport::paintGL()
 	renderer_->draw(*gpuMesh_, camera_, aspectRatio, settings_, mesh_->principleAxes());
 }
 
-void MeshViewport::resizeGL(const int width, const int height)
-{
+void MeshViewport::resizeGL(const int width, const int height) {
 	glViewport(0, 0, width, height);
 }
 
-void MeshViewport::mousePressEvent(QMouseEvent* event)
-{
+void MeshViewport::mousePressEvent(QMouseEvent* event) {
 	lastMousePosition_ = event->position().toPoint();
 }
 
-void MeshViewport::mouseMoveEvent(QMouseEvent* event)
-{
+void MeshViewport::mouseMoveEvent(QMouseEvent* event) {
 	const QPoint position = event->position().toPoint();
 	const QPoint delta = position - lastMousePosition_;
 	lastMousePosition_ = position;
@@ -220,39 +195,30 @@ void MeshViewport::mouseMoveEvent(QMouseEvent* event)
 	const bool panning =
 		event->buttons() & (Qt::RightButton | Qt::MiddleButton) || (event->buttons() & Qt::LeftButton && event->modifiers() & Qt::ShiftModifier);
 
-	if (panning)
-	{
+	if (panning) {
 		const float unitsPerPixel = camera_.worldUnitsPerPixel(height());
 		camera_.pan(-static_cast<float>(delta.x()) * unitsPerPixel, static_cast<float>(delta.y()) * unitsPerPixel);
-	}
-	else if (event->buttons() & Qt::LeftButton)
-	{
+	} else if (event->buttons() & Qt::LeftButton) {
 		camera_.orbit(-static_cast<float>(delta.x()) * orbitDegreesPerPixel, static_cast<float>(delta.y()) * orbitDegreesPerPixel);
-	}
-	else
-	{
+	} else {
 		return;
 	}
 
 	update();
 }
 
-void MeshViewport::mouseDoubleClickEvent(QMouseEvent* /*event*/)
-{
+void MeshViewport::mouseDoubleClickEvent(QMouseEvent* /*event*/) {
 	resetView();
 }
 
-void MeshViewport::wheelEvent(QWheelEvent* event)
-{
+void MeshViewport::wheelEvent(QWheelEvent* event) {
 	const float steps = static_cast<float>(event->angleDelta().y()) / 8.0F / degreesPerWheelStep;
 	camera_.zoom(std::pow(zoomFactorPerWheelStep, steps));
 	update();
 }
 
-void MeshViewport::releaseGpuResources()
-{
-	if (!gpuMesh_ && !renderer_)
-	{
+void MeshViewport::releaseGpuResources() {
+	if (!gpuMesh_ && !renderer_) {
 		return;
 	}
 
