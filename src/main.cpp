@@ -6,12 +6,12 @@
 
 int main(int argc, char* argv[])
 {
-	constexpr auto theme = theme::Mode::Dark;
-	// constexpr auto theme = theme::Mode::Light;
+	// constexpr auto theme = theme::Mode::Dark;
+	constexpr auto theme = theme::Mode::Light;
 
 	// auto shapeDb = ShapeDb::open(TEST_SHAPE_DB_ROOT);
 	auto shapeDb = ShapeDb::open(SHAPE_DB_ROOT);
-	//auto shapeDb = ShapeDb::open(CACHED_DB_ROOT);
+	// auto shapeDb = ShapeDb::open(CACHED_DB_ROOT);
 
 	if (!shapeDb)
 	{

@@ -176,31 +176,23 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 
 
 				auto curvatureColor = [](float value) -> QVector3D
-				{
-					if (!std::isfinite(value))
-						return {1.0F, 1.0F, 1.0F};
+{
+	if (!std::isfinite(value))
+		return {0.5F, 0.5F, 0.5F}; // skipped faces: grey
 
-					constexpr float gamma = 0.2F;
-					value = std::clamp(value, 0.0F, 1.0F);
-					value = std::pow(value, gamma);
+	constexpr std::size_t numBins = 128;
+	constexpr std::array colors = {
+		QVector3D{0.0F, 0.0F, 1.0F}, // blue
+		QVector3D{0.0F, 1.0F, 0.0F}, // green
+		QVector3D{0.0F, 1.0F, 1.0F}, // cyan
+		QVector3D{1.0F, 0.0F, 0.0F}, // red
+		QVector3D{1.0F, 0.0F, 1.0F}  // magenta
+	};
 
-					constexpr std::array colors = {
-						QVector3D{0.0F, 0.0F, 1.0F}, // Blue
-						QVector3D{0.0F, 1.0F, 1.0F}, // Cyan
-						QVector3D{1.0F, 1.0F, 0.0F}, // Yellow
-						QVector3D{1.0F, 0.0F, 0.0F}	 // Red
-					};
+	const auto bin = std::min(static_cast<std::size_t>(std::clamp(value, 0.0F, 1.0F) * numBins), numBins - 1);
+	return colors[bin * colors.size() / numBins];
+};
 
-					const float scaled = value * (colors.size() - 1);
-					const auto index = static_cast<std::size_t>(scaled);
-
-					if (index >= colors.size() - 1)
-						return colors.back();
-
-					const float t = scaled - static_cast<float>(index);
-
-					return colors[index] * (1.0F - t) + colors[index + 1] * t;
-				};
 
 				for (std::size_t face = 0; face < mesh.curvatureValues_.size(); ++face)
 				{
