@@ -258,18 +258,21 @@ namespace mesh::features::local_curvature_descriptor
 
 		const auto values = principalCurvatureFaceValues(mesh, radius, [](double k1, double k2) { return calculateCurvatureIndex(k1, k2); }, false);
 
+		size_t valid = 0;
 		for (const auto value : values)
 		{
+			if (!std::isfinite(value)) continue;
 			const double normalized = (value + 1.0) * 0.5;
 			const auto bin = std::min(static_cast<std::size_t>(normalized * numBins), numBins - 1);
 
 			histogram[bin] += 1.0F;
+			valid++;
 		}
 
 		if (!values.empty())
 		{
 			for (auto& bin : histogram)
-				bin /= static_cast<float>(values.size());
+				bin /= static_cast<float>(valid);
 		}
 
 		return histogram;
@@ -297,6 +300,6 @@ namespace mesh::features::local_curvature_descriptor
 					return std::make_optional((*value + 1.0) * 0.5);
 				}
 				return value;
-			});
+			}, false);
 	}
 } // namespace mesh::features::local_curvature_descriptor
