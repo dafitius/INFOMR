@@ -112,7 +112,6 @@ void MeshRenderer::draw(GpuMesh& mesh, const Camera& camera, const float aspectR
 
 	if (settings.showAxes || settings.showEigenvectorAxes)
 	{
-		// const float axisLength = std::max(mesh.axisLength(), 1e-3F);
 		const float axisLength = 1;
 		const glm::mat4 axisScale = glm::scale(glm::mat4(1.0F), glm::vec3(axisLength));
 		const std::array<QVector3D, 3> worldColors = {

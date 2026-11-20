@@ -9,8 +9,6 @@ BrowserCard::BrowserCard(const QString& name, const std::filesystem::path& meshS
 	: QFrame(parent)
 	, meshName(name)
 {
-	// TODO: This is somewhat duplicate code with mainwindow
-
 	if (meshSource.extension() == ".obj")
 	{
 		object.emplace(*Mesh::fromObj(meshSource));
@@ -43,7 +41,6 @@ void BrowserCard::setupUI()
 	mainLayout->setContentsMargins(12, 12, 12, 12);
 	mainLayout->setSpacing(10);
 
-	// std::cout << meshName.toStdString() << "\n";
 	const auto mesh = object->translated(-object->baryCenter()).filledHoles().withConsistentOrientations();
 	// .triangulated();
 	// .subdivided();
@@ -51,17 +48,6 @@ void BrowserCard::setupUI()
 
 	const auto mesh2 = object->rotated(object->principleAxes());
 	object.emplace(mesh2);
-	//
-	// if (object->isTriangleMesh())
-	// {
-	// 	const auto mesh3 = object->subdivided();
-	// 	object.emplace(mesh3);
-	// }
-
-	// auto* preview = new MeshPreview(object->vertexPositionBuffer(), object->triangleIndices(), this);
-	// preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-	// preview->setMinimumHeight(180);
-	// mainLayout->addWidget(preview, 1);
 
 	previewHost_ = new QWidget(this);
 	previewHost_->setMinimumHeight(180);

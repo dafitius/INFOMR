@@ -46,10 +46,6 @@ void BrowsePage::setupUI()
 	sidebarTitle->setObjectName("pageTitle");
 	sidebarLayout->addWidget(sidebarTitle);
 
-	// auto* searchInput = new QLineEdit(sidebar);
-	// searchInput->setPlaceholderText("Search meshes...");
-	// sidebarLayout->addWidget(searchInput);
-
 	classComboBox = new QComboBox(sidebar);
 	classComboBox->setPlaceholderText("Select class...");
 	sidebarLayout->addWidget(classComboBox);
@@ -93,9 +89,6 @@ void BrowsePage::setupUI()
 
 void BrowsePage::setupClassList()
 {
-	// Empty item means that no class is selected initially.
-	// classComboBox->addItem("Select class...", QVariant());
-
 	std::vector<std::string> classNames;
 	for (const auto& className : database->iterClassNames())
 	{

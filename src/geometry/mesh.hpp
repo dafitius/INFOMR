@@ -345,9 +345,7 @@ public:
 					return copy(*this);
 				}
 
-				// std::cout << "Subdividing from " << newMesh->numVertices() << " to ";
 				newMesh.emplace(newMesh->subdivided());
-				// std::cout << newMesh->numVertices() << std::endl;
 			}
 		}
 		auto verts = newMesh->numVertices();
@@ -360,7 +358,6 @@ public:
 				newMesh.emplace(simplified);
 		}
 
-		// std::cout << "Done, mesh has " << newMesh->numVertices() << " vertices" << std::endl;
 		return newMesh.value();
 	}
 
