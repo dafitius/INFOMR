@@ -7,22 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  list-qt-versions:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: List available Qt 6.11.x versions
-        run: |
-          python -m pip install aqtinstall
-          python -m aqt list-qt linux desktop --modules-ignore qtquick3d | tr ' ' '\n' | grep '^6\.11' || true
-          echo "---"
-          python -m aqt list-qt linux desktop
-
   build:
-    needs: list-qt-versions
     strategy:
       fail-fast: false
       matrix:
@@ -56,6 +41,7 @@ jobs:
           modules: "qtquick3d"
           setup-python: "false" # we already set up a known-good Python above
           cache: true
+          extra: "--base https://download.qt.io"
 
       - name: Install Ninja
         uses: seanmiddleditch/gha-setup-ninja@master
