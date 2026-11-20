@@ -1,19 +1,20 @@
 #include "meshviewport.h"
 
-#include <QMouseEvent>
+#include "../geometry/pipeline.hpp"
+
 #include <QOpenGLContext>
 #include <QWheelEvent>
 
 #include <algorithm>
 #include <cmath>
-#include <utility>
 
 namespace
 {
 	constexpr float orbitDegreesPerPixel = 0.4F;
 	constexpr float zoomFactorPerWheelStep = 0.9F;
 	constexpr float degreesPerWheelStep = 15.0F;
-}
+	constexpr float targetVertexCount = 10000;
+} // namespace
 
 MeshViewport::MeshViewport(QWidget* parent)
 	: QOpenGLWidget(parent)
@@ -26,10 +27,127 @@ MeshViewport::~MeshViewport()
 	releaseGpuResources();
 }
 
-void MeshViewport::setMesh(RenderMesh mesh)
+void MeshViewport::setMesh(const Mesh& mesh)
 {
-	camera_.frame(mesh.bounds);
-	mesh_ = std::move(mesh);
+	mesh_.emplace(mesh);
+
+	uploadPending_ = true;
+	update();
+
+	resetView();
+}
+
+const std::optional<Mesh> MeshViewport::getMesh()
+{
+	return mesh_;
+}
+
+void MeshViewport::runFullPipeline()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh::normalized(*mesh_));
+
+	uploadPending_ = true;
+	update();
+
+	resetView();
+}
+
+void MeshViewport::exportMesh()
+{
+	if (!mesh_)
+		return;
+	mesh_.value().exportObj("/tmp/testing.obj");
+}
+
+void MeshViewport::orientNormals()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->withConsistentOrientations());
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::triangulate()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->triangulated());
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::removeNonManifold()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->removeNonManifold());
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::fillHoles()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->filledHoles());
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::remesh()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->remeshed(targetVertexCount));
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::normalizeTranslation()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->translated(-mesh_->baryCenter()));
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::normalizeRotation()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh_->rotated(glm::inverse(mesh_->principleAxes())));
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::normalizePose()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh::findOperation("flip object")->apply(*mesh_));
+	uploadPending_ = true;
+	update();
+}
+
+void MeshViewport::scaleToUnit()
+{
+	if (!mesh_)
+		return;
+
+	mesh_.emplace(mesh::findOperation("scale_to_unit")->apply(*mesh_));
 	uploadPending_ = true;
 	update();
 }
@@ -47,6 +165,7 @@ const RenderSettings& MeshViewport::renderSettings() const
 
 void MeshViewport::resetView()
 {
+	camera_.frame(mesh_->bounds());
 	camera_.reset();
 	update();
 }
@@ -57,13 +176,14 @@ void MeshViewport::initializeGL()
 
 	connect(context(), &QOpenGLContext::aboutToBeDestroyed, this, &MeshViewport::releaseGpuResources, Qt::UniqueConnection);
 
-	renderer_ = MeshRenderer::Init();
+	renderer_ = MeshRenderer::init();
 	uploadPending_ = mesh_.has_value();
 }
 
 void MeshViewport::paintGL()
 {
-	glClearColor(0x11 / 255.0F, 0x13 / 255.0F, 0x18 / 255.0F, 1.0F);
+	QColor const backgroundColor = palette().color(QPalette::Window);
+	glClearColor(backgroundColor.redF(), backgroundColor.greenF(), backgroundColor.blueF(), backgroundColor.alphaF());
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	if (uploadPending_)
@@ -78,7 +198,7 @@ void MeshViewport::paintGL()
 	}
 
 	const float aspectRatio = static_cast<float>(width()) / static_cast<float>(std::max(height(), 1));
-	renderer_->draw(*gpuMesh_, camera_, aspectRatio, settings_);
+	renderer_->draw(*gpuMesh_, camera_, aspectRatio, settings_, mesh_->principleAxes());
 }
 
 void MeshViewport::resizeGL(const int width, const int height)

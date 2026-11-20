@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QOpenGLFunctions>
 #include <QOpenGLWidget>
 #include <QPoint>
 
@@ -10,7 +9,6 @@
 #include "../render/camera.h"
 #include "../render/gpumesh.h"
 #include "../render/meshrenderer.h"
-#include "../render/rendermesh.h"
 
 class MeshViewport
 	: public QOpenGLWidget
@@ -22,13 +20,43 @@ public:
 	explicit MeshViewport(QWidget* parent = nullptr);
 	~MeshViewport() override;
 
-	void setMesh(RenderMesh mesh);
+	void setMesh(const Mesh& mesh);
+	[[nodiscard]] const std::optional<Mesh> getMesh();
 
 	void setRenderSettings(const RenderSettings& settings);
 	[[nodiscard]] const RenderSettings& renderSettings() const;
 
+	template <typename Func>
+		requires std::invocable<Func&, RenderSettings&> && std::same_as<std::invoke_result_t<Func&, RenderSettings&>, void>
+	void setRenderSettings(Func&& callback)
+	{
+		RenderSettings settings = renderSettings();
+		std::invoke(callback, settings);
+		setRenderSettings(settings);
+	}
+
+	template <typename T, typename V>
+		requires std::convertible_to<V, T>
+	void setRenderSetting(T RenderSettings::* option, V&& value)
+	{
+		RenderSettings settings = renderSettings();
+		settings.*option = std::forward<V>(value);
+		setRenderSettings(settings);
+	}
+
 public slots:
+	void runFullPipeline();
 	void resetView();
+	void orientNormals();
+	void triangulate();
+	void removeNonManifold();
+	void fillHoles();
+	void remesh();
+	void normalizeTranslation();
+	void normalizeRotation();
+	void normalizePose();
+	void scaleToUnit();
+	void exportMesh();
 
 protected:
 	void initializeGL() override;
@@ -47,7 +75,7 @@ private:
 	std::unique_ptr<GpuMesh> gpuMesh_;
 
 	// Kept on the CPU so the mesh can be re-uploaded when Qt recreates the OpenGL context.
-	std::optional<RenderMesh> mesh_;
+	std::optional<Mesh> mesh_;
 	bool uploadPending_ = false;
 
 	Camera camera_;

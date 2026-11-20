@@ -7,6 +7,12 @@ uniform vec3 fillColor = vec3(0.25, 0.65, 0.95);
 
 void main()
 {
+    if (!gl_FrontFacing)
+    {
+        color = vec4(1.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
     vec3 normal = normalize(cross(dFdx(vViewPos), dFdy(vViewPos)));
 
     // Simple fixed "headlight" style light, coming from the camera.

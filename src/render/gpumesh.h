@@ -1,34 +1,43 @@
 #pragma once
 
+#include "GLObject.hpp"
+
+
 #include <QOpenGLBuffer>
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
 
-#include "rendermesh.h"
+class Mesh;
 
 // Owns the GPU buffers of a mesh. Must be created and destroyed while its OpenGL context is current.
-class GpuMesh : protected QOpenGLFunctions
+class GpuMesh
 {
 public:
-	explicit GpuMesh(const RenderMesh& mesh);
+	explicit GpuMesh(const Mesh& mesh);
 	~GpuMesh();
 
 	GpuMesh(const GpuMesh&) = delete;
 	GpuMesh& operator=(const GpuMesh&) = delete;
 
-	void drawTriangles();
-	void drawEdges();
+	[[nodiscard]] float axisLength() const;
+
+	static std::pair<std::vector<uint32_t>, std::vector<float>> generateGrid();
+	static std::pair<std::vector<uint32_t>, std::vector<float>> generateNormals(const Mesh& mesh, float length);
+	static std::pair<std::vector<uint32_t>, std::vector<float>> generateBoundaryEdges(const Mesh& mesh);
+	static std::pair<std::vector<uint32_t>, std::vector<float>> generateBoundingBox(const Mesh& mesh);
+	static std::vector<uint32_t> generateHullEdges(const Mesh& mesh);
+	static std::vector<float> generateAxis();
+
+	GlObject triangleMesh_;
+	GlObject edgeMesh_;
+	GlObject boundingBox_;
+	GlObject grid_;
+	GlObject hull_;
+	GlObject vertexNormals_;
+	GlObject boundaryEdges_;
+	GlObject axis_;
+	std::vector<float> curvatureValues_;
 
 private:
-	void configureVertexArray(QOpenGLVertexArrayObject& vao, QOpenGLBuffer& indexBuffer);
-
-	QOpenGLBuffer vertexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
-	QOpenGLBuffer triangleIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
-	QOpenGLBuffer edgeIndexBuffer_ = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
-
-	QOpenGLVertexArrayObject triangleVao_;
-	QOpenGLVertexArrayObject edgeVao_;
-
-	GLsizei triangleIndexCount_ = 0;
-	GLsizei edgeIndexCount_ = 0;
+	float axisLength_ = 1.0F;
 };

@@ -26,7 +26,6 @@ Checks: >
 
 WarningsAsErrors: "*"
 HeaderFilterRegex: ''
-AnalyzeTemporaryDtors: false
 
 CheckOptions:
   # Cases
@@ -54,5 +53,3 @@ CheckOptions:
     value: 1 # "A parameter can be of size 1"
   - key: readability-identifier-length.MinimumLoopCounterNameLength
     value: 1 # "A loop counter can be of size 1"
-  - key: readability-identifier-naming.TemplateParameterPrefix
-    value: T

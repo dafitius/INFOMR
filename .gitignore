@@ -4,6 +4,11 @@
 /build-*/
 /out/
 
+# Cache database
+/resources/CachedShapeDatabase/*
+*.csv
+*.png
+
 # CMake files
 CMakeCache.txt
 CMakeFiles/
@@ -46,7 +51,6 @@ Thumbs.db
 *.out
 *.app
 *.o
-*.obj
 *.so
 *.a
 *.lib
@@ -63,6 +67,7 @@ __pycache__/
 
 # Other
 *.export
+.cache
 
 # Keep the source tree clean
 resources/qml/QtQuick.*

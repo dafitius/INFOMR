@@ -9,7 +9,7 @@ ShaderProgram::ShaderProgram()
 	this->program_ = std::make_unique<QOpenGLShaderProgram>();
 }
 
-std::optional<ShaderProgram> ShaderProgram::Init(const QString& vertexPath, const QString& fragmentPath)
+std::optional<ShaderProgram> ShaderProgram::init(const QString& vertexPath, const QString& fragmentPath)
 {
 	auto self = ShaderProgram();
 

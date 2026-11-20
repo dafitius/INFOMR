@@ -2,52 +2,89 @@
 // Created by dafitius on 17-09-2026.
 //
 
-#ifndef QTTEST_UTIL_H
-#define QTTEST_UTIL_H
-#include <string>
-#include <vector>
+#ifndef MR_UTIL_H
+#define MR_UTIL_H
+#include <charconv>
+#include <functional>
+#include <qtransform.h>
 
 namespace io_utils
 {
-	inline std::vector<std::string> split(std::string s, const std::string& delimiter)
+	inline auto split(std::string_view s, char delimiter)
 	{
-		std::vector<std::string> tokens;
-		size_t pos = 0;
-		while ((pos = s.find(delimiter)) != std::string::npos)
-		{
-			std::string token = s.substr(0, pos);
-			tokens.push_back(token);
-			s.erase(0, pos + delimiter.length());
-		}
-		tokens.push_back(s);
-
-		return tokens;
+		return s | std::views::split(delimiter) |
+			   std::views::transform([](auto part) -> std::string_view { return {part.data(), static_cast<std::size_t>(part.size())}; });
 	}
 
-	// Prefer this function over std::stof since it's unaffected by locale settings.
 	template <typename T>
-		requires std::is_floating_point_v<T>
-	inline T string_to_float(const std::string& s)
+	static std::optional<T> parseNum(std::string_view sv)
 	{
-		std::istringstream iss(s);
-		iss.imbue(std::locale::classic());
-		float v = 0.0f;
-		iss >> v;
-		return v;
+		T out{};
+		auto [p, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), out);
+		if (ec != std::errc{} || p != sv.data() + sv.size())
+		{
+			return std::nullopt;
+		}
+		return out;
 	}
 
-	inline auto trim(std::string_view s)
+	inline std::string_view trim(std::string_view s)
 	{
-		while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front())))
+		while (!s.empty() && (std::isspace(static_cast<unsigned char>(s.front())) != 0))
 		{
 			s.remove_prefix(1);
 		}
-		while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back())))
+		while (!s.empty() && (std::isspace(static_cast<unsigned char>(s.back())) != 0))
 		{
 			s.remove_suffix(1);
 		}
-		return std::string(s);
-	};
+		return s;
+	}
+
+	template <typename Fn>
+	static void forEachToken(std::string_view s, Fn&& fn)
+	{
+		size_t i = 0;
+		while (i < s.size())
+		{
+			while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i])))
+			{
+				++i;
+			}
+			if (i >= s.size())
+			{
+				break;
+			}
+			const size_t b = i;
+			while (i < s.size() && !std::isspace(static_cast<unsigned char>(s[i])))
+			{
+				++i;
+			}
+			fn(s.substr(b, i - b));
+		}
+	}
+
+	template <typename T>
+	static std::optional<std::array<T, 3>> parseTriplet(std::string_view s)
+	{
+		std::array<T, 3> out{};
+		size_t i = 0;
+
+		forEachToken(
+			s,
+			[&](const std::string_view tok)
+			{
+				auto v = parseNum<T>(tok);
+				out[i++] = *v;
+			});
+
+		if (i != 3)
+		{
+			return std::nullopt;
+		}
+		return out;
+	}
+
 } // namespace io_utils
 
-#endif // QTTEST_UTIL_H
+#endif // MR_UTIL_H

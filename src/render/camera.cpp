@@ -1,16 +1,15 @@
 #include "camera.h"
 
-#include <QtMath>
-
 #include <algorithm>
 #include <cmath>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace
 {
-	const QVector3D worldUp = QVector3D(0.0F, 1.0F, 0.0F);
+	constexpr auto worldUp = glm::vec3(0.0F, 1.0F, 0.0F);
 }
 
-void Camera::frame(const Bounds& bounds)
+void Camera::frame(const Mesh::Bounds& bounds)
 {
 	framedBounds_ = bounds;
 	reset();
@@ -20,8 +19,8 @@ void Camera::reset()
 {
 	const float radius = std::max(framedBounds_.radius(), 1e-6F);
 
-	target_ = framedBounds_.center();
-	distance_ = radius / std::sin(qDegreesToRadians(fieldOfView_ * 0.5F)) * 1.1F;
+	target_ = {0,0,0};//framedBounds_.center();
+	distance_ = radius / std::sin(glm::radians(fieldOfView_ * 0.5F)) * 1.1F;
 	yaw_ = defaultYaw_;
 	pitch_ = defaultPitch_;
 }
@@ -35,9 +34,9 @@ void Camera::orbit(const float deltaYaw, const float deltaPitch)
 
 void Camera::pan(const float deltaX, const float deltaY)
 {
-	const QVector3D forward = (target_ - position()).normalized();
-	const QVector3D right = QVector3D::crossProduct(forward, worldUp).normalized();
-	const QVector3D up = QVector3D::crossProduct(right, forward);
+	const glm::vec3 forward = glm::normalize(target_ - position());
+	const glm::vec3 right = glm::normalize(glm::cross(forward, worldUp));
+	const glm::vec3 up = glm::cross(right, forward);
 
 	target_ += right * deltaX + up * deltaY;
 }
@@ -48,34 +47,30 @@ void Camera::zoom(const float factor)
 	distance_ = std::max(distance_ * factor, minimumDistance);
 }
 
-QMatrix4x4 Camera::viewMatrix() const
+glm::mat4 Camera::viewMatrix() const
 {
-	QMatrix4x4 view;
-	view.lookAt(position(), target_, worldUp);
-	return view;
+	return glm::lookAt(position(), target_, worldUp);
+	;
 }
 
-QMatrix4x4 Camera::projectionMatrix(const float aspectRatio) const
+glm::mat4 Camera::projectionMatrix(const float aspectRatio) const
 {
 	const float nearPlane = distance_ * 0.01F;
-	const float farPlane = distance_ + framedBounds_.radius() * 2.0F;
-
-	QMatrix4x4 projection;
-	projection.perspective(fieldOfView_, aspectRatio, nearPlane, farPlane);
-	return projection;
+	const float farPlane = distance_ + (framedBounds_.radius() * 20.0F);
+	return glm::perspective(glm::radians(fieldOfView_), aspectRatio, nearPlane, farPlane);
 }
 
 float Camera::worldUnitsPerPixel(const int viewportHeight) const
 {
-	const float visibleHeight = 2.0F * distance_ * std::tan(qDegreesToRadians(fieldOfView_ * 0.5F));
+	const float visibleHeight = 2.0F * distance_ * std::tan(glm::radians(fieldOfView_ * 0.5F));
 	return visibleHeight / static_cast<float>(std::max(viewportHeight, 1));
 }
 
-QVector3D Camera::position() const
+glm::vec3 Camera::position() const
 {
-	const float yaw = qDegreesToRadians(yaw_);
-	const float pitch = qDegreesToRadians(pitch_);
+	const float yaw = glm::radians(yaw_);
+	const float pitch = glm::radians(pitch_);
 
-	const auto direction = QVector3D(std::cos(pitch) * std::sin(yaw), std::sin(pitch), std::cos(pitch) * std::cos(yaw));
+	const auto direction = glm::vec3(std::cos(pitch) * std::sin(yaw), std::sin(pitch), std::cos(pitch) * std::cos(yaw));
 	return target_ + direction * distance_;
 }

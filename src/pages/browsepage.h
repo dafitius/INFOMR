@@ -1,10 +1,10 @@
 #ifndef BROWSEPAGE_H
 #define BROWSEPAGE_H
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QGridLayout>
 #include <QScrollArea>
-#include <QVBoxLayout>
 #include <QWidget>
 #include <vector>
 
@@ -14,7 +14,7 @@
 struct MeshData
 {
 	QString name;
-	QString source;
+	std::filesystem::path source;
 };
 
 class BrowsePage : public QWidget
@@ -22,11 +22,11 @@ class BrowsePage : public QWidget
 	Q_OBJECT
 
 public:
-	BrowsePage(std::unique_ptr<ShapeDb> database, QWidget* parent = nullptr);
-	~BrowsePage();
+	explicit BrowsePage(std::shared_ptr<ShapeDb> database, QWidget* parent = nullptr);
+	~BrowsePage() override;
 
 signals:
-	void meshSelected(const QString& source);
+	void meshSelected(const std::filesystem::path& source);
 
 private:
 	void setupUI();
@@ -34,19 +34,22 @@ private:
 	void addMeshCard(const MeshData& mesh);
 	void loadSelectedClass();
 	void clearMeshCards();
+	void activateMeshPreview(BrowserCard* selectedCard);
+	void activateAllMeshPreviews();
 
-	std::unique_ptr<ShapeDb> database;
+	std::shared_ptr<ShapeDb> database;
 
 	QScrollArea* scrollArea;
 	QWidget* containerWidget;
 	QGridLayout* containerLayout;
 
 	QComboBox* classComboBox;
+	QCheckBox* loadAllPreviewsBox;
 
 	std::vector<BrowserCard*> meshCards;
 
 private slots:
-	void onMeshCardClicked(const QString& meshName);
+	static void onMeshCardClicked(const QString& meshName);
 };
 
 #endif // BROWSEPAGE_H

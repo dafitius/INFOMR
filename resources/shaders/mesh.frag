@@ -7,6 +7,12 @@ uniform vec3 fillColor;
 
 void main()
 {
+    if (!gl_FrontFacing)
+    {
+        color = vec4(1.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
     vec3 normal = normalize(cross(dFdx(vViewPos), dFdy(vViewPos)));
 
     vec3 lightDir = normalize(-vViewPos);

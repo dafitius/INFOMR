@@ -12,12 +12,14 @@ class MainWindow : public QMainWindow
 	Q_OBJECT
 
 public:
-	explicit MainWindow(std::unique_ptr<ShapeDb> database, QWidget* parent = nullptr);
+	explicit MainWindow(std::shared_ptr<ShapeDb> database, QWidget* parent = nullptr);
 	~MainWindow() override;
 
 private:
-	void setupUI(std::unique_ptr<ShapeDb> database);
+	void setupUI();
+	void openModel(std::filesystem::path source);
 
+	std::shared_ptr<ShapeDb> database_; //database is shared_ptr, so it shouldn't ever get deleted.
 	QTabWidget* tabWidget;
 };
 
