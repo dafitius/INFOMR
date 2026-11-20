@@ -95,7 +95,7 @@ file(GLOB_RECURSE main_src
         "${CMAKE_SOURCE_DIR}/src/*/*.tpp"
 )
 
-source_group(${PROJECT_NAME} ${main_src})
+source_group(${PROJECT_NAME} FILES ${main_src})
 
 set(VCPKG_APPLOCAL_DEPS OFF)
 
