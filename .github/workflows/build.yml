@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -21,6 +22,8 @@ jobs:
             artifact_name: MultimediaRetrieval-windows
 
     runs-on: ${{ matrix.os }}
+    env:
+      QT_DIR: ${{ github.workspace }}/Qt
 
     steps:
       - name: Checkout repository
@@ -28,21 +31,21 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Set up Python (Windows Qt installer dependency)
-        if: runner.os == 'Windows'
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
+      - name: Install aqtinstall
+        shell: bash
+        run: python -m pip install aqtinstall
+
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: "6.11.2"
-          host: ${{ matrix.qt_host }}
-          target: "desktop"
-          arch: ${{ matrix.qt_arch }}
-          modules: "qtquick3d"
-          cache: true
+        shell: bash
+        run: >
+          python -m aqt install-qt ${{ matrix.qt_host }} desktop 6.11.2 ${{ matrix.qt_arch }}
+          -m qtquick3d
+          --outputdir "${{ env.QT_DIR }}"
 
       - name: Install Ninja
         uses: seanmiddleditch/gha-setup-ninja@master
@@ -62,7 +65,7 @@ jobs:
         run: >
           cmake -B build -S . -G Ninja
           -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_PREFIX_PATH="${Qt6_DIR}"
+          -DCMAKE_PREFIX_PATH="${{ env.QT_DIR }}/6.11.2/${{ matrix.qt_arch }}/lib/cmake"
 
       - name: Build
         run: cmake --build build --config Release --parallel
